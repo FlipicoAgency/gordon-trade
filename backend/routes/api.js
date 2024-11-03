@@ -2,6 +2,31 @@ var express = require('express');
 var router = express.Router();
 //const { clients } = require('../websocket');
 
+// Pobierz określony produkt na podstawie ID
+router.get('/products/:productId', async (req, res) => {
+    const productId = req.params.productId; // Pobierz ID produktu z URL
+    const apiUrl = `https://api.webflow.com/v2/collections/671f74158ad8b36b6c82188c/items/${productId}`; // Wstaw ID produktu do URL
+
+    try {
+        const apiResponse = await fetch(apiUrl, {
+            headers: {
+                'Accept': 'application/json',
+                'Authorization': 'Bearer 34f47bfe4c8cb71babd3bfda12102276c33e2a48c532dde5d11a5540e7edd27c'
+            }
+        });
+
+        if (!apiResponse.ok) {
+            return res.status(apiResponse.status).json({ error: 'Product not found' });
+        }
+
+        const data = await apiResponse.json();
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching product:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // Pobierz ID sesji
 router.get('/session-id', (req, res) => {
     res.json({ sessionID: req.sessionID });
