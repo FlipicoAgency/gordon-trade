@@ -21,19 +21,15 @@ var apiRouter = require('./routes/api');
 var app = express();
 
 // Dodajemy konfigurację CORS
-// app.use(cors({
-//   origin: [
-//     // 'http://localhost:3000',
-//     // 'https://deckline.webflow.io',
-//     'https://deckline.pl',
-//     'https://www.deckline.pl',
-//     'https://koszyk.deckline.pl',
-//     'make.com',
-//     'integromat.com'
-//   ],
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Zezwalamy na te metody
-//   credentials: true, // Umożliwiamy wysyłanie ciasteczek z żądaniami
-// }));
+app.use(cors({
+  origin: [
+    'https://gordon-trade.webflow.io',
+    'make.com',
+    'integromat.com'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Zezwalamy na te metody
+  credentials: true, // Umożliwiamy wysyłanie ciasteczek z żądaniami
+}));
 
 app.use(function (req, res, next) {
 
