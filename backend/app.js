@@ -38,7 +38,7 @@ var app = express();
 app.use(function (req, res, next) {
 
   // Website you wish to allow to connect
-  res.setHeader('Access-Control-Allow-Origin', 'https://www.deckline.pl');
+  res.setHeader('Access-Control-Allow-Origin', 'https://gordon-trade.webflow.io/');
 
   // Request methods you wish to allow
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
@@ -123,7 +123,7 @@ app.use(function(err, req, res, next) {
 });
 
 // Self-referencing reloader to prevent instance spin-down
-const url = `https://koszyk.deckline.pl/`; // Replace with your Render URL
+const url = `https://gordon-trade.onrender.com`; // Replace with your Render URL
 const interval = 30000; // Interval in milliseconds (30 seconds)
 
 function reloadWebsite() {
