@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# TypeScript
+*.tsbuildinfo
+
+# pnpm
+pnpm-lock.yaml
+
+# JetBrains IDE
+.idea/
+
+# Build output
+dist/
+
+# Bin
+bin/
