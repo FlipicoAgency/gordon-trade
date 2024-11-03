@@ -38,7 +38,7 @@ var app = express();
 app.use(function (req, res, next) {
 
   // Website you wish to allow to connect
-  res.setHeader('Access-Control-Allow-Origin', 'https://gordon-trade.webflow.io/');
+  res.setHeader('Access-Control-Allow-Origin', 'https://gordon-trade.webflow.io');
 
   // Request methods you wish to allow
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
@@ -69,7 +69,8 @@ app.use(session({
     maxAge: 3600000,
     secure: true,
     httpOnly: false,
-    sameSite: 'strict'
+    //sameSite: 'strict'
+    sameSite: 'none'
   }
 }));
 
