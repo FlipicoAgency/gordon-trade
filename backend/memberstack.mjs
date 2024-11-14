@@ -13,7 +13,7 @@ export async function updateMemberstackUser(userId, order) {
         const response = await memberstack.members.update({
             id: userId,
             data: {
-                metaData: {
+                json: {
                     orders: order
                 }
             }
@@ -28,3 +28,4 @@ export async function updateMemberstackUser(userId, order) {
         throw new Error(`Error updating Memberstack user: ${error.message}`);
     }
 }
+
