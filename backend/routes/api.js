@@ -1,9 +1,10 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
 //const { clients } = require('../websocket');
 const axios = require('axios');
+import memberstackAdmin from "@memberstack/admin";
 
-const config = {
+const webflowConfig = {
     webflowApiUrl: 'https://api.webflow.com/v2',
     webflowToken: '34f47bfe4c8cb71babd3bfda12102276c33e2a48c532dde5d11a5540e7edd27c',
     containersCollectionId: '6723715370c537f5a2e31c79',
@@ -11,6 +12,13 @@ const config = {
     statusesCollectionId: '671fa6eea160e723f30e9c27',
     siteId: '671f56de2f5de134f0f39123',
 };
+
+const memberstackConfig = {
+    memberstackSecretKey: 'sk_sb_2612076c66d651e8bc1e',
+    memberstackPublicKey: 'pk_sb_c4a3e6d9fab2ca06ce6e',
+};
+
+const memberstack = memberstackAdmin.init(memberstackConfig.memberstackSecretKey);
 
 // Pobierz określony produkt na podstawie ID
 router.get('/products/:productId', async (req, res) => {
@@ -93,8 +101,8 @@ router.post('/kontenery', async (req, res) => {
         const { body: webhookData } = req;
 
         // Fetch all containers, filter by webhookData, and process contents
-        const allContainers = await axios.get(`${config.webflowApiUrl}/collections/${config.containersCollectionId}/items`, {
-            headers: { Authorization: `Bearer ${config.webflowToken}` }
+        const allContainers = await axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.containersCollectionId}/items`, {
+            headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
         }).then(({ data }) => data.items);
 
         const filteredContainers = allContainers.filter(({ fieldData }) => fieldData['data-ms-member-klient-id'] === webhookData.id);
@@ -103,13 +111,13 @@ router.post('/kontenery', async (req, res) => {
         // Fetch product details and statuses concurrently
         const [productDetails, statuses] = await Promise.all([
             Promise.all(flattenedContents.map(itemId =>
-                axios.get(`${config.webflowApiUrl}/collections/${config.productsCollectionId}/items/${itemId}`, {
-                    headers: { Authorization: `Bearer ${config.webflowToken}` }
+                axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.productsCollectionId}/items/${itemId}`, {
+                    headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
                 }).then(({ data }) => data.fieldData)
             )),
             Promise.all(filteredContainers.map(({ fieldData }) =>
-                axios.get(`${config.webflowApiUrl}/collections/${config.statusesCollectionId}/items/${fieldData.status}`, {
-                    headers: { Authorization: `Bearer ${config.webflowToken}` }
+                axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.statusesCollectionId}/items/${fieldData.status}`, {
+                    headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
                 }).then(({ data }) => data.fieldData)
             ))
         ]);
@@ -150,6 +158,33 @@ router.post('/kontenery', async (req, res) => {
     } catch (error) {
         console.error('Error running workflow:', error);
         res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.post('/memberstack/update-user/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const { order } = req.body;
+
+    try {
+        // Aktualizacja użytkownika w Memberstacku z dodaniem zamówienia do metaData
+        const response = await memberstack.members.update({
+            id: userId,
+            data: {
+                metaData: {
+                    orders: order
+                }
+            }
+        });
+
+        // Sprawdzenie odpowiedzi
+        if (response.error) {
+            throw new Error(`Memberstack update failed: ${response.error}`);
+        }
+
+        res.status(200).json({ message: 'User updated successfully', data: response });
+    } catch (error) {
+        console.error('Error updating Memberstack user:', error);
+        res.status(500).json({ error: 'Failed to update user' });
     }
 });
 
