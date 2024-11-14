@@ -161,30 +161,20 @@ router.post('/kontenery', async (req, res) => {
     }
 });
 
+// Endpoint aktualizujący użytkownika w Memberstack
 router.post('/memberstack/update-user/:userId', async (req, res) => {
     const { userId } = req.params;
     const { order } = req.body;
 
-    try {
-        // Aktualizacja użytkownika w Memberstacku z dodaniem zamówienia do metaData
-        const response = await memberstack.members.update({
-            id: userId,
-            data: {
-                metaData: {
-                    orders: order
-                }
-            }
-        });
+    // Dynamiczny import funkcji z memberstack.mjs
+    const { updateMemberstackUser } = await import('../memberstack.mjs');
 
-        // Sprawdzenie odpowiedzi
-        if (response.error) {
-            throw new Error(`Memberstack update failed: ${response.error}`);
-        }
+    const result = await updateMemberstackUser(userId, order);
 
-        res.status(200).json({ message: 'User updated successfully', data: response });
-    } catch (error) {
-        console.error('Error updating Memberstack user:', error);
-        res.status(500).json({ error: 'Failed to update user' });
+    if (result.success) {
+        res.status(200).json({ message: 'User updated successfully', data: result.data });
+    } else {
+        res.status(500).json({ error: result.error });
     }
 });
 
