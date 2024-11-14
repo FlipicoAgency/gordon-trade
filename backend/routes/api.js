@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 //const { clients } = require('../websocket');
 const axios = require('axios');
-import memberstackAdmin from "@memberstack/admin";
 
 const webflowConfig = {
     webflowApiUrl: 'https://api.webflow.com/v2',
@@ -12,13 +11,6 @@ const webflowConfig = {
     statusesCollectionId: '671fa6eea160e723f30e9c27',
     siteId: '671f56de2f5de134f0f39123',
 };
-
-const memberstackConfig = {
-    memberstackSecretKey: 'sk_sb_2612076c66d651e8bc1e',
-    memberstackPublicKey: 'pk_sb_c4a3e6d9fab2ca06ce6e',
-};
-
-const memberstack = memberstackAdmin.init(memberstackConfig.memberstackSecretKey);
 
 // Pobierz określony produkt na podstawie ID
 router.get('/products/:productId', async (req, res) => {
