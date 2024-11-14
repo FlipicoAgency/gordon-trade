@@ -90,135 +90,67 @@ router.delete('/cart', (req, res) => {
 
 router.post('/kontenery', async (req, res) => {
     try {
-        // Step 1: Receive webhook data
-        const webhookData = req.body;
-        //console.log('Step 1 - Webhook data received: ', webhookData);
+        const { body: webhookData } = req;
 
-        // Step 2: Fetch all items from Webflow collection
-        const allItems = await fetchContainers();
-        //console.log('Step 2 - All containers fetched from Webflow:', allItems);
-
-        // Step 3: Apply filters and aggregation based on specific fields
-        const filteredContainers = filterItems(allItems, webhookData);
-        console.log('Step 3 - Filtered containers based on parsed data:', filteredContainers);
-
-        // Step 4: Iterate over items and process each
-        const processedContainersContents = await processContainers(filteredContainers);
-        console.log('Step 4 - Processed container contents:', processedContainersContents);
-
-        // Flatten the processed container contents array
-        const flattenedContents = processedContainersContents.flat();
-        console.log('Flattened processed container contents:', flattenedContents);
-
-        // Step 5: Fetch product details for each item
-        const productDetails = await fetchProductDetails(flattenedContents);
-        console.log('Step 5 - Product details fetched:', productDetails);
-
-        // Step 6: Set variables or aggregate data
-        const products = aggregateData(productDetails);
-        console.log('Step 6 - Aggregated product data:', products);
-
-        // Step 7: Fetch status for each item
-        const statuses = await fetchStatus(filteredContainers);
-        console.log('Step 7 - Fetched statuses for filtered containers:', statuses);
-
-        // Step 8: Final aggregation of all data
-        const aggregatedData = aggregateFinalData(statuses, products, filteredContainers);
-        console.log('Step 8 - Final aggregated data:', aggregatedData);
-
-        // Step 9: Respond with aggregated data
-        res.status(200).json(aggregatedData);
-        console.log('Step 9 - Response sent with aggregated data:', aggregatedData);
-
-    } catch (error) {
-        console.error('Error running workflow:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
-// Helper functions
-async function fetchContainers() {
-    // Fetch items from Webflow
-    return axios.get(`${config.webflowApiUrl}/collections/${config.containersCollectionId}/items`, {
-        headers: { Authorization: `Bearer ${config.webflowToken}` }
-    }).then(response => response.data.items);
-}
-
-function filterItems(items, webhookData) {
-    // Example filter based on client ID
-    return items.filter(item => item.fieldData['data-ms-member-klient-id'] === webhookData.id);
-}
-
-async function processContainers(items) {
-    // Process items logic
-    return items.map(item => item.fieldData.zawartosc);
-}
-
-async function fetchProductDetails(items) {
-    // Fetch product details from Webflow for each item
-    return Promise.all(items.map(item =>
-        axios.get(`${config.webflowApiUrl}/collections/${config.productsCollectionId}/items/${item}`, {
+        // Fetch all containers, filter by webhookData, and process contents
+        const allContainers = await axios.get(`${config.webflowApiUrl}/collections/${config.containersCollectionId}/items`, {
             headers: { Authorization: `Bearer ${config.webflowToken}` }
-        }).then(response => response.data)));
-}
+        }).then(({ data }) => data.items);
 
-function aggregateData(data) {
-    // Aggregate data logic
-    return data.map(item => item.fieldData);;
-}
+        const filteredContainers = allContainers.filter(({ fieldData }) => fieldData['data-ms-member-klient-id'] === webhookData.id);
+        const flattenedContents = filteredContainers.flatMap(({ fieldData }) => fieldData.zawartosc);
 
-async function fetchStatus(items) {
-    // Fetch status for each item
-    return Promise.all(items.map(item =>
-        axios.get(`${config.webflowApiUrl}/collections/${config.statusesCollectionId}/items/${item.fieldData.status}`, {
-            headers: { Authorization: `Bearer ${config.webflowToken}` }
-        }).then(response => response.data)));
-}
+        // Fetch product details and statuses concurrently
+        const [productDetails, statuses] = await Promise.all([
+            Promise.all(flattenedContents.map(itemId =>
+                axios.get(`${config.webflowApiUrl}/collections/${config.productsCollectionId}/items/${itemId}`, {
+                    headers: { Authorization: `Bearer ${config.webflowToken}` }
+                }).then(({ data }) => data.fieldData)
+            )),
+            Promise.all(filteredContainers.map(({ fieldData }) =>
+                axios.get(`${config.webflowApiUrl}/collections/${config.statusesCollectionId}/items/${fieldData.status}`, {
+                    headers: { Authorization: `Bearer ${config.webflowToken}` }
+                }).then(({ data }) => data.fieldData)
+            ))
+        ]);
 
-function aggregateFinalData(statuses, products, containers) {
-    return containers.map((container) => {
-        // Access fieldData within the container
-        const containerFieldData = container.fieldData;
-
-        // Find the status data for the container based on the status ID
-        const status = statuses.find(status => status.id === containerFieldData.status);
-
-        // Map each product ID in the container's `zawartosc` field to the corresponding product details
-        const containerProducts = containerFieldData.zawartosc.map(id =>
-            products.find(product => product["cms-id"] === id)
-        );
-
-        return {
+        // Aggregate final data
+        const aggregatedData = filteredContainers.map(({ fieldData: containerFieldData }, index) => ({
             array: [
                 {
                     array: [
                         {
                             fieldData: {
-                                name: status.fieldData.name,
-                                slug: status.fieldData.slug,
-                                "data-ms-content": status.fieldData["data-ms-content"],
-                                position: status.fieldData.position,
-                                procent: status.fieldData.procent
+                                name: statuses[index].name,
+                                slug: statuses[index].slug,
+                                'data-ms-content': statuses[index]['data-ms-content'],
+                                position: statuses[index].position,
+                                procent: statuses[index].procent
                             }
                         }
                     ]
                 }
             ],
-            Products: containerProducts,
+            Products: containerFieldData.zawartosc.map(id => productDetails.find(product => product['cms-id'] === id)),
             fieldData: {
-                "data-przybycia": containerFieldData["data-przybycia"],
-                "data-zaladunku": containerFieldData["data-zaladunku"],
-                "data-wyjscia": containerFieldData["data-wyjscia"],
+                'data-przybycia': containerFieldData['data-przybycia'],
+                'data-zaladunku': containerFieldData['data-zaladunku'],
+                'data-wyjscia': containerFieldData['data-wyjscia'],
                 name: containerFieldData.name,
                 slug: containerFieldData.slug,
-                "data-ms-member-klient-id": containerFieldData["data-ms-member-klient-id"],
+                'data-ms-member-klient-id': containerFieldData['data-ms-member-klient-id'],
                 zawartosc: containerFieldData.zawartosc,
                 status: containerFieldData.status,
-                "planowana-dostawa": containerFieldData["planowana-dostawa"],
+                'planowana-dostawa': containerFieldData['planowana-dostawa'],
                 error: containerFieldData.error
             }
-        };
-    });
-}
+        }));
+
+        res.status(200).json(aggregatedData);
+    } catch (error) {
+        console.error('Error running workflow:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 module.exports = router;
