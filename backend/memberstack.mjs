@@ -20,12 +20,15 @@ export async function updateMemberstackUser(userId, order) {
         });
 
         if (response.error) {
+            console.error(`Memberstack update failed: ${response.error}`);
             throw new Error(`Memberstack update failed: ${response.error}`);
         }
 
         return response;
     } catch (error) {
+        console.error(`Error updating Memberstack user: ${error.message}`);
         throw new Error(`Error updating Memberstack user: ${error.message}`);
     }
 }
+
 
