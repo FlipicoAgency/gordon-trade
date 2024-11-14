@@ -95,8 +95,8 @@ router.post('/kontenery', async (req, res) => {
         console.log('Step 1 - Webhook data received: ', webhookData);
 
         // Step 2: Parse JSON data from webhook
-        const parsedData = JSON.parse(webhookData.value);
-        console.log('Step 2 - Parsed webhook data:', parsedData);
+        // const parsedData = JSON.parse(webhookData.value);
+        console.log('Step 2 - Parsed webhook data:', webhookData);
 
         // Step 3: Fetch all items from Webflow collection
         const allItems = await fetchContainers();
