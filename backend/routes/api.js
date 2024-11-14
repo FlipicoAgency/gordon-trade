@@ -114,7 +114,6 @@ router.post('/kontenery', async (req, res) => {
         const productDetails = await fetchProductDetails(flattenedContents);
         console.log('Step 5 - Product details fetched:', productDetails);
 
-
         // Step 6: Set variables or aggregate data
         const products = aggregateData(productDetails);
         console.log('Step 6 - Aggregated product data:', products);
@@ -176,9 +175,47 @@ async function fetchStatus(items) {
         }).then(response => response.data)));
 }
 
-function aggregateFinalData(statusData, products, containers) {
-    // Final aggregation
-    return { statusData, products, containers };
+function aggregateFinalData(statuses, products, containersFieldData) {
+    return containersFieldData.map((containerFieldData) => {
+        // Find the status data for the container based on the status ID
+        const status = statuses.find(status => status.id === containerFieldData.status);
+
+        // Map each product ID in the container's `zawartosc` field to the corresponding product details
+        const containerProducts = containerFieldData.zawartosc.map(id =>
+            products.find(product => product["cms-id"] === id)
+        );
+
+        return {
+            array: [
+                {
+                    array: [
+                        {
+                            fieldData: {
+                                name: status.fieldData.name,
+                                slug: status.fieldData.slug,
+                                "data-ms-content": status.fieldData["data-ms-content"],
+                                position: status.fieldData.position,
+                                procent: status.fieldData.procent
+                            }
+                        }
+                    ]
+                }
+            ],
+            Products: containerProducts,
+            fieldData: {
+                "data-przybycia": containerFieldData["data-przybycia"],
+                "data-zaladunku": containerFieldData["data-zaladunku"],
+                "data-wyjscia": containerFieldData["data-wyjscia"],
+                name: containerFieldData.name,
+                slug: containerFieldData.slug,
+                "data-ms-member-klient-id": containerFieldData["data-ms-member-klient-id"],
+                zawartosc: containerFieldData.zawartosc,
+                status: containerFieldData.status,
+                "planowana-dostawa": containerFieldData["planowana-dostawa"],
+                error: containerFieldData.error
+            }
+        };
+    });
 }
 
 module.exports = router;
