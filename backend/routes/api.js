@@ -123,7 +123,7 @@ router.post('/kontenery', async (req, res) => {
         console.log('Step 7 - Fetched statuses for filtered containers:', statuses);
 
         // Step 8: Final aggregation of all data
-        const aggregatedData = aggregateFinalData(statuses, products, filteredContainers.fieldData);
+        const aggregatedData = aggregateFinalData(statuses, products, filteredContainers);
         console.log('Step 8 - Final aggregated data:', aggregatedData);
 
         // Step 9: Respond with aggregated data
@@ -175,8 +175,11 @@ async function fetchStatus(items) {
         }).then(response => response.data)));
 }
 
-function aggregateFinalData(statuses, products, containersFieldData) {
-    return containersFieldData.map((containerFieldData) => {
+function aggregateFinalData(statuses, products, containers) {
+    return containers.map((container) => {
+        // Access fieldData within the container
+        const containerFieldData = container.fieldData;
+
         // Find the status data for the container based on the status ID
         const status = statuses.find(status => status.id === containerFieldData.status);
 
