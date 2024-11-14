@@ -103,7 +103,7 @@ router.post('/kontenery', async (req, res) => {
         console.log('Step 3 - All items fetched from Webflow:', allItems);
 
         // Step 4-5: Apply filters and aggregation based on specific fields
-        const filteredContainers = filterItems(allItems, parsedData);
+        const filteredContainers = filterItems(allItems, webhookData);
         console.log('Step 4-5 - Filtered containers based on parsed data:', filteredContainers);
 
         // Step 6: Iterate over items and process each
