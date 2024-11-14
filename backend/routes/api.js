@@ -92,33 +92,44 @@ router.post('/kontenery', async (req, res) => {
     try {
         // Step 1: Receive webhook data
         const webhookData = req.body;
+        console.log('Step 1 - Webhook data received: ', webhookData);
 
         // Step 2: Parse JSON data from webhook
         const parsedData = JSON.parse(webhookData.value);
+        console.log('Step 2 - Parsed webhook data:', parsedData);
 
         // Step 3: Fetch all items from Webflow collection
         const allItems = await fetchContainers();
+        console.log('Step 3 - All items fetched from Webflow:', allItems);
 
         // Step 4-5: Apply filters and aggregation based on specific fields
         const filteredContainers = filterItems(allItems, parsedData);
+        console.log('Step 4-5 - Filtered containers based on parsed data:', filteredContainers);
 
         // Step 6: Iterate over items and process each
         const processedContainersContents = await processContainers(filteredContainers);
+        console.log('Step 6 - Processed container contents:', processedContainersContents);
 
         // Step 7: Fetch product details for each item
         const productDetails = await fetchProductDetails(processedContainersContents);
+        console.log('Step 7 - Product details fetched:', productDetails);
 
         // Step 8: Set variables or aggregate data
         const products = aggregateData(productDetails);
+        console.log('Step 8 - Aggregated product data:', products);
 
         // Step 9: Fetch status for each item
         const statuses = await fetchStatus(filteredContainers);
+        console.log('Step 9 - Fetched statuses for filtered containers:', statuses);
 
         // Step 10: Final aggregation of all data
         const aggregatedData = aggregateFinalData(statuses, products, filteredContainers.fieldData);
+        console.log('Step 10 - Final aggregated data:', aggregatedData);
 
         // Step 11: Respond with aggregated data
         res.status(200).json(aggregatedData);
+        console.log('Step 11 - Response sent with aggregated data:', aggregatedData);
+
     } catch (error) {
         console.error('Error running workflow:', error);
         res.status(500).json({ error: 'Internal Server Error' });
