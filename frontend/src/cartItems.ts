@@ -8,36 +8,20 @@ export interface CartItem {
   length: number;
   sku: string;
   slug: string;
-  dimensions: string; // Wymiary w formacie "wysokość x szerokość x głębokość"
 }
 
-export interface BaselinkerItem {
-  storage: string;
-  storage_id: number;
-  order_product_id: number;
-  product_id: string;
-  variant_id: string;
-  name: string;
-  attributes: string;
-  sku: string;
-  ean: string;
-  location: string;
-  warehouse_id: number;
-  auction_id: string;
-  price_brutto: number;
-  tax_rate: number;
-  quantity: number;
-  weight: number;
-  bundle_id: number;
+interface GalleryItem {
+  fileId: string;
+  url: string;
+  alt: string;
 }
 
 const cartButton = document.querySelector<HTMLElement>('#cart-button');
-//const addedToCartButton = document.querySelector<HTMLElement>('#added-to-cart-button');
 const addedToCartModal = document.querySelector<HTMLElement>('#added-to-cart');
 
 export async function fetchCartData() {
   try {
-    const response = await fetch('https://koszyk.deckline.pl/api/cart', {
+    const response = await fetch('https://gordon-trade.onrender.com/api/cart', {
       credentials: 'include', // Dodaj credentials
     });
     const cartItems = await response.json();
@@ -60,9 +44,7 @@ async function updateCartUI() {
 
     const cartItems = await fetchCartData();
     const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const totalAmountElement = document.querySelector(
-      '.cart-total .div-block-2 .text-weight-bold.text-color-brand'
-    );
+    const totalAmountElement = document.getElementById('cart-total');
     const cartQuantityElement = document.getElementById('cart-quantity');
 
     if (totalAmountElement) totalAmountElement.textContent = `${totalAmount.toFixed(2)} zł`;
@@ -105,97 +87,104 @@ async function updateCartUI() {
   }
 }
 
-function handleAddToCart() {
-  document.addEventListener('click', async (event) => {
-    const button = event.target as HTMLElement;
-    if (!button.classList.contains('w-commerce-commerceaddtocartbutton')) return;
-
-    event.preventDefault();
-
-    const productElement =
+export async function handleAddToCart(button: HTMLElement) {
+  const productElement =
       button.closest('.additional-product-item') ||
       button.closest('.product-header2_add-to-cart') ||
-      button.closest('.product2_item');
+      button.closest('.product_item');
 
-    if (!productElement) {
-      console.error('Product element not found');
-      return;
-    }
+  if (!productElement) {
+    console.error('Product element not found');
+    return;
+  }
 
-    const productId =
-      productElement.querySelector('form')?.getAttribute('data-commerce-product-id') || '';
-    const selectElement = productElement.querySelector(
+  const productId =
+      button.getAttribute('data-commerce-product-id') || '';
+  const selectElement = productElement.querySelector(
       'form select[data-node-type="commerce-add-to-cart-option-select"]'
-    ) as HTMLSelectElement | null;
+  ) as HTMLSelectElement | null;
 
-    // Sprawdź, czy użytkownik wybrał opcję, jeśli selectElement istnieje
-    if (selectElement && selectElement.value === '') {
-      alert('Proszę wybrać opcję przed dodaniem produktu do koszyka.');
-      return;
-    }
+  // Sprawdź, czy użytkownik wybrał opcję, jeśli selectElement istnieje
+  if (selectElement && selectElement.value === '') {
+    alert('Proszę wybrać opcję przed dodaniem produktu do koszyka.');
+    return;
+  }
 
-    // Zdeklaruj zmienną selectedPill
-    let selectedPill: HTMLDivElement | null = null;
+  // Zdeklaruj zmienną selectedPill
+  let selectedPill: HTMLDivElement | null = null;
 
-    // Pobierz element select, jeśli jest dostępny
-    const optionPillGroup = productElement.querySelector(
+  // Pobierz element select, jeśli jest dostępny
+  const optionPillGroup = productElement.querySelector(
       'form div[data-node-type="commerce-add-to-cart-pill-group"]'
-    ) as HTMLDivElement | null;
+  ) as HTMLDivElement | null;
 
-    // Sprawdź, czy użytkownik wybrał opcję, jeśli selectElement istnieje
-    if (optionPillGroup) {
-      selectedPill = optionPillGroup.querySelector(
+  // Sprawdź, czy użytkownik wybrał opcję, jeśli selectElement istnieje
+  if (optionPillGroup) {
+    selectedPill = optionPillGroup.querySelector(
         'form div[aria-checked="true"]'
-      ) as HTMLDivElement | null;
-    }
+    ) as HTMLDivElement | null;
+  }
 
-    // Pobierz ilość
-    const quantityInput = productElement.querySelector<HTMLInputElement>(
+  // Pobierz ilość
+  const quantityInput = productElement.querySelector<HTMLInputElement>(
       'input[name="commerce-add-to-cart-quantity-input"]'
-    );
-    const quantity: number = quantityInput ? parseInt(quantityInput.value) : 1;
+  );
+  const quantity: number = quantityInput ? parseInt(quantityInput.value) : 1;
 
-    // Pobierz `skuId` z wybranej opcji lub formularza
-    let skuId: string | null = selectElement
+  // Pobierz `skuId` z wybranej opcji lub formularza
+  let skuId: string | null = selectElement
       ? selectElement.value
       : (selectedPill?.getAttribute('data-option-id') ?? null);
 
-    // Jeśli nie ma opcji do wybrania (np. brak formularza wyboru), pobierz `data-commerce-sku-id`
-    if (!skuId) {
-      skuId = productElement.querySelector('form')?.getAttribute('data-commerce-sku-id') || '';
-    }
+  // Jeśli nie ma opcji do wybrania (np. brak formularza wyboru), pobierz `data-commerce-sku-id`
+  if (!skuId) {
+    skuId = productElement.querySelector('form')?.getAttribute('data-commerce-sku-id') || '';
+  }
 
-    try {
-      const response = await fetch('https://hook.eu2.make.com/kr1cnajv95yw1vhqtchs7u5zvixffyuv', {
-        method: 'POST',
-        body: JSON.stringify({ productId, quantity, skuId }),
-      });
-      const data = await response.json();
-      const actualData = data[0].fieldData;
+  try {
+    const response = await fetch(`https://gordon-trade.onrender.com/api/products/${productId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    const data = await response.json();
+    console.log('data: ', data);
 
-      const selectedItem: CartItem = {
-        id: data[0].id,
-        name: actualData.name,
-        price: actualData.price.value / 100,
-        quantity: data[0].quantity,
-        imageUrl: actualData['main-image']?.url,
-        weight: actualData.weight,
-        length: actualData.length,
-        sku: actualData.sku,
-        slug: actualData.slug,
-        dimensions: actualData.dimensions,
-      };
+    const actualData = data.fieldData;
 
-      await addItemToCart(selectedItem);
-    } catch (err) {
-      console.error('Error getting selected item:', err);
-    }
-  });
+    const selectedItem = {
+      id: data.id,
+      name: actualData.name,
+      price: actualData.cena,
+      quantity,
+      imageUrl: actualData.miniatura?.url,
+      weight: actualData.waga,
+      length: actualData.dlugosc,
+      width: actualData.szerokosc,
+      height: actualData.wysokosc,
+      sku: actualData.sku,
+      slug: actualData.slug,
+      description: actualData.opis,
+      shortDescription: actualData['krotki-opis'],
+      cartonQuantity: actualData['ilosc-w-kartonie'],
+      gallery: actualData.galeria.map((image: GalleryItem) => ({
+        fileId: image.fileId,
+        url: image.url,
+        alt: image.alt,
+      })),
+    };
+
+
+    await addItemToCart(selectedItem);
+  } catch (err) {
+    console.error('Error getting selected item:', err);
+  }
 }
 
 async function addItemToCart(item: CartItem) {
   try {
-    const response = await fetch('https://koszyk.deckline.pl/api/cart', {
+    const response = await fetch('https://gordon-trade.onrender.com/api/cart', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item),
@@ -237,7 +226,7 @@ async function addItemToCart(item: CartItem) {
 
 async function removeItemFromCart(itemId: string) {
   try {
-    await fetch(`https://koszyk.deckline.pl/api/cart/${itemId}`, {
+    await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
       method: 'DELETE',
       credentials: 'include',
     });
@@ -249,7 +238,7 @@ async function removeItemFromCart(itemId: string) {
 
 async function updateItemQuantity(itemId: string, quantity: number) {
   try {
-    await fetch(`https://koszyk.deckline.pl/api/cart/${itemId}`, {
+    await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quantity }),
@@ -285,6 +274,8 @@ function renderCartItems(cartItems: CartItem[]) {
   cartListElement.innerHTML = ''; // Wyczyść listę przed dodaniem nowych elementów
 
   cartItems.forEach((item) => {
+    console.log(item);
+
     const itemElement = document.createElement('div');
     itemElement.className = 'cart-item';
     itemElement.innerHTML = `
@@ -355,7 +346,7 @@ export function renderCheckoutItems(cartItems: CartItem[]) {
 
 export async function clearCart() {
   try {
-    await fetch('https://koszyk.deckline.pl/api/cart', {
+    await fetch('https://gordon-trade.onrender.com/api/cart', {
       method: 'DELETE',
       credentials: 'include',
     });
@@ -368,7 +359,7 @@ export async function clearCart() {
 // Funkcja do pobrania ID sesji
 export async function getSessionID() {
   try {
-    const response = await fetch('https://koszyk.deckline.pl/api/session-id', {
+    const response = await fetch('https://gordon-trade.onrender.com/api/session-id', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -382,82 +373,6 @@ export async function getSessionID() {
   }
 }
 
-export const retrievePaymentIntent = async (paymentIntentClientSecret: string) => {
-  try {
-    const response = await fetch('https://koszyk.deckline.pl/api/retrieve-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ paymentIntent: paymentIntentClientSecret }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.isValid === false) {
-      console.error('Error retrieving payment intent:', data.message);
-      return null;
-    }
-
-    //console.log('Payment Intent retrieved successfully:', data.paymentIntentResult);
-    return data.paymentIntentResult;
-  } catch (error) {
-    //console.error('Error in retrievePaymentIntent:', error);
-    return null;
-  }
-};
-
-export const fetchBaselinkerOrder = async (orderId: string) => {
-  try {
-    const response = await fetch('https://koszyk.deckline.pl/api/fetch-order-from-baselinker', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ orderId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching order:', error);
-    throw error;
-  }
-};
-
-export function renderBaselinkerItems(baselinkerItems: BaselinkerItem[]) {
-  const orderItemLists = document.querySelectorAll<HTMLElement>('.order-item-list');
-
-  orderItemLists.forEach((orderItemList) => {
-    if (orderItemList) {
-      orderItemList.innerHTML = '';
-
-      baselinkerItems.forEach((item: BaselinkerItem) => {
-        const itemElement = document.createElement('div');
-        itemElement.className = 'w-commerce-commercecheckoutorderitem order-item';
-        itemElement.innerHTML = `
-          <div class="w-commerce-commercecheckoutorderitemdescriptionwrapper">
-            <div class="w-commerce-commerceboldtextblock">${item.name}</div>
-            <div class="w-commerce-commercecheckoutorderitemquantitywrapper">
-              <div>Ilość: </div>
-              <div>${item.quantity}</div>
-            </div>
-          </div>
-          <div>${item.price_brutto.toFixed(2)} zł</div>
-        `;
-        orderItemList.appendChild(itemElement);
-      });
-    }
-  });
-}
-
 export async function initializeCart() {
   await updateCartUI();
-  handleAddToCart();
 }

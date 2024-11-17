@@ -25,6 +25,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development node ./bin/build.js",
     "build": "cross-env NODE_ENV=production node ./bin/build.js",
+    "webflow": "pnpm build && node ./bin/copy-to-webflow.js",
     "lint": "eslint --ignore-path .gitignore ./src && prettier --check ./src",
     "lint:fix": "eslint --ignore-path .gitignore ./src --fix",
     "check": "tsc --noEmit",
