@@ -1,6 +1,7 @@
 import type {Member} from '../memberstack';
 import {getMemberData} from '../memberstack';
 import {fetchContainers} from "./container-orders";
+import {initializeFavorites} from './favorites';
 
 document.addEventListener("DOMContentLoaded", async () => {
     const mapWrapper = document.getElementById('container-map-wrapper') as HTMLElement;
@@ -31,5 +32,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
-    fetchContainers(memberData);
+    await fetchContainers(memberData);
+    await initializeFavorites();
 });
