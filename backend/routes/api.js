@@ -9,31 +9,49 @@ const webflowConfig = {
     containersCollectionId: '6723715370c537f5a2e31c79',
     productsCollectionId: '671f74158ad8b36b6c82188c',
     statusesCollectionId: '671fa6eea160e723f30e9c27',
+    categoriesCollectionId: '671f61456cbcd434a4a123d4',
     siteId: '671f56de2f5de134f0f39123',
 };
 
 // Pobierz określony produkt na podstawie ID
 router.get('/products/:productId', async (req, res) => {
     const productId = req.params.productId; // Pobierz ID produktu z URL
-    const apiUrl = `https://api.webflow.com/v2/collections/671f74158ad8b36b6c82188c/items/${productId}`; // Wstaw ID produktu do URL
+    const apiUrl = `${webflowConfig.webflowApiUrl}/collections/${webflowConfig.productsCollectionId}/items/${productId}`;
 
     try {
-        const apiResponse = await fetch(apiUrl, {
-            headers: {
-                'Accept': 'application/json',
-                'Authorization': 'Bearer 34f47bfe4c8cb71babd3bfda12102276c33e2a48c532dde5d11a5540e7edd27c'
-            }
+        const response = await axios.get(apiUrl, {
+            headers: { 'Authorization': `Bearer ${webflowConfig.webflowToken}` }
         });
 
-        if (!apiResponse.ok) {
-            return res.status(apiResponse.status).json({ error: 'Product not found' });
-        }
-
-        const data = await apiResponse.json();
-        res.json(data);
+        res.json(response.data);
     } catch (error) {
         console.error('Error fetching product:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        if (error.response) {
+            res.status(error.response.status).json({ error: error.response.data });
+        } else {
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
+});
+
+// Pobierz elementy kolekcji
+router.get('/categories', async (req, res) => {
+    const apiUrl = `${webflowConfig.webflowApiUrl}/collections/${webflowConfig.categoriesCollectionId}/items`;
+
+    try {
+        const response = await axios.get(apiUrl, {
+            headers: { 'Authorization': `Bearer ${webflowConfig.webflowToken}` },
+        });
+
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('Error fetching collection items:', error);
+
+        if (error.response) {
+            res.status(error.response.status).json({ error: error.response.data });
+        } else {
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
     }
 });
 
