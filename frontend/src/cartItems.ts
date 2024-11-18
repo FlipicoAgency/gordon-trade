@@ -1,3 +1,5 @@
+import {getMemberData} from "./memberstack";
+
 export interface CartItem {
   id: string;
   name: string;
@@ -38,11 +40,13 @@ export async function fetchCartData() {
 }
 
 async function updateCartUI() {
-  try {
-    const stateDefault = document.querySelector<HTMLElement>('.state-default');
-    const stateEmpty = document.querySelector<HTMLElement>('.state-empty');
+  const stateDefault = document.querySelector<HTMLElement>('.state-default');
+  const stateEmpty = document.querySelector<HTMLElement>('.state-empty');
+  const stateSuccess = document.querySelector<HTMLElement>('.state-success');
+  const stateError = document.querySelector<HTMLElement>('.state-error');
 
-    const cartItems = await fetchCartData();
+  try {
+    const cartItems: CartItem[] = await fetchCartData();
     const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const totalAmountElement = document.getElementById('cart-total');
     const cartQuantityElement = document.getElementById('cart-quantity');
@@ -53,30 +57,17 @@ async function updateCartUI() {
         .reduce((sum, item) => sum + item.quantity, 0)
         .toString();
 
-    // Sprawdź, czy aktualny URL to "/koszyk" i ukryj przycisk koszyka, jeśli tak
-    const currentPath = window.location.pathname;
-    if (currentPath === '/koszyk') {
-      if (cartButton) cartButton.remove();
-    } else {
-      // Wyświetl lub ukryj przycisk koszyka w zależności od tego, czy są przedmioty
-      // if (cartButton) {
-      //   if (cartItems.length > 0) {
-      //     cartButton.classList.remove('hide');
-      //     cartButton.style.display = 'flex';
-      //   } else {
-      //     cartButton.classList.add('hide');
-      //     cartButton.style.display = 'none';
-      //   }
-      // }
-    }
-
-    // Obsługa stanów koszyka: domyślnego i pustego
-    if (stateDefault && stateEmpty) {
+    // Obsługa stanów koszyka
+    if (stateDefault && stateEmpty && stateSuccess && stateError) {
       if (cartItems.length > 0) {
-        stateDefault.style.display = 'block';
         stateEmpty.style.display = 'none';
+        stateSuccess.style.display = 'none';
+        stateError.style.display = 'none';
+        stateDefault.style.display = 'block';
       } else {
         stateDefault.style.display = 'none';
+        stateSuccess.style.display = 'none';
+        stateError.style.display = 'none';
         stateEmpty.style.display = 'flex';
       }
     }
@@ -84,6 +75,12 @@ async function updateCartUI() {
     renderCartItems(cartItems);
   } catch (error) {
     console.error('Failed to update cart UI:', error);
+    if (stateDefault && stateEmpty && stateSuccess && stateError) {
+      stateEmpty.style.display = 'none';
+      stateDefault.style.display = 'none';
+      stateSuccess.style.display = 'none';
+      stateError.style.display = 'flex';
+    }
   }
 }
 
@@ -313,6 +310,64 @@ function renderCartItems(cartItems: CartItem[]) {
       }
     });
   });
+
+  const submitButton = document.getElementById('place-order');
+  submitButton?.addEventListener('click', async () => {
+    const cartItems = await fetchCartData(); // Pobierz aktualne dane koszyka
+    if (cartItems.length === 0) {
+      alert('Koszyk jest pusty!');
+      return;
+    }
+    await processOrder(cartItems);
+  });
+}
+
+async function processOrder(cartItems: CartItem[]) {
+  console.log('Items to process:', cartItems);
+
+  const makeUrl = 'https://hook.eu2.make.com/ey0oofllpglvwpgbjm0pw6t0yvx37cnd';
+  const stateDefault = document.querySelector<HTMLElement>('.state-default');
+  const stateSuccess = document.querySelector<HTMLElement>('.state-success');
+  const stateError = document.querySelector<HTMLElement>('.state-error');
+
+  try {
+    const memberData = await getMemberData();
+
+    const payload = {
+      items: cartItems,
+      member: memberData,
+    };
+
+    const response = await fetch(makeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    if (stateSuccess && stateDefault) {
+      stateDefault.style.display = 'none';
+      stateSuccess.style.display = 'flex';
+      setTimeout(async () => {
+        await clearCart();
+        await updateCartUI();
+      }, 3000);
+    }
+  } catch (error) {
+    console.error('Failed to process order:', error);
+    if (stateError && stateDefault) {
+      stateDefault.style.display = 'none';
+      stateError.style.display = 'flex';
+      setTimeout(() => {
+        updateCartUI();
+      }, 3000);
+    }
+  }
 }
 
 export function renderCheckoutItems(cartItems: CartItem[]) {

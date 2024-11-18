@@ -1,17 +1,7 @@
 import { handleAddToCart } from "./cartItems";
+import {getMemberData, getMemberJSON, updateMemberJSON} from './memberstack';
 
 document.addEventListener("DOMContentLoaded", async () => {
-    interface Memberstack {
-        getCurrentMember(): Promise<{ data: Member | null }>;
-        getMemberJSON(): Promise<{ data: any }>;
-        updateMemberJSON(data: { json: any }): Promise<void>;
-    }
-
-    interface Member {
-        id: string;
-        email: string;
-    }
-
     const addToCartButtons = document.querySelectorAll<HTMLElement>('.addtocartbutton');
     addToCartButtons.forEach((button) => {
         button.addEventListener('click', async (event) => {
@@ -25,17 +15,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     });
 
-    // Type-safe access to `window.$memberstackDom`
-    const memberstack = (window as any).$memberstackDom as Memberstack;
-
     // Function to calculate JSON size in bytes
     const calculateJSONSize = (json: any): number =>
         new Blob([JSON.stringify(json)]).size;
 
-    // Function to update button state (add/remove "is-active" class)
+    // Function to toggle visibility of child elements based on `isFavorite`
     const updateFavoriteButtonState = (button: HTMLElement, isFavorite: boolean): void => {
-        const productId = button.getAttribute("data-commerce-product-id");
-        button.classList.toggle("is-active", isFavorite);
+        const lineIcon = button.querySelector<HTMLElement>(".is-line");
+        const fillIcon = button.querySelector<HTMLElement>(".is-fill");
+
+        if (lineIcon) {
+            lineIcon.style.display = isFavorite ? "none" : "block";
+        }
+        if (fillIcon) {
+            fillIcon.style.display = isFavorite ? "block" : "none";
+        }
     };
 
     // Handle favorite button click
@@ -47,7 +41,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         try {
-            const memberJson = await memberstack.getMemberJSON();
+            const memberJson = await getMemberJSON();
             let favorites: string[] = memberJson.data?.favorites || []; // Safely initialize array
 
             const isFavorite = favorites.includes(productId);
@@ -65,7 +59,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 ...memberJson.data,
                 favorites, // Update the favorite array
             };
-            await memberstack.updateMemberJSON({ json: updatedJson });
+            await updateMemberJSON({ json: updatedJson });
 
             updateFavoriteButtonState(button, !isFavorite);
         } catch (error) {
@@ -76,20 +70,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initialize favorite button states
     const initializeFavoritesState = async (): Promise<void> => {
         try {
-            const { data: member } = await memberstack.getCurrentMember();
+            const member = await getMemberData();
             if (!member) {
                 console.error("User not logged in. Skipping favorites initialization.");
                 return;
             }
 
-            let memberJson = await memberstack.getMemberJSON();
+            let memberJson = await getMemberJSON();
 
             // Check if memberJson.data is null and initialize it if necessary
             if (!memberJson.data) {
                 console.warn("Member JSON is null. Initializing new data structure.");
                 memberJson.data = { favorites: [] }; // Initialize with an empty favorites array
-                await memberstack.updateMemberJSON({ json: memberJson.data });
-                memberJson = await memberstack.getMemberJSON(); // Refresh after update
+                await updateMemberJSON({ json: memberJson.data });
+                memberJson = await getMemberJSON(); // Refresh after update
             }
 
             const favorites: string[] = memberJson.data.favorites || [];
