@@ -38,22 +38,40 @@ router.get('/sheets/orders', async (req, res) => {
         // Pobierz nagłówki i dane
         const [headers, ...data] = rows;
 
-        // Filtruj dane na podstawie NIP
         let lastNIP = null;
-        const filteredOrders = data.filter((row) => {
-            if (row[0]) lastNIP = row[0]; // Ustawiaj NIP, jeśli komórka nie jest pusta
-            return lastNIP === nip;
+        let lastOrderId = null;
+        const orders = [];
+
+        // Procesowanie danych
+        data.forEach((row) => {
+            if (row[0]) lastNIP = row[0]; // Aktualizacja NIP, jeśli komórka nie jest pusta
+            if (row[1]) lastOrderId = row[1]; // Aktualizacja ID zamówienia, jeśli komórka nie jest pusta
+
+            // Filtruj zamówienia na podstawie NIP
+            if (lastNIP === nip) {
+                // Znajdź istniejące zamówienie
+                let existingOrder = orders.find((order) => order.orderId === lastOrderId);
+
+                if (!existingOrder) {
+                    // Twórz nowe zamówienie, jeśli nie istnieje
+                    existingOrder = headers.reduce((acc, header, index) => {
+                        acc[header] = row[index] || '';
+                        return acc;
+                    }, { products: [] }); // Dodaj pole products
+                    existingOrder.orderId = lastOrderId; // Ustaw ID zamówienia
+                    orders.push(existingOrder);
+                }
+
+                // Dodaj produkt do zamówienia
+                existingOrder.products.push({
+                    productId: row[3], // Kolumna Product ID
+                    quantity: row[4], // Kolumna Quantity
+                    productName: row[2], // Kolumna Product name
+                });
+            }
         });
 
-        // Zwroć sformatowane dane
-        const formattedOrders = filteredOrders.map((row) =>
-            headers.reduce((acc, header, index) => {
-                acc[header] = row[index] || '';
-                return acc;
-            }, {})
-        );
-
-        res.status(200).json(formattedOrders);
+        res.status(200).json(orders);
     } catch (error) {
         console.error('Błąd pobierania danych z arkusza:', error);
         res.status(500).json({ error: 'Internal Server Error' });
