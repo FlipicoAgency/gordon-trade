@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 //const { clients } = require('../websocket');
 const axios = require('axios');
-const { getSheetsInstance } = require('./googleSheetsClient');
+const { getSheetsInstance } = require('../googleSheetsClient');
 
 const webflowConfig = {
     webflowApiUrl: 'https://api.webflow.com/v2',
