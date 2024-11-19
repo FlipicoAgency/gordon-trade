@@ -18,11 +18,17 @@ const SPREADSHEET_ID = '14vV1YgB7M2kc8uwIRHBUateZhB1RL1RzIwThdn1jbs8';
 
 // Pobierz dane z określonego zakresu arkusza
 router.get('/sheets/data', async (req, res) => {
+    const range = req.query.range; // Pobierz zakres z query param
+
+    if (!range) {
+        return res.status(400).json({ error: 'Zakres (range) jest wymagany.' });
+    }
+
     try {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'New!A2:R', // Zakładka i zakres arkusza
+            range, // Użyj dynamicznego zakresu
         });
 
         const rows = response.data.values;
