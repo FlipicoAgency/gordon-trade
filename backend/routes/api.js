@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 //const { clients } = require('../websocket');
 const axios = require('axios');
+const { getSheetsInstance } = require('./googleSheetsClient');
 
 const webflowConfig = {
     webflowApiUrl: 'https://api.webflow.com/v2',
@@ -12,6 +13,52 @@ const webflowConfig = {
     categoriesCollectionId: '671f61456cbcd434a4a123d4',
     siteId: '671f56de2f5de134f0f39123',
 };
+
+const SPREADSHEET_ID = '14vV1YgB7M2kc8uwIRHBUateZhB1RL1RzIwThdn1jbs8';
+
+// Pobierz dane z określonego zakresu arkusza
+router.get('/sheets/data', async (req, res) => {
+    try {
+        const sheets = await getSheetsInstance();
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'New!A2:R', // Zakładka i zakres arkusza
+        });
+
+        const rows = response.data.values;
+        if (!rows || rows.length === 0) {
+            return res.status(404).json({ message: 'Brak danych w arkuszu.' });
+        }
+
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Błąd pobierania danych z arkusza:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// Dodaj dane do arkusza
+router.post('/sheets/data', async (req, res) => {
+    const { values } = req.body; // Dane do dodania (tablica)
+    if (!values || !Array.isArray(values)) {
+        return res.status(400).json({ error: 'Nieprawidłowe dane.' });
+    }
+
+    try {
+        const sheets = await getSheetsInstance();
+        const response = await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Orders!A1:C', // Zakładka i zakres arkusza
+            valueInputOption: 'USER_ENTERED',
+            resource: { values: [values] },
+        });
+
+        res.status(201).json({ message: 'Dane dodane do arkusza.', response: response.data });
+    } catch (error) {
+        console.error('Błąd dodawania danych do arkusza:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 // Pobierz określony produkt na podstawie ID
 router.get('/products/:productId', async (req, res) => {
