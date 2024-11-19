@@ -16,27 +16,44 @@ const webflowConfig = {
 
 const SPREADSHEET_ID = '14vV1YgB7M2kc8uwIRHBUateZhB1RL1RzIwThdn1jbs8';
 
-// Pobierz dane z określonego zakresu arkusza
-router.get('/sheets/data', async (req, res) => {
-    const range = req.query.range; // Pobierz zakres z query param
-
-    if (!range) {
-        return res.status(400).json({ error: 'Zakres (range) jest wymagany.' });
+// Pobierz zamówienia na podstawie NIP
+router.get('/sheets/orders', async (req, res) => {
+    const { nip } = req.query; // NIP przekazany jako query parameter
+    if (!nip) {
+        return res.status(400).json({ error: 'Parametr "nip" jest wymagany.' });
     }
 
     try {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range, // Użyj dynamicznego zakresu
+            range: 'Orders!A1:R', // Zakres danych
         });
 
         const rows = response.data.values;
         if (!rows || rows.length === 0) {
-            return res.status(404).json({ message: 'Brak danych w arkuszu.' });
+            return res.status(404).json({ error: 'Brak danych w arkuszu.' });
         }
 
-        res.status(200).json(rows);
+        // Pobierz nagłówki i dane
+        const [headers, ...data] = rows;
+
+        // Filtruj dane na podstawie NIP
+        let lastNIP = null;
+        const filteredOrders = data.filter((row) => {
+            if (row[0]) lastNIP = row[0]; // Ustawiaj NIP, jeśli komórka nie jest pusta
+            return lastNIP === nip;
+        });
+
+        // Zwroć sformatowane dane
+        const formattedOrders = filteredOrders.map((row) =>
+            headers.reduce((acc, header, index) => {
+                acc[header] = row[index] || '';
+                return acc;
+            }, {})
+        );
+
+        res.status(200).json(formattedOrders);
     } catch (error) {
         console.error('Błąd pobierania danych z arkusza:', error);
         res.status(500).json({ error: 'Internal Server Error' });
