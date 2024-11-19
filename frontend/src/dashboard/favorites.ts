@@ -1,4 +1,5 @@
 import {getMemberJSON, updateMemberJSON} from "../memberstack";
+import {initializeAddToCartButtons} from "../cartItems";
 
 export interface Product {
     id: string;
@@ -113,7 +114,7 @@ const fetchCategories = async (): Promise<void> => {
             return map;
         }, {} as Record<string, string>);
 
-        console.log(`Category map initialized:`, categoryMap);
+        //console.log(`Category map initialized:`, categoryMap);
     } catch (error) {
         console.error(`Error fetching categories:`, error);
     }
@@ -159,10 +160,10 @@ const generateFavoriteItem = (product: Product): HTMLElement => {
             </div>
         </div>
         <div class="favorite_buttons">
-            <button blocks-name="button" data-ms-content="members" class="button is-small addtocartbutton">
+            <button blocks-name="button" data-ms-content="members" class="button is-small addtocartbutton" data-commerce-product-id="${product.id}">
                 <div class="text-visual-fix">Dodaj do koszyka</div>
             </button>
-            <button blocks-name="button" data-ms-content="members" class="button is-secondary is-small deletefromfavorites">
+            <button blocks-name="button" data-ms-content="members" class="button is-secondary is-small deletefromfavorites" data-product-id="${product.id}">
                 <div class="text-visual-fix">Usuń z ulubionych</div>
             </button>
         </div>
@@ -170,19 +171,55 @@ const generateFavoriteItem = (product: Product): HTMLElement => {
     return li;
 };
 
-export const renderFavorites = async (favorites: string[]): Promise<void> => {
-    favoriteList.innerHTML = ''; // Clear existing list
+const removeFromFavorites = async (productId: string, listItem: HTMLElement): Promise<void> => {
+    try {
+        // Pobierz aktualne dane użytkownika
+        const memberJson = await getMemberJSON();
+        let favorites: string[] = memberJson.data?.favorites || [];
+
+        // Usuń dany produkt z ulubionych
+        favorites = favorites.filter((id) => id !== productId);
+
+        // Zaktualizuj JSON w Memberstack
+        await updateMemberJSON({ json: { ...memberJson.data, favorites } });
+
+        // Usuń element z DOM
+        listItem.remove();
+
+        // Sprawdź, czy lista ulubionych jest teraz pusta i pokaż/ukryj noResultElement
+        if (favorites.length === 0) {
+            noResultElement.style.display = 'block';
+        }
+    } catch (error) {
+        console.error(`Error removing favorite:`, error);
+    }
+};
+
+const renderFavorites = async (favorites: string[]): Promise<void> => {
+    favoriteList.innerHTML = ''; // Wyczyść istniejącą listę
     if (favorites.length === 0) {
         noResultElement.style.display = 'block';
     } else {
         noResultElement.style.display = 'none';
+
         for (const productId of favorites) {
-            const productDetails: Product | null = await fetchProductDetails(productId);
+            const productDetails = await fetchProductDetails(productId);
             if (productDetails) {
                 const favoriteItem = generateFavoriteItem(productDetails);
                 favoriteList.appendChild(favoriteItem);
+
+                // Dodaj nasłuchiwanie kliknięcia do przycisku "Usuń z ulubionych"
+                const removeButton = favoriteItem.querySelector('.deletefromfavorites') as HTMLElement;
+                if (removeButton) {
+                    removeButton.addEventListener('click', async () => {
+                        await removeFromFavorites(productId, favoriteItem);
+                    });
+                }
             }
         }
+
+        // Inicjalizuj przyciski "Dodaj do koszyka" po renderowaniu elementów
+        await initializeAddToCartButtons();
     }
 };
 

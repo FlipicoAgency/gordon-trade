@@ -88,7 +88,11 @@ export async function handleAddToCart(button: HTMLElement) {
   const productElement =
       button.closest('.additional-product-item') ||
       button.closest('.product-header2_add-to-cart') ||
-      button.closest('.product_item');
+      button.closest('.product_item') ||
+      // Fallback: ręczna nawigacja po DOM tylko jeśli URL zawiera `/konto` aby obsłużyć favorites
+      (window.location.pathname.includes('/konto')
+          ? button.parentElement?.parentElement?.children[0]?.children[1]
+          : null);
 
   if (!productElement) {
     console.error('Product element not found');
@@ -146,7 +150,7 @@ export async function handleAddToCart(button: HTMLElement) {
       },
     });
     const data = await response.json();
-    console.log('data: ', data);
+    //console.log('data: ', data);
 
     const actualData = data.fieldData;
 
@@ -221,6 +225,22 @@ async function addItemToCart(item: CartItem) {
   }
 }
 
+export const initializeAddToCartButtons = (): void => {
+  const addToCartButtons = document.querySelectorAll<HTMLElement>('.addtocartbutton');
+
+  addToCartButtons.forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      event.preventDefault();
+
+      try {
+        await handleAddToCart(button);
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+      }
+    });
+  });
+};
+
 async function removeItemFromCart(itemId: string) {
   try {
     await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
@@ -271,7 +291,7 @@ function renderCartItems(cartItems: CartItem[]) {
   cartListElement.innerHTML = ''; // Wyczyść listę przed dodaniem nowych elementów
 
   cartItems.forEach((item) => {
-    console.log(item);
+    //console.log(item);
 
     const itemElement = document.createElement('div');
     itemElement.className = 'cart-item';

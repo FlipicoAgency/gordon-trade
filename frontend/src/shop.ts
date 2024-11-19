@@ -1,19 +1,8 @@
-import { handleAddToCart } from "./cartItems";
+import {initializeAddToCartButtons} from "./cartItems";
 import {getMemberData, getMemberJSON, updateMemberJSON} from './memberstack';
 
 document.addEventListener("DOMContentLoaded", async () => {
-    const addToCartButtons = document.querySelectorAll<HTMLElement>('.addtocartbutton');
-    addToCartButtons.forEach((button) => {
-        button.addEventListener('click', async (event) => {
-            event.preventDefault();
-
-            try {
-                await handleAddToCart(button);
-            } catch (error) {
-                console.error('Error adding to cart:', error);
-            }
-        });
-    });
+    initializeAddToCartButtons();
 
     // Function to calculate JSON size in bytes
     const calculateJSONSize = (json: any): number =>
