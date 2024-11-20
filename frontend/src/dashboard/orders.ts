@@ -21,6 +21,7 @@ interface Order {
     Capacity: string;
     "FV amount (netto)": string;
     "FV number": string;
+    "FV PDF": string;
     "Payment status": string;
     "Delivery status": string;
     "Container ID": string;
@@ -38,25 +39,54 @@ const orderList = document.querySelector('.order_list') as HTMLElement;
 
 const fetchOrdersByNip = async (customerNip: string): Promise<any> => {
     try {
-        const response = await fetch(`https://gordon-trade.onrender.com/api/sheets/orders?nip=${encodeURIComponent(customerNip)}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        const response = await fetch(
+            `https://gordon-trade.onrender.com/api/sheets/orders?nip=${encodeURIComponent(customerNip)}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch sheets data`);
+            throw new Error('Failed to fetch sheets data');
         }
 
-        const data = await response.json();
-        console.log('Zamówienia:', data);
+        const rawData = await response.json();
 
-        return data;
+        // Oczyszczanie i formatowanie danych
+        const cleanData = cleanAndFormatData(rawData);
+        console.log('Zamówienia:', cleanData);
+
+        return cleanData;
     } catch (error) {
         console.error('Error fetching orders:', error);
         return null;
     }
+};
+
+// Funkcja pomocnicza do czyszczenia i formatowania danych
+const cleanAndFormatData = (data: Record<string, any>): Record<string, any> => {
+    const cleanedData: Record<string, any> = {};
+
+    for (const key in data) {
+        if (data.hasOwnProperty(key)) {
+            const order = data[key];
+            const cleanedOrder: Record<string, any> = { ...order };
+
+            for (const field in cleanedOrder) {
+                if (typeof cleanedOrder[field] === 'string') {
+                    // Usuwanie białych znaków przed pierwszym znakiem
+                    cleanedOrder[field] = cleanedOrder[field].replace(/^\s+/, '');
+                }
+            }
+
+            cleanedData[key] = cleanedOrder;
+        }
+    }
+
+    return cleanedData;
 };
 
 async function handleOrderAgain(button: HTMLElement) {
@@ -150,7 +180,7 @@ async function generateOrderItem(order: Order) {
                                     'is-paid',
                                     'is-yes',
                                     'Zapłacone',
-                                    order['Payment status'] === '  Zapłacone'
+                                    order['Payment status'] === 'Zapłacone'
                                 )}
                                     ${createOrderParameter(
                                     'is-not-paid',
@@ -274,9 +304,9 @@ async function generateOrderItem(order: Order) {
                 <div class="heading-style-h5">${totalValue.toFixed(2)} zł</div>
             </div>
             <div class="button-group">
-                <a href="/sklep" class="button is-link is-icon w-inline-block">
+                <a href="${order['FV PDF']}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
                     <div class="order_download_faktura">Pobierz fakturę</div>
-                    <div class="order_download_proforma">Pobierz proformę</div>
+<!--                    <div class="order_download_proforma">Pobierz proformę</div>-->
                     <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
                 </a>
             </div>
@@ -288,14 +318,18 @@ async function generateOrderItem(order: Order) {
     return li;
 }
 
-const renderOrders = async (orders: []): Promise<void> => {
+const renderOrders = async (orders: Record<string, Order>): Promise<void> => {
     orderList.innerHTML = ''; // Wyczyść istniejącą listę
-    if (orders.length === 0) {
+
+    // Konwersja obiektu na tablicę
+    const orderArray = Object.values(orders);
+
+    if (orderArray.length === 0) {
         noResultElement.style.display = 'block';
     } else {
         noResultElement.style.display = 'none';
 
-        for (const order of orders) {
+        for (const order of orderArray) {
             const orderItem = generateOrderItem(order);
             await orderList.appendChild(await orderItem);
         }
