@@ -1,43 +1,6 @@
 import {getMemberJSON, updateMemberJSON} from "../memberstack";
-import {initializeAddToCartButtons} from "../cartItems";
-
-export interface Product {
-    id: string;
-    cmsLocaleId: string;
-    lastPublished: string;
-    lastUpdated: string;
-    createdOn: string;
-    isArchived: boolean;
-    isDraft: boolean;
-    fieldData: {
-        cena: number;
-        waga: number;
-        ean: number;
-        wysokosc: number;
-        szerokosc: number;
-        dlugosc: number;
-        iloscWKartonie: number;
-        slug: string;
-        name: string;
-        opis: string;
-        krotkiOpis: string;
-        sku: string;
-        miniatura: {
-            fileId: string;
-            url: string;
-            alt: string | null;
-        };
-        kategoria: string;
-        galeria: Array<{
-            fileId: string;
-            url: string;
-            alt: string | null;
-        }>;
-        cmsId: string;
-        promocja: boolean;
-        produktNiedostepny: boolean;
-    };
-}
+import {fetchProductDetails, initializeAddToCartButtons} from "../cartItems";
+import type {Product} from "../cartItems";
 
 export interface Category {
     id: string;
@@ -63,34 +26,8 @@ export interface Category {
     };
 }
 
-const noResultElement = document.querySelector('.filters_empty') as HTMLElement;
+const noResultElement = document.querySelector('[favorites="none"]') as HTMLElement;
 const favoriteList = document.querySelector('.favorite_list') as HTMLElement;
-
-// Function to fetch product details by productId
-const fetchProductDetails = async (productId: string): Promise<any> => {
-    try {
-        const response = await fetch(`https://gordon-trade.onrender.com/api/products/${productId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch product details for ID: ${productId}`);
-        }
-
-        const data = await response.json();
-
-        // Log the response data
-        //console.log(`Response for product ID ${productId}:`, data);
-
-        return data;
-    } catch (error) {
-        console.error(`Error fetching product details:`, error);
-        return null;
-    }
-};
 
 let categoryMap: Record<string, string> = {};
 
@@ -156,6 +93,12 @@ const generateFavoriteItem = (product: Product): HTMLElement => {
                         </div>
                         <div class="text-size-small">Brak na stanie</div>
                     </div>
+                    <div class="favorite_product_details_stock">
+                        <div class="icon-1x1-xxsmall is-info">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256"><path d="M108,84a16,16,0,1,1,16,16A16,16,0,0,1,108,84Zm128,44A108,108,0,1,1,128,20,108.12,108.12,0,0,1,236,128Zm-24,0a84,84,0,1,0-84,84A84.09,84.09,0,0,0,212,128Zm-72,36.68V132a20,20,0,0,0-20-20,12,12,0,0,0-4,23.32V168a20,20,0,0,0,20,20,12,12,0,0,0,4-23.32Z"></path></svg>
+                        </div>
+                        <div class="text-size-small">SKU: ${product.fieldData.sku}</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -181,7 +124,7 @@ const removeFromFavorites = async (productId: string, listItem: HTMLElement): Pr
         favorites = favorites.filter((id) => id !== productId);
 
         // Zaktualizuj JSON w Memberstack
-        await updateMemberJSON({ json: { ...memberJson.data, favorites } });
+        await updateMemberJSON({json: {...memberJson.data, favorites}});
 
         // Usuń element z DOM
         listItem.remove();

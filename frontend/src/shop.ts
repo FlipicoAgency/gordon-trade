@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const favorites: string[] = memberJson.data.favorites || [];
 
-            document.querySelectorAll<HTMLElement>(".favouritebutton").forEach((button) => {
+            document.querySelectorAll<HTMLElement>(".favoritebutton").forEach((button) => {
                 const productId = button.getAttribute("data-commerce-product-id");
                 if (productId) {
                     const isFavorite = favorites.includes(productId);
@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
             });
 
-            const buttons = document.querySelectorAll<HTMLElement>(".favouritebutton");
+            const buttons = document.querySelectorAll<HTMLElement>(".favoritebutton");
             buttons.forEach((button) => {
                 button.addEventListener("click", () => handleFavoriteButtonClick(button));
             });

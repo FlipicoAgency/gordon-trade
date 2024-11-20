@@ -1,5 +1,43 @@
 import {getMemberData} from "./memberstack";
 
+export interface Product {
+  id: string;
+  cmsLocaleId: string;
+  lastPublished: string;
+  lastUpdated: string;
+  createdOn: string;
+  isArchived: boolean;
+  isDraft: boolean;
+  fieldData: {
+    cena: number;
+    waga: number;
+    ean: number;
+    wysokosc: number;
+    szerokosc: number;
+    dlugosc: number;
+    iloscWKartonie: number;
+    slug: string;
+    name: string;
+    opis: string;
+    krotkiOpis: string;
+    sku: string;
+    miniatura: {
+      fileId: string;
+      url: string;
+      alt: string | null;
+    };
+    kategoria: string;
+    galeria: Array<{
+      fileId: string;
+      url: string;
+      alt: string | null;
+    }>;
+    cmsId: string;
+    promocja: boolean;
+    produktNiedostepny: boolean;
+  };
+}
+
 export interface CartItem {
   id: string;
   name: string;
@@ -389,6 +427,32 @@ async function processOrder(cartItems: CartItem[]) {
     }
   }
 }
+
+// Function to fetch product details by productId
+export async function fetchProductDetails(productId: string): Promise<any> {
+  try {
+    const response = await fetch(`https://gordon-trade.onrender.com/api/products/${productId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch product details for ID: ${productId}`);
+    }
+
+    const data = await response.json();
+
+    // Log the response data
+    //console.log(`Response for product ID ${productId}:`, data);
+
+    return data;
+  } catch (error) {
+    console.error(`Error fetching product details:`, error);
+    return null;
+  }
+};
 
 export function renderCheckoutItems(cartItems: CartItem[]) {
   const orderItemLists = document.querySelectorAll<HTMLElement>('.order-item-list');

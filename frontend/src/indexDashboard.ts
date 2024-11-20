@@ -1,7 +1,8 @@
-import type {Member} from '../memberstack';
-import {getMemberData} from '../memberstack';
-import {fetchContainers} from "./container-orders";
-import {initializeFavorites} from './favorites';
+import type {Member} from './memberstack';
+import {getMemberData} from './memberstack';
+import {fetchContainers} from "./dashboard/container-orders";
+import {initializeFavorites} from './dashboard/favorites';
+import {initializeOrders} from "./dashboard/orders";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const mapWrapper = document.getElementById('container-map-wrapper') as HTMLElement;
@@ -32,6 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
-    await fetchContainers(memberData);
-    await initializeFavorites();
+    //await fetchContainers(memberData);
+    //await initializeFavorites();
+    await initializeOrders(memberData);
 });
