@@ -36,6 +36,7 @@ interface Order {
 
 const noResultElement = document.querySelector('[orders="none"]') as HTMLElement;
 const orderList = document.querySelector('.order_list') as HTMLElement;
+const orderedAgainModal = document.querySelector('#re-ordered') as HTMLElement;
 
 const fetchOrdersByNip = async (customerNip: string): Promise<any> => {
     try {
@@ -90,7 +91,27 @@ const cleanAndFormatData = (data: Record<string, any>): Record<string, any> => {
 };
 
 async function handleOrderAgain(button: HTMLElement) {
+    if (orderedAgainModal) {
+        // Ustawienie początkowego stylu dla animacji
+        orderedAgainModal.style.display = 'flex';
+        orderedAgainModal.style.opacity = '0';
+        orderedAgainModal.style.transition = 'opacity 0.5s ease'; // Animacja płynnego przejścia
 
+        // Ustawienie opacity na 1 po krótkim czasie, aby uruchomić animację
+        setTimeout(() => {
+            orderedAgainModal.style.opacity = '1';
+        }, 10); // 10 ms, aby zapewnić płynne przejście
+
+        // Po 1.5 sekundy zaczynamy ukrywanie
+        setTimeout(() => {
+            orderedAgainModal.style.opacity = '0'; // Zmiana opacity na 0, co uruchomi animację zanikania
+
+            // Po zakończeniu animacji (500 ms), ustawiamy display: none
+            setTimeout(() => {
+                orderedAgainModal.style.display = 'none';
+            }, 500); // Czas trwania animacji (zgodny z transition: 500 ms)
+        }, 1500); // Ukrywanie elementu po 1.5 sekundy
+    }
 }
 
 async function initializeOrderAgain() {
