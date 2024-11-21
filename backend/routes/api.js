@@ -104,17 +104,23 @@ router.post('/sheets/data', async (req, res) => {
                 // Jeśli NIP jest wypełniony, scal komórki
                 const startRow = currentRow + 1 + index;
                 const endRow = startRow + values.filter((r) => r[0] === '').length - 1;
-                mergeRequests.push({
-                    mergeCells: {
-                        range: {
-                            sheetId: 1, // ID arkusza, często jest 0 dla pierwszego
-                            startRowIndex: startRow - 1,
-                            endRowIndex: endRow,
-                            startColumnIndex: 0,
-                            endColumnIndex: 2, // Kolumny A i B
+
+                // Lista indeksów kolumn do scalenia (A, B, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)
+                const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+
+                columnsToMerge.forEach((colIndex) => {
+                    mergeRequests.push({
+                        mergeCells: {
+                            range: {
+                                sheetId: 24398558, // ID arkusza (Orders)
+                                startRowIndex: startRow - 1,
+                                endRowIndex: endRow,
+                                startColumnIndex: colIndex,
+                                endColumnIndex: colIndex + 1, // Każda kolumna to jeden zakres
+                            },
+                            mergeType: 'MERGE_ALL',
                         },
-                        mergeType: 'MERGE_ALL',
-                    },
+                    });
                 });
             }
         });
