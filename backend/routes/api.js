@@ -124,6 +124,49 @@ router.post('/sheets/data', async (req, res) => {
             }
         });
 
+        // Dodanie obramowań dla całego zakresu A:U
+        mergeRequests.push({
+            updateBorders: {
+                range: {
+                    sheetId: 24398558, // ID arkusza (Orders)
+                    startRowIndex: currentRow, // Pierwszy wiersz do obramowania
+                    endRowIndex: currentRow + values.length, // Ostatni wiersz (liczba dodanych wierszy)
+                    startColumnIndex: 0, // Kolumna A
+                    endColumnIndex: 21, // Kolumna U (21, bo endColumnIndex jest wyłączny)
+                },
+                top: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                bottom: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                left: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                right: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                innerHorizontal: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                innerVertical: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+            },
+        });
+
         if (mergeRequests.length === 0) {
             throw new Error('Brak żądań scalania komórek.');
         }
