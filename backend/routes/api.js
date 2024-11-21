@@ -167,6 +167,26 @@ router.post('/sheets/data', async (req, res) => {
             },
         });
 
+        // Dodanie wycentrowania tekstu dla całego zakresu A:U
+        mergeRequests.push({
+            repeatCell: {
+                range: {
+                    sheetId: 24398558, // ID arkusza (Orders)
+                    startRowIndex: currentRow - 1, // Pierwszy wiersz do wycentrowania
+                    endRowIndex: currentRow + values.length - 1, // Ostatni wiersz
+                    startColumnIndex: 0, // Kolumna A
+                    endColumnIndex: 21, // Kolumna U (21, bo endColumnIndex jest wyłączny)
+                },
+                cell: {
+                    userEnteredFormat: {
+                        horizontalAlignment: 'CENTER', // Wycentrowanie poziome
+                        verticalAlignment: 'MIDDLE', // Wycentrowanie pionowe
+                    },
+                },
+                fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment)', // Wskaż zmieniane pola
+            },
+        });
+
         if (mergeRequests.length === 0) {
             throw new Error('Brak żądań scalania komórek.');
         }
