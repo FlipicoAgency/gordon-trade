@@ -91,26 +91,140 @@ const cleanAndFormatData = (data: Record<string, any>): Record<string, any> => {
 };
 
 async function handleOrderAgain(button: HTMLElement) {
-    if (orderedAgainModal) {
-        // Ustawienie początkowego stylu dla animacji
-        orderedAgainModal.style.display = 'flex';
-        orderedAgainModal.style.opacity = '0';
-        orderedAgainModal.style.transition = 'opacity 0.5s ease'; // Animacja płynnego przejścia
+    // Pobierz ID zamówienia z przycisku
+    const orderId = button.getAttribute('data-order-id');
+    if (!orderId) {
+        console.error('Brak ID zamówienia dla tego przycisku.');
+        return;
+    }
 
-        // Ustawienie opacity na 1 po krótkim czasie, aby uruchomić animację
-        setTimeout(() => {
-            orderedAgainModal.style.opacity = '1';
-        }, 10); // 10 ms, aby zapewnić płynne przejście
+    async function fetchNewOrder(customerNip: string) {
+        try {
+            // Pobierz zaktualizowane zamówienia
+            const orders = await fetchOrdersByNip(customerNip);
 
-        // Po 1.5 sekundy zaczynamy ukrywanie
-        setTimeout(() => {
-            orderedAgainModal.style.opacity = '0'; // Zmiana opacity na 0, co uruchomi animację zanikania
+            if (!orders) {
+                console.error('Nie udało się pobrać nowych zamówień.');
+                return;
+            }
 
-            // Po zakończeniu animacji (500 ms), ustawiamy display: none
+            // Pobierz istniejące zamówienia z localStorage
+            const existingOrders = JSON.parse(localStorage.getItem('orders') || '{}') as Record<string, Order>;
+
+            // Pobierz istniejące Order ID
+            const existingOrderIds = Object.values(existingOrders).map((order: Order) => order["Order ID"]);
+
+            // Filtruj nowe zamówienia
+            const newOrders = Object.values(orders as Record<string, Order>).filter(
+                (order: Order) => !existingOrderIds.includes(order["Order ID"])
+            );
+
+            if (newOrders.length === 0) {
+                console.log('Brak nowych zamówień do dodania.');
+                return;
+            }
+
+            // Dodaj nowe zamówienia do localStorage
+            const updatedOrders = { ...existingOrders, ...orders };
+            localStorage.setItem('orders', JSON.stringify(updatedOrders));
+
+            // Dodaj nowe zamówienia do listy
+            for (const newOrder of newOrders) {
+                const orderItem = await generateOrderItem(newOrder as Order);
+                orderList.appendChild(orderItem);
+            }
+
+            console.log('Nowe zamówienia zostały dodane do listy.');
+        } catch (error) {
+            console.error('Błąd podczas dodawania nowych zamówień:', error);
+        }
+    }
+
+    try {
+        // Wyszukaj zamówienie w już pobranych danych
+        const orders = JSON.parse(localStorage.getItem('orders') || '{}'); // Wczytaj dane z localStorage
+        const orderArray = Object.values(orders) as Order[]; // Rzutowanie na tablicę typu Order[]
+        const order = orderArray.find((order) => order["Order ID"] === orderId); // Znajdź zamówienie
+
+        if (!order) {
+            console.error(`Nie znaleziono zamówienia o ID: ${orderId}`);
+            return; // Przerwij dalsze przetwarzanie, jeśli zamówienie nie istnieje
+        }
+
+        const getTodayDate = (): string => {
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0'); // Dodaj zero na początku, jeśli potrzeba
+            const month = String(today.getMonth() + 1).padStart(2, '0'); // Miesiące są indeksowane od 0
+            const year = today.getFullYear();
+            return `${day}.${month}.${year}`;
+        };
+
+        // Przygotuj dane do wysłania do arkusza
+        const formattedData = order.products.map((product: OrderProduct, index: number) => [
+            index === 0 ? order["Customer NIP"] : '', // Scal NIP
+            index === 0 ? String(Math.floor(100000000 + Math.random() * 900000000)) : '', // Scal Order ID
+            product.productName,
+            product.productId,
+            product.quantity,
+            index === 0 ? order["Order value"] : '', // Scal Order value
+            index === 0 ? getTodayDate() : '', // Scal Order date
+            '',
+            '',
+            '',
+            '',
+            '',
+            index === 0 ? 'Oczekiwanie na płatność' : '', // Scal Payment status
+            index === 0 ? 'Oczekiwanie na płatność' : '', // Scal Delivery status
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            index === 0 ? order["Comments"] : '', // Scal Comments
+        ]);
+
+        console.log('Formatted data:', formattedData);
+
+        // Wyślij dane do backendu
+        const response = await fetch('https://gordon-trade.onrender.com/api/sheets/data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ values: formattedData }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Nie udało się dodać danych do arkusza.');
+        }
+
+        console.log('Dane zostały dodane do arkusza.');
+        if (orderedAgainModal) {
+            // Ustawienie początkowego stylu dla animacji
+            orderedAgainModal.style.display = 'flex';
+            orderedAgainModal.style.opacity = '0';
+            orderedAgainModal.style.transition = 'opacity 0.5s ease'; // Animacja płynnego przejścia
+
+            // Ustawienie opacity na 1 po krótkim czasie, aby uruchomić animację
             setTimeout(() => {
-                orderedAgainModal.style.display = 'none';
-            }, 500); // Czas trwania animacji (zgodny z transition: 500 ms)
-        }, 1500); // Ukrywanie elementu po 1.5 sekundy
+                orderedAgainModal.style.opacity = '1';
+            }, 10); // 10 ms, aby zapewnić płynne przejście
+
+            // Po 1.5 sekundy zaczynamy ukrywanie
+            setTimeout(() => {
+                orderedAgainModal.style.opacity = '0'; // Zmiana opacity na 0, co uruchomi animację zanikania
+
+                // Po zakończeniu animacji (500 ms), ustawiamy display: none
+                setTimeout(() => {
+                    orderedAgainModal.style.display = 'none';
+                }, 500); // Czas trwania animacji (zgodny z transition: 500 ms)
+            }, 1500); // Ukrywanie elementu po 1.5 sekundy
+        }
+
+        await fetchNewOrder(order["Customer NIP"]);
+    } catch (error) {
+        console.error('Błąd podczas obsługi zamówienia ponownie:', error);
     }
 }
 
@@ -124,7 +238,7 @@ async function initializeOrderAgain() {
             try {
                 await handleOrderAgain(button);
             } catch (error) {
-                console.error('Error adding to cart:', error);
+                console.error('Error ordering again:', error);
             }
         });
     });
@@ -208,6 +322,12 @@ async function generateOrderItem(order: Order) {
                                     'is-no',
                                     'Procesowanie',
                                     order['Payment status'] === 'Procesowanie'
+                                )}
+                                ${createOrderParameter(
+                                    'is-no-payment',
+                                    'is-warning',
+                                    'Oczekiwanie na płatność',
+                                    order['Payment status'] === 'Oczekiwanie na płatność'
                                 )}
                             </div>
                             <div class="order_details_grid_item">
@@ -303,7 +423,7 @@ async function generateOrderItem(order: Order) {
     actionDiv.className = 'order_again';
     actionDiv.innerHTML = `
         <div class="margin-vertical margin-xsmall">
-            <div class="button is-secondary is-small" orders="again">
+            <div class="button is-secondary is-small" orders="again" data-order-id="${order.orderId}">
                 <div>Zamów ponownie</div>
             </div>
         </div>
@@ -363,5 +483,9 @@ const renderOrders = async (orders: Record<string, Order>): Promise<void> => {
 export const initializeOrders = async (memberData: Member): Promise<any> => {
     const customerNip = memberData.customFields.nip;
     const orders = await fetchOrdersByNip(customerNip);
+
+    // Zapisz zamówienia w localStorage
+    localStorage.setItem('orders', JSON.stringify(orders));
+
     await renderOrders(orders);
 }
