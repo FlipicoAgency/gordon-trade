@@ -125,6 +125,13 @@ router.post('/sheets/data', async (req, res) => {
             }
         });
 
+        // Sprawdź poprawność mergeRequests przed wysłaniem
+        if (mergeRequests.length === 0) {
+            throw new Error('Brak żądań scalania komórek.');
+        }
+
+        console.log('Merge Requests:', JSON.stringify(mergeRequests, null, 2));
+
         // Wykonaj scalanie
         await sheets.spreadsheets.batchUpdate({
             spreadsheetId: SPREADSHEET_ID,
