@@ -130,7 +130,7 @@ router.post('/sheets/data', async (req, res) => {
                 range: {
                     sheetId: 24398558, // ID arkusza (Orders)
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do obramowania
-                    endRowIndex: currentRow + values.length, // Ostatni wiersz (liczba dodanych wierszy)
+                    endRowIndex: currentRow + values.length - 1, // Ostatni wiersz (liczba dodanych wierszy)
                     startColumnIndex: 0, // Kolumna A
                     endColumnIndex: 21, // Kolumna U (21, bo endColumnIndex jest wyłączny)
                 },
