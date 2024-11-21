@@ -80,7 +80,7 @@ router.get('/sheets/orders', async (req, res) => {
 
 // Dodaj dane do arkusza
 router.post('/sheets/data', async (req, res) => {
-    const { values } = req.body; // Tablica wierszy do dodania
+    const { values } = req.body;
     if (!values || !Array.isArray(values)) {
         return res.status(400).json({ error: 'Nieprawidłowe dane.' });
     }
@@ -89,34 +89,33 @@ router.post('/sheets/data', async (req, res) => {
         const sheets = await getSheetsInstance();
 
         // Dodaj nowe wiersze
-        await sheets.spreadsheets.values.append({
+        const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:U', // Zakładka i zakres arkusza
+            range: 'Orders!A1:U',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
+        console.log('Append Response:', appendResponse.data);
 
-        // Scal odpowiednie komórki dla powiązanych produktów
+        // Scal odpowiednie komórki
         const mergeRequests = [];
-        let currentRow = await getLastRow(sheets); // Funkcja pomocnicza do pobrania ostatniego wiersza
+        let currentRow = await getLastRow(sheets);
+
         values.forEach((row, index) => {
             if (row[0] !== '') {
-                // Jeśli NIP jest wypełniony, scal komórki
                 const startRow = currentRow + 1 + index;
-                const endRow = startRow + values.filter((r) => r[0] === '').length - 1;
+                const endRow = startRow + values.filter((r) => r[0] === '').length || startRow + 1;
 
-                // Lista indeksów kolumn do scalenia (A, B, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)
                 const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
-
                 columnsToMerge.forEach((colIndex) => {
                     mergeRequests.push({
                         mergeCells: {
                             range: {
-                                sheetId: 24398558, // ID arkusza (Orders)
+                                sheetId: 24398558,
                                 startRowIndex: startRow - 1,
                                 endRowIndex: endRow,
                                 startColumnIndex: colIndex,
-                                endColumnIndex: colIndex + 1, // Każda kolumna to jeden zakres
+                                endColumnIndex: colIndex + 1,
                             },
                             mergeType: 'MERGE_ALL',
                         },
@@ -125,20 +124,19 @@ router.post('/sheets/data', async (req, res) => {
             }
         });
 
-        // Sprawdź poprawność mergeRequests przed wysłaniem
         if (mergeRequests.length === 0) {
             throw new Error('Brak żądań scalania komórek.');
         }
 
         console.log('Merge Requests:', JSON.stringify(mergeRequests, null, 2));
 
-        // Wykonaj scalanie
-        await sheets.spreadsheets.batchUpdate({
+        const batchResponse = await sheets.spreadsheets.batchUpdate({
             spreadsheetId: SPREADSHEET_ID,
             resource: {
                 requests: mergeRequests,
             },
         });
+        console.log('BatchUpdate Response:', JSON.stringify(batchResponse.data, null, 2));
 
         res.status(201).json({ message: 'Dane zostały dodane do arkusza.' });
     } catch (error) {
