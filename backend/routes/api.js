@@ -27,7 +27,7 @@ router.get('/sheets/orders', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:U', // Zakres danych
+            range: 'Orders!A1:W', // Zakres danych
         });
 
         const rows = response.data.values;
@@ -91,7 +91,7 @@ router.post('/sheets/data', async (req, res) => {
         // Dodaj nowe wiersze
         const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:U',
+            range: 'Orders!A1:W',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
@@ -106,7 +106,7 @@ router.post('/sheets/data', async (req, res) => {
                 const startRow = currentRow + index;
                 const endRow = startRow + values.filter((r) => r[0] === '').length || startRow + 1;
 
-                const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+                const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
                 columnsToMerge.forEach((colIndex) => {
                     mergeRequests.push({
                         mergeCells: {
@@ -132,7 +132,7 @@ router.post('/sheets/data', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do obramowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz (liczba dodanych wierszy)
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 21, // Kolumna U (21, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
                 },
                 top: {
                     style: 'SOLID',
@@ -175,7 +175,7 @@ router.post('/sheets/data', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do wycentrowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 21, // Kolumna U (21, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
                 },
                 cell: {
                     userEnteredFormat: {
