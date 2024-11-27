@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
-    //await fetchContainers(memberData);
-    //await initializeFavorites();
+    await fetchContainers(memberData);
+    await initializeFavorites();
     await initializeOrders(memberData);
 });

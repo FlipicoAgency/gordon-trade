@@ -30,6 +30,8 @@ interface Order {
     "Estimated time of departure": string;
     "Fastest possible shipping date": string;
     "Estimated time of arrival": string;
+    "Extended delivery date": string;
+    "Recurring order": string;
     Comments: string;
     orderId: string;
 }
@@ -175,6 +177,8 @@ async function handleOrderAgain(button: HTMLElement) {
             '',
             index === 0 ? 'Oczekiwanie na płatność' : '', // Scal Payment status
             index === 0 ? 'Oczekiwanie na płatność' : '', // Scal Delivery status
+            '',
+            '',
             '',
             '',
             '',
@@ -360,7 +364,25 @@ async function generateOrderItem(order: Order) {
                                         order['Delivery status'] === 'Oczekiwanie na płatność'
                                     )}
                                 </div>       
-                            </div>                 
+                            </div>   
+                            <div class="order_details_grid_item">
+                                <div class="text-size-small">Planowana data dostawy:</div>
+                            </div>
+                             <div class="order_details_grid_item">
+                                <div class="text-size-small">${order['Estimated time of arrival'] || 'Nieznana'}</div>
+                            </div>
+                            <div class="order_details_grid_item">
+                                <div class="text-size-small">Przedłużona data dostawy?</div>
+                            </div>
+                             <div class="order_details_grid_item">
+                                <div class="text-size-small">${order['Extended delivery date'] ? `Tak, ${order['Extended delivery date']}` : 'Nie'}</div>
+                            </div>      
+                            <div class="order_details_grid_item">
+                                <div class="text-size-small">Zamówienie cykliczne?</div>
+                            </div>
+                             <div class="order_details_grid_item">
+                                <div class="text-size-small">${order['Recurring order'] ? `Tak` : 'Nie'}</div>
+                            </div>             
                         </div>
                     </div>
                 </div>
@@ -418,7 +440,7 @@ async function generateOrderItem(order: Order) {
     dividerDiv.className = 'divider';
     orderTopWrapper.appendChild(dividerDiv);
 
-    // Dodaj przyciski akcji
+    // Dodaj przycisk "Zamów ponownie"
     const actionDiv = document.createElement('div');
     actionDiv.className = 'order_again';
     actionDiv.innerHTML = `

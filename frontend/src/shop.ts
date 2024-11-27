@@ -2,7 +2,7 @@ import {initializeAddToCartButtons} from "./cartItems";
 import {getMemberData, getMemberJSON, updateMemberJSON} from './memberstack';
 
 document.addEventListener("DOMContentLoaded", async () => {
-    initializeAddToCartButtons();
+    await initializeAddToCartButtons();
 
     // Function to calculate JSON size in bytes
     const calculateJSONSize = (json: any): number =>

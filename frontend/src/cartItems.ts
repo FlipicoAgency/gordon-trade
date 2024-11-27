@@ -370,14 +370,20 @@ function renderCartItems(cartItems: CartItem[]) {
   });
 
   const submitButton = document.getElementById('place-order');
-  submitButton?.addEventListener('click', async () => {
-    const cartItems = await fetchCartData(); // Pobierz aktualne dane koszyka
-    if (cartItems.length === 0) {
-      alert('Koszyk jest pusty!');
-      return;
-    }
-    await processOrder(cartItems);
-  });
+  if (submitButton) {
+    // Usunięcie istniejących nasłuchiwaczy (jeśli istnieją)
+    submitButton.replaceWith(submitButton.cloneNode(true)); // Resetuje zdarzenia
+    const newSubmitButton = document.getElementById('place-order');
+
+    newSubmitButton?.addEventListener('click', async () => {
+      const cartItems = await fetchCartData();
+      if (cartItems.length === 0) {
+        alert('Koszyk jest pusty!');
+        return;
+      }
+      await processOrder(cartItems);
+    });
+  }
 }
 
 async function processOrder(cartItems: CartItem[]) {
