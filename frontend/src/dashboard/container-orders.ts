@@ -188,11 +188,28 @@ function generateShipItem(container: Container): void {
     const shipNumber: string = container["Container No"] || "";
     const loadDate: string = formatDate(container["Estimated time of departure"]) || "";
     const departureDate: string = formatDate(container["Estimated time of departure"]) || "";
+    const extendedDeliveryDate: string = container["Extended delivery date"] || "";
     const arrivalDate: string = formatDate(container["Estimated time of arrival"]) || "";
     const zawartosc: OrderProduct[] = container.Products || [];
+    const personalization: string = container.Personalization;
 
     // Element map-wrapper
     const mapWrapper = document.getElementById('map-wrapper') as HTMLElement;
+
+    // Wrapper dla map-dot
+    const mapDotWrapper = document.createElement("div");
+    mapDotWrapper.className = "map-dot-wrapper";
+    mapDotWrapper.style.cssText = position;
+
+    // Dodanie migającego elementu
+    const mapDot = document.createElement("div");
+    mapDot.className = "map-dot";
+
+    const mapDot2 = document.createElement("div");
+    mapDot2.className = "map-dot is-2";
+
+    mapDotWrapper.appendChild(mapDot);
+    mapDotWrapper.appendChild(mapDot2);
 
     // Element map-ship
     const mapShip = document.createElement("div");
@@ -234,9 +251,25 @@ function generateShipItem(container: Container): void {
     divBlock2.innerHTML = `
       <div class="text-style-muted">Numer rejsu:</div><div>${shipNumber}</div>
       <div class="text-style-muted">Data załadunku:</div><div>${loadDate}</div>
-      <div class="text-style-muted">Data wyjścia:</div><div>${departureDate}</div>
-      <div class="text-style-muted">Data przybycia:</div><div>${arrivalDate}</div>
+      <div class="text-style-muted">Data wypłynięcia z portu ${container["Loading port"]}:</div><div>${departureDate}</div>
+      <div class="text-style-muted">Przewidywana dostawa do Polski:</div><div>${arrivalDate}</div>
+      <div class="text-style-muted">Personalizacja:</div><div>${personalization}</div>
   `;
+
+    // Dodanie informacji o opóźnieniu, jeśli istnieje
+    if (extendedDeliveryDate) {
+        const delayInfo = document.createElement("div");
+        delayInfo.className = "delay-info";
+        const extendedDate = new Date(extendedDeliveryDate);
+        const estimatedDate = new Date(container["Estimated time of arrival"]);
+        const delayDays = Math.ceil((extendedDate.getTime() - estimatedDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        delayInfo.innerHTML = `
+          <div class="text-style-error">Opóźnienie:</div>
+          <div class="text-style-bold">Zamówienie opóźnione o ${delayDays} dni</div>
+        `;
+        divBlock2.appendChild(delayInfo);
+    }
 
     mapShippingInfo.appendChild(divBlock2);
     mapShip.appendChild(mapShippingInfo);
@@ -258,6 +291,7 @@ function generateShipItem(container: Container): void {
     // Złożenie całego elementu
     mapShip.appendChild(counter);
     mapShip.appendChild(iconEmbed);
+    mapWrapper.appendChild(mapDotWrapper);
     mapWrapper.appendChild(mapShip);
 
     // Dodajemy event listener na kliknięcie do map-ship
