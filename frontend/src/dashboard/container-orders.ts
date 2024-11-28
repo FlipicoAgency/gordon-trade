@@ -188,147 +188,93 @@ function generateShipItem(container: Container): void {
     const shipNumber: string = container["Container No"] || "";
     const loadDate: string = formatDate(container["Estimated time of departure"]) || "";
     const departureDate: string = formatDate(container["Estimated time of departure"]) || "";
-    const extendedDeliveryDate: string = container["Extended delivery date"] || "";
     const arrivalDate: string = formatDate(container["Estimated time of arrival"]) || "";
+    const extendedDeliveryDate: string = container["Extended delivery date"] || "";
     const zawartosc: OrderProduct[] = container.Products || [];
     const personalization: string = container.Personalization;
 
-    // Element map-wrapper
-    const mapWrapper = document.getElementById('map-wrapper') as HTMLElement;
-
-    // Wrapper dla map-dot
-    const mapDotWrapper = document.createElement("div");
-    mapDotWrapper.className = "map-dot-wrapper";
-    mapDotWrapper.style.cssText = position;
-
-    // Dodanie migającego elementu
-    const mapDot = document.createElement("div");
-    mapDot.className = "map-dot";
-
-    const mapDot2 = document.createElement("div");
-    mapDot2.className = "map-dot is-2";
-
-    mapDotWrapper.appendChild(mapDot);
-    mapDotWrapper.appendChild(mapDot2);
-
-    // Element map-shipping-wrapper
-    const mapShip = document.createElement("div");
-    mapShip.className = "map-shipping-wrapper";
-    mapShip.style.cssText = position;
-
-    // Element map-shipping-location
-    const mapShipLocation = document.createElement("div");
-    mapShipLocation.className = "map-shipping-location";
-
-    // Element map-shipping-button
-    const mapShipButton = document.createElement("button");
-    mapShipButton.className = "map-shipping-button";
-
-    // Informacje o statusie
-    const mapShippingInfo = document.createElement("div");
-    mapShippingInfo.className = "map-shipping-info";
-    const mapShipWrapper = document.createElement("div");
-    mapShipWrapper.className = "shipping-wrapper";
-    mapShippingInfo.appendChild(mapShipWrapper);
-    //mapShippingInfo.style.opacity = "0"; // initial state
-
-    // Dodanie nazwy statusu
-    const mapShipHeading = document.createElement("div");
-    mapShipHeading.className = "shipping-heading";
-    mapShipHeading.innerHTML = `<div>${statusName}</div>`;
-    mapShipWrapper.appendChild(mapShipHeading);
-
-    // Lista zawartości
-    const zawartoscList = document.createElement("div");
-    zawartoscList.className = "w-dyn-list";
-    const zawartoscListContainer = document.createElement("div");
-    zawartoscListContainer.setAttribute("role", "list");
-    zawartoscListContainer.className = "collection-list w-dyn-items";
-
-    zawartosc.forEach(item => {
-        const zawartoscItem = document.createElement("div");
-        zawartoscItem.setAttribute("role", "listitem");
-        zawartoscItem.className = "collection-item w-dyn-item";
-        zawartoscItem.innerHTML = `<div class="text-block">${item.name}</div>`;
-        zawartoscListContainer.appendChild(zawartoscItem);
-    });
-
-    zawartoscList.appendChild(zawartoscListContainer);
-    mapShipWrapper.appendChild(zawartoscList);
-
-    // Informacje o numerze rejsu i datach
-    const mapShipDetails = document.createElement("div");
-    mapShipDetails.className = "shipping-details";
-    mapShipDetails.innerHTML = `
-      <div class="text-style-muted">Numer rejsu:</div><div>${shipNumber}</div>
-      <div class="text-style-muted">Data załadunku:</div><div>${loadDate}</div>
-      <div class="text-style-muted">Data wypłynięcia z portu ${container["Loading port"]}:</div><div>${departureDate}</div>
-      <div class="text-style-muted">Przewidywana dostawa do Polski:</div><div>${arrivalDate}</div>
-      <div class="text-style-muted">Personalizacja:</div><div>${personalization}</div>
-  `;
-
-    // Dodanie informacji o opóźnieniu, jeśli istnieje
+    // Obliczanie opóźnienia, jeśli istnieje
+    let delayInfoHTML = "";
     if (extendedDeliveryDate) {
-        const delayInfo = document.createElement("div");
-        delayInfo.className = "delay-info";
         const extendedDate = new Date(extendedDeliveryDate);
         const estimatedDate = new Date(container["Estimated time of arrival"]);
         const delayDays = Math.ceil((extendedDate.getTime() - estimatedDate.getTime()) / (1000 * 60 * 60 * 24));
-
-        delayInfo.innerHTML = `
-          <div class="text-style-error">Opóźnienie:</div>
-          <div class="text-style-bold">Zamówienie opóźnione o ${delayDays} dni</div>
+        delayInfoHTML = `
+            <div class="delay-info">
+                <div class="text-style-error">Opóźnienie:</div>
+                <div class="text-style-bold">Zamówienie opóźnione o ${delayDays} dni</div>
+            </div>
         `;
-        mapShipDetails.appendChild(delayInfo);
     }
 
-    mapShipWrapper.appendChild(mapShipDetails);
-    mapShip.appendChild(mapShippingInfo);
+    // Tworzenie listy produktów
+    const zawartoscHTML = zawartosc
+        .map(item => `<div class="collection-item w-dyn-item"><div class="text-block">${item.name}</div></div>`)
+        .join("");
 
-    // Lokalizacja
-    const location = document.createElement("div");
-    location.className = "text-size-tiny text-weight-bold text-style-nowrap";
-    location.innerText = `${statusName}`;
+    // Generowanie struktury HTML
+    const mapWrapper = document.getElementById("map-wrapper") as HTMLElement;
+    const newElement = document.createElement("div");
+    newElement.innerHTML = `
+        <div class="map-dot-wrapper" style="${position}">
+            <div class="map-dot"></div>
+            <div class="map-dot is-2"></div>
+        </div>
+        <div class="map-shipping-wrapper" style="${position}">
+            <div class="map-shipping-location">
+                <div class="text-size-tiny text-weight-bold text-style-nowrap">${statusName}</div>
+            </div>
+            <button class="map-shipping-button">
+                <div class="text-size-tiny text-weight-bold">1</div>
+                <div class="icon-1x1-xxsmall">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256">
+                        <path d="M222.33,106.79,212,103.35V56a20,20,0,0,0-20-20H140V24a12,12,0,0,0-24,0V36H64A20,20,0,0,0,44,56v47.35l-10.33,3.44a20,20,0,0,0-13.67,19V152c0,64.63,100.8,90.57,105.09,91.64a11.94,11.94,0,0,0,5.82,0C135.2,242.57,236,216.63,236,152V125.77A20,20,0,0,0,222.33,106.79ZM68,60H188V95.35L131.79,76.62a11.85,11.85,0,0,0-7.58,0L68,95.35Zm144,92c0,36.69-58.08,60.43-84,67.59-25.94-7.17-84-30.9-84-67.59V128.65l72-24V168a12,12,0,0,0,24,0V104.65l72,24Z"></path>
+                    </svg>
+                </div>
+            </button>
+            <div class="map-shipping-info">
+                <div class="shipping-wrapper">
+                    <div class="shipping-heading">${statusName}</div>
+                    <div class="w-dyn-list">
+                        <div class="collection-list w-dyn-items" role="list">
+                            ${zawartoscHTML}
+                        </div>
+                    </div>
+                    <div class="shipping-details">
+                        <div class="text-style-muted">Numer rejsu:</div><div>${shipNumber}</div>
+                        <div class="text-style-muted">Data załadunku:</div><div>${loadDate}</div>
+                        <div class="text-style-muted">Data wypłynięcia:</div><div>${departureDate}</div>
+                        <div class="text-style-muted">Przewidywana dostawa:</div><div>${arrivalDate}</div>
+                        <div class="text-style-muted">Personalizacja:</div><div>${personalization}</div>
+                        ${delayInfoHTML}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    mapWrapper.appendChild(newElement);
 
-    // Licznik
-    const counter = document.createElement("div");
-    counter.className = "text-size-tiny text-weight-bold";
-    counter.innerText = "1"; // Możesz zmodyfikować, jeśli licznik zależy od czegoś
+    // Obsługa zdarzeń
+    const mapShippingWrapper = newElement.querySelector(".map-shipping-wrapper") as HTMLElement;
+    const mapShippingInfo = newElement.querySelector(".map-shipping-info") as HTMLElement;
 
-    // Ikona
-    const iconEmbed = document.createElement("div");
-    iconEmbed.className = "icon-1x1-xxsmall";
-    iconEmbed.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256"><path d="M222.33,106.79,212,103.35V56a20,20,0,0,0-20-20H140V24a12,12,0,0,0-24,0V36H64A20,20,0,0,0,44,56v47.35l-10.33,3.44a20,20,0,0,0-13.67,19V152c0,64.63,100.8,90.57,105.09,91.64a11.94,11.94,0,0,0,5.82,0C135.2,242.57,236,216.63,236,152V125.77A20,20,0,0,0,222.33,106.79ZM68,60H188V95.35L131.79,76.62a11.85,11.85,0,0,0-7.58,0L68,95.35Zm144,92c0,36.69-58.08,60.43-84,67.59-25.94-7.17-84-30.9-84-67.59V128.65l72-24V168a12,12,0,0,0,24,0V104.65l72,24Z"></path></svg>
-  `;
+    mapShippingWrapper.addEventListener("click", (event) => {
+        event.stopPropagation(); // Zapobiega zamknięciu od razu po otwarciu
 
-    // Złożenie całego elementu
-    mapShip.appendChild(mapShipLocation);
-    mapShip.appendChild(mapShipButton);
-    mapShipLocation.appendChild(location);
-    mapShipButton.appendChild(counter);
-    mapShipButton.appendChild(iconEmbed);
-    mapWrapper.appendChild(mapDotWrapper);
-    mapWrapper.appendChild(mapShip);
-
-    // Dodajemy event listener na kliknięcie do map-ship
-    mapShip.addEventListener("click", (event) => {
-        event.stopPropagation(); // Zapobiega zamknięciu modala od razu po otwarciu
-
-        // Usuwamy klasę 'active' ze wszystkich innych elementów map-shipping-info / 
-        document.querySelectorAll(".map-shipping-wrapper, .map-shipping-info").forEach(el => {
+        // Usuwanie aktywnej klasy z innych elementów
+        document.querySelectorAll(".map-shipping-wrapper.active, .map-shipping-info.active").forEach(el => {
             el.classList.remove("active");
         });
 
-        // Przełączanie klasy 'active' dla pierwszego dziecka mapShip (czyli mapShippingInfo)
-        mapShip.classList.toggle("active");
+        // Przełączanie klasy aktywnej
+        mapShippingWrapper.classList.toggle("active");
         mapShippingInfo.classList.toggle("active");
     });
 
-    // Dodaj event listener na dokument do zamykania modal po kliknięciu poza nim
+    // Zamknięcie przy kliknięciu poza elementem
     document.addEventListener("click", (event) => {
-        // Sprawdzenie, czy kliknięcie było poza mapShippingInfo
-        if (!mapShip.contains(event.target as Node)) {
+        if (!mapShippingWrapper.contains(event.target as Node)) {
+            mapShippingWrapper.classList.remove("active");
             mapShippingInfo.classList.remove("active");
         }
     });
