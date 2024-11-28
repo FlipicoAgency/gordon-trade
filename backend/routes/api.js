@@ -16,7 +16,7 @@ const webflowConfig = {
 
 const SPREADSHEET_ID = '14vV1YgB7M2kc8uwIRHBUateZhB1RL1RzIwThdn1jbs8';
 
-// Pobierz zamówienia na podstawie NIP
+// Pobierz zamówienia B2B
 router.get('/sheets/orders', async (req, res) => {
     const { nip } = req.query; // NIP przekazany jako query parameter
     if (!nip) {
@@ -78,8 +78,8 @@ router.get('/sheets/orders', async (req, res) => {
     }
 });
 
-// Dodaj dane do arkusza
-router.post('/sheets/data', async (req, res) => {
+// Dodaj zamówienia B2B
+router.post('/sheets/orders', async (req, res) => {
     const { values } = req.body;
     if (!values || !Array.isArray(values)) {
         return res.status(400).json({ error: 'Nieprawidłowe dane.' });
@@ -208,6 +208,266 @@ router.post('/sheets/data', async (req, res) => {
     }
 });
 
+// Pobierz zamówienia kontenerowe
+router.get('/sheets/containers', async (req, res) => {
+    const { nip } = req.query; // NIP przekazany jako query parameter
+    if (!nip) {
+        return res.status(400).json({ error: 'Parametr "nip" jest wymagany.' });
+    }
+
+    try {
+        const sheets = await getSheetsInstance();
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Containers!A1:Q', // Zakres danych
+        });
+
+        const rows = response.data.values;
+        if (!rows || rows.length === 0) {
+            return res.status(404).json({ error: 'Brak danych w arkuszu.' });
+        }
+
+        // Pobierz nagłówki i dane
+        const [headers, ...data] = rows;
+
+        let lastNIP = null;
+        let lastOrderId = null;
+        const orders = [];
+
+        // Procesowanie danych
+        data.forEach((row) => {
+            if (row[0]) lastNIP = row[0]; // Aktualizacja NIP, jeśli komórka nie jest pusta
+            if (row[1]) lastOrderId = row[1]; // Aktualizacja ID zamówienia, jeśli komórka nie jest pusta
+
+            // Filtruj zamówienia na podstawie NIP
+            if (lastNIP === nip) {
+                // Znajdź istniejące zamówienie
+                let existingOrder = orders.find((order) => order.orderId === lastOrderId);
+
+                if (!existingOrder) {
+                    // Twórz nowe zamówienie, jeśli nie istnieje
+                    existingOrder = headers.reduce((acc, header, index) => {
+                        acc[header] = row[index] || '';
+                        return acc;
+                    }, { products: [] }); // Dodaj pole products
+                    existingOrder.orderId = lastOrderId; // Ustaw ID zamówienia
+                    orders.push(existingOrder);
+                }
+
+                // Dodaj produkt do zamówienia
+                existingOrder.products.push({
+                    name: row[3], // Kolumna Product name
+                    orderValue: row[5], // Kolumna Order value
+                    EstimatedFreight: row[6], // Kolumna Estimated freight
+                    Capacity: row[7], // Kolumna Capacity
+                    quantity: row[4], // Kolumna Quantity
+                });
+            }
+        });
+
+        res.status(200).json(orders);
+    } catch (error) {
+        console.error('Błąd pobierania danych z arkusza:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// Dodaj zamówienia kontenerowe
+router.post('/sheets/containers', async (req, res) => {
+    const { values } = req.body;
+    if (!values || !Array.isArray(values)) {
+        return res.status(400).json({ error: 'Nieprawidłowe dane.' });
+    }
+
+    try {
+        const sheets = await getSheetsInstance();
+
+        // Dodaj nowe wiersze
+        const appendResponse = await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Orders!A1:W',
+            valueInputOption: 'USER_ENTERED',
+            resource: { values },
+        });
+        console.log('Append Response:', appendResponse.data);
+
+        // Scal odpowiednie komórki
+        const mergeRequests = [];
+        let currentRow = await getLastRow(sheets);
+
+        values.forEach((row, index) => {
+            if (row[0] !== '') {
+                const startRow = currentRow + index;
+                const endRow = startRow + values.filter((r) => r[0] === '').length || startRow + 1;
+
+                const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+                columnsToMerge.forEach((colIndex) => {
+                    mergeRequests.push({
+                        mergeCells: {
+                            range: {
+                                sheetId: 24398558,
+                                startRowIndex: startRow - 1,
+                                endRowIndex: endRow,
+                                startColumnIndex: colIndex,
+                                endColumnIndex: colIndex + 1,
+                            },
+                            mergeType: 'MERGE_ALL',
+                        },
+                    });
+                });
+            }
+        });
+
+        // Dodanie obramowań dla całego zakresu A:U
+        mergeRequests.push({
+            updateBorders: {
+                range: {
+                    sheetId: 24398558, // ID arkusza (Orders)
+                    startRowIndex: currentRow - 1, // Pierwszy wiersz do obramowania
+                    endRowIndex: currentRow + values.length - 1, // Ostatni wiersz (liczba dodanych wierszy)
+                    startColumnIndex: 0, // Kolumna A
+                    endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
+                },
+                top: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                bottom: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                left: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                right: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                innerHorizontal: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+                innerVertical: {
+                    style: 'SOLID',
+                    width: 1,
+                    color: { red: 0, green: 0, blue: 0 },
+                },
+            },
+        });
+
+        // Dodanie wycentrowania tekstu dla całego zakresu A:U
+        mergeRequests.push({
+            repeatCell: {
+                range: {
+                    sheetId: 24398558, // ID arkusza (Orders)
+                    startRowIndex: currentRow - 1, // Pierwszy wiersz do wycentrowania
+                    endRowIndex: currentRow + values.length - 1, // Ostatni wiersz
+                    startColumnIndex: 0, // Kolumna A
+                    endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
+                },
+                cell: {
+                    userEnteredFormat: {
+                        horizontalAlignment: 'CENTER', // Wycentrowanie poziome
+                        verticalAlignment: 'MIDDLE', // Wycentrowanie pionowe
+                    },
+                },
+                fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment)', // Wskaż zmieniane pola
+            },
+        });
+
+        if (mergeRequests.length === 0) {
+            throw new Error('Brak żądań scalania komórek.');
+        }
+
+        console.log('Merge Requests:', JSON.stringify(mergeRequests, null, 2));
+
+        const batchResponse = await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            resource: {
+                requests: mergeRequests,
+            },
+        });
+        console.log('BatchUpdate Response:', JSON.stringify(batchResponse.data, null, 2));
+
+        res.status(201).json({ message: 'Dane zostały dodane do arkusza.' });
+    } catch (error) {
+        console.error('Błąd dodawania danych do arkusza:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// Pobierz zamówienia kontenerowe [Webflow]
+router.post('/kontenery', async (req, res) => {
+    try {
+        const { body: webhookData } = req;
+
+        // Fetch all containers, filter by webhookData, and process contents
+        const allContainers = await axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.containersCollectionId}/items`, {
+            headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
+        }).then(({ data }) => data.items);
+
+        const filteredContainers = allContainers.filter(({ fieldData }) => fieldData['data-ms-member-klient-id'] === webhookData.id);
+        const flattenedContents = filteredContainers.flatMap(({ fieldData }) => fieldData.zawartosc);
+
+        // Fetch product details and statuses concurrently
+        const [productDetails, statuses] = await Promise.all([
+            Promise.all(flattenedContents.map(itemId =>
+                axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.productsCollectionId}/items/${itemId}`, {
+                    headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
+                }).then(({ data }) => data.fieldData)
+            )),
+            Promise.all(filteredContainers.map(({ fieldData }) =>
+                axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.statusesCollectionId}/items/${fieldData.status}`, {
+                    headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
+                }).then(({ data }) => data.fieldData)
+            ))
+        ]);
+
+        // Aggregate final data
+        const aggregatedData = filteredContainers.map(({ fieldData: containerFieldData }, index) => ({
+            array: [
+                {
+                    array: [
+                        {
+                            fieldData: {
+                                name: statuses[index].name,
+                                slug: statuses[index].slug,
+                                'data-ms-content': statuses[index]['data-ms-content'],
+                                position: statuses[index].position,
+                                procent: statuses[index].procent
+                            }
+                        }
+                    ]
+                }
+            ],
+            Products: containerFieldData.zawartosc.map(id => productDetails.find(product => product['cms-id'] === id)),
+            fieldData: {
+                'data-przybycia': containerFieldData['data-przybycia'],
+                'data-zaladunku': containerFieldData['data-zaladunku'],
+                'data-wyjscia': containerFieldData['data-wyjscia'],
+                name: containerFieldData.name,
+                slug: containerFieldData.slug,
+                'data-ms-member-klient-id': containerFieldData['data-ms-member-klient-id'],
+                zawartosc: containerFieldData.zawartosc,
+                status: containerFieldData.status,
+                'planowana-dostawa': containerFieldData['planowana-dostawa'],
+                error: containerFieldData.error
+            }
+        }));
+
+        res.status(200).json(aggregatedData);
+    } catch (error) {
+        console.error('Error running workflow:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // Funkcja pomocnicza do pobrania ostatniego wiersza
 async function getLastRow(sheets) {
     const response = await sheets.spreadsheets.values.get({
@@ -311,70 +571,6 @@ router.delete('/cart', (req, res) => {
     res.send(req.session.cart);
 });
 
-router.post('/kontenery', async (req, res) => {
-    try {
-        const { body: webhookData } = req;
-
-        // Fetch all containers, filter by webhookData, and process contents
-        const allContainers = await axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.containersCollectionId}/items`, {
-            headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
-        }).then(({ data }) => data.items);
-
-        const filteredContainers = allContainers.filter(({ fieldData }) => fieldData['data-ms-member-klient-id'] === webhookData.id);
-        const flattenedContents = filteredContainers.flatMap(({ fieldData }) => fieldData.zawartosc);
-
-        // Fetch product details and statuses concurrently
-        const [productDetails, statuses] = await Promise.all([
-            Promise.all(flattenedContents.map(itemId =>
-                axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.productsCollectionId}/items/${itemId}`, {
-                    headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
-                }).then(({ data }) => data.fieldData)
-            )),
-            Promise.all(filteredContainers.map(({ fieldData }) =>
-                axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.statusesCollectionId}/items/${fieldData.status}`, {
-                    headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
-                }).then(({ data }) => data.fieldData)
-            ))
-        ]);
-
-        // Aggregate final data
-        const aggregatedData = filteredContainers.map(({ fieldData: containerFieldData }, index) => ({
-            array: [
-                {
-                    array: [
-                        {
-                            fieldData: {
-                                name: statuses[index].name,
-                                slug: statuses[index].slug,
-                                'data-ms-content': statuses[index]['data-ms-content'],
-                                position: statuses[index].position,
-                                procent: statuses[index].procent
-                            }
-                        }
-                    ]
-                }
-            ],
-            Products: containerFieldData.zawartosc.map(id => productDetails.find(product => product['cms-id'] === id)),
-            fieldData: {
-                'data-przybycia': containerFieldData['data-przybycia'],
-                'data-zaladunku': containerFieldData['data-zaladunku'],
-                'data-wyjscia': containerFieldData['data-wyjscia'],
-                name: containerFieldData.name,
-                slug: containerFieldData.slug,
-                'data-ms-member-klient-id': containerFieldData['data-ms-member-klient-id'],
-                zawartosc: containerFieldData.zawartosc,
-                status: containerFieldData.status,
-                'planowana-dostawa': containerFieldData['planowana-dostawa'],
-                error: containerFieldData.error
-            }
-        }));
-
-        res.status(200).json(aggregatedData);
-    } catch (error) {
-        console.error('Error running workflow:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
 
 // Endpoint aktualizujący użytkownika w Memberstack
 router.post('/memberstack/update-user/:userId', async (req, res) => {
