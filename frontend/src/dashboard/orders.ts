@@ -69,8 +69,8 @@ const fetchOrdersByNip = async (customerNip: string): Promise<any> => {
     }
 };
 
-// Funkcja pomocnicza do czyszczenia i formatowania danych
-const cleanAndFormatData = (data: Record<string, any>): Record<string, any> => {
+// Funkcja pomocnicza do czyszczenia i formatowania danych z Excela
+export const cleanAndFormatData = (data: Record<string, any>): Record<string, any> => {
     const cleanedData: Record<string, any> = {};
 
     for (const key in data) {
