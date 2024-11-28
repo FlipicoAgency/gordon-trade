@@ -182,16 +182,24 @@ function chooseStatus(departureDate: string, loadingPort: string): Status {
     };
 }
 
-function generateShipItem(container: Container): void {
-    const position: string = container["Delivery status"].position || "";
-    const statusName: string = container["Delivery status"].name || "";
+function showOrderInfo(container: Container): void {
     const shipNumber: string = container["Container No"] || "";
     const loadDate: string = formatDate(container["Estimated time of departure"]) || "";
     const departureDate: string = formatDate(container["Estimated time of departure"]) || "";
     const arrivalDate: string = formatDate(container["Estimated time of arrival"]) || "";
+    const personalization: string = container.Personalization;
+
+    const statusName: string = container["Delivery status"].name || "";
     const extendedDeliveryDate: string = container["Extended delivery date"] || "";
     const zawartosc: OrderProduct[] = container.Products || [];
-    const personalization: string = container.Personalization;
+
+    const mapWrapper = document.getElementById("map-wrapper") as HTMLElement;
+
+    // Usunięcie istniejącego elementu, jeśli istnieje
+    const existingElement = mapWrapper.querySelector(".map-shipping-info");
+    if (existingElement) {
+        mapWrapper.removeChild(existingElement);
+    }
 
     // Obliczanie opóźnienia, jeśli istnieje
     let delayInfoHTML = "";
@@ -212,8 +220,64 @@ function generateShipItem(container: Container): void {
         .map(item => `<div class="collection-item w-dyn-item"><div class="text-block">${item.name}</div></div>`)
         .join("");
 
-    // Generowanie struktury HTML
+    const newElement = document.createElement("div");
+    newElement.className = "map-shipping-info active";
+    newElement.innerHTML = `
+        <div class="shipping-wrapper">
+            <div class="shipping-header" style="display: flex; justify-content: space-between">
+                <div class="shipping-heading">${statusName}</div>
+                <button class="modal1_close-button w-inline-block" style="background-color: var(--base-color-brand--main-600)">
+                    <img src="https://cdn.prod.website-files.com/624380709031623bfe4aee60/624380709031623afe4aee7e_icon_close-modal.svg" loading="lazy" alt="Close button">
+                </button>            
+            </div>
+            <div class="w-dyn-list">
+                <div class="collection-list w-dyn-items" role="list">
+                    ${zawartoscHTML}
+                </div>
+            </div>
+            <div class="shipping-details">
+                <div class="text-style-muted">Numer rejsu:</div><div>${shipNumber}</div>
+                <div class="text-style-muted">Data załadunku:</div><div>${loadDate}</div>
+                <div class="text-style-muted">Data wypłynięcia:</div><div>${departureDate}</div>
+                <div class="text-style-muted">Przewidywana dostawa:</div><div>${arrivalDate}</div>
+                <div class="text-style-muted">Personalizacja:</div><div>${personalization}</div>
+                ${delayInfoHTML}
+            </div>
+        </div>
+    `;
+
+    mapWrapper.appendChild(newElement);
+
+    // Obsługa przycisku zamknięcia
+    const closeButton = newElement.querySelector(".modal1_close-button") as HTMLButtonElement;
+    closeButton.addEventListener("click", () => {
+        if (newElement.parentElement === mapWrapper) {
+            mapWrapper.removeChild(newElement); // Usunięcie elementu z DOM
+        }
+    });
+
+    // Zamknięcie przy kliknięciu poza elementem
+    const handleOutsideClick = (event: MouseEvent) => {
+        if (!newElement.contains(event.target as Node)) {
+            if (newElement.parentElement === mapWrapper) {
+                mapWrapper.removeChild(newElement); // Usunięcie elementu z DOM
+            }
+            document.removeEventListener("click", handleOutsideClick);
+        }
+    };
+
+    // Ustawienie nasłuchiwania kliknięcia poza elementem
+    setTimeout(() => {
+        document.addEventListener("click", handleOutsideClick);
+    }, 0);
+}
+
+function generateShipItem(container: Container): void {
+    const position: string = container["Delivery status"].position || "";
+    const statusName: string = container["Delivery status"].name || "";
     const mapWrapper = document.getElementById("map-wrapper") as HTMLElement;
+
+    // Generowanie struktury HTML
     const newElement = document.createElement("div");
     newElement.innerHTML = `
         <div class="map-dot-wrapper" style="${position}">
@@ -232,51 +296,16 @@ function generateShipItem(container: Container): void {
                     </svg>
                 </div>
             </button>
-            <div class="map-shipping-info">
-                <div class="shipping-wrapper">
-                    <div class="shipping-heading">${statusName}</div>
-                    <div class="w-dyn-list">
-                        <div class="collection-list w-dyn-items" role="list">
-                            ${zawartoscHTML}
-                        </div>
-                    </div>
-                    <div class="shipping-details">
-                        <div class="text-style-muted">Numer rejsu:</div><div>${shipNumber}</div>
-                        <div class="text-style-muted">Data załadunku:</div><div>${loadDate}</div>
-                        <div class="text-style-muted">Data wypłynięcia:</div><div>${departureDate}</div>
-                        <div class="text-style-muted">Przewidywana dostawa:</div><div>${arrivalDate}</div>
-                        <div class="text-style-muted">Personalizacja:</div><div>${personalization}</div>
-                        ${delayInfoHTML}
-                    </div>
-                </div>
-            </div>
         </div>
     `;
     mapWrapper.appendChild(newElement);
 
     // Obsługa zdarzeń
-    const mapShippingWrapper = newElement.querySelector(".map-shipping-wrapper") as HTMLElement;
-    const mapShippingInfo = newElement.querySelector(".map-shipping-info") as HTMLElement;
+    const mapShippingButton = newElement.querySelector(".map-shipping-button") as HTMLElement;
 
-    mapShippingWrapper.addEventListener("click", (event) => {
-        event.stopPropagation(); // Zapobiega zamknięciu od razu po otwarciu
-
-        // Usuwanie aktywnej klasy z innych elementów
-        document.querySelectorAll(".map-shipping-wrapper.active, .map-shipping-info.active").forEach(el => {
-            el.classList.remove("active");
-        });
-
-        // Przełączanie klasy aktywnej
-        mapShippingWrapper.classList.toggle("active");
-        mapShippingInfo.classList.toggle("active");
-    });
-
-    // Zamknięcie przy kliknięciu poza elementem
-    document.addEventListener("click", (event) => {
-        if (!mapShippingWrapper.contains(event.target as Node)) {
-            mapShippingWrapper.classList.remove("active");
-            mapShippingInfo.classList.remove("active");
-        }
+    mapShippingButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        showOrderInfo(container);
     });
 }
 
@@ -296,11 +325,19 @@ function generateShipListItem(container: Container): void {
     const htmlElement = document.createElement("a");
     htmlElement.href = "#";
     htmlElement.classList.add("stacked-list4_item", "w-inline-block");
+
+    // Sprawdzenie, czy pole "Extended delivery date" nie jest puste
+    const extendedDeliveryDate = container["Extended delivery date"];
+    const delayInfoHTML = extendedDeliveryDate
+        ? `<div class="text-size-small">Zamówienie opóźnione: <span class="text-weight-semibold">${formatDate(extendedDeliveryDate)}</span></div>`
+        : ""; // Jeśli puste, ustawiamy pusty string
+
     htmlElement.innerHTML = `
                 <div class="stacked-list4_content-top">
                     <div class="text-size-small">Numer kontenera: <span class="text-weight-semibold text-style-link">${container["Container No"]}</span></div>
                     <div class="text-size-small">Planowana dostawa: <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
-                </div>
+                    ${delayInfoHTML} <!-- Dodawanie informacji o opóźnieniu tylko jeśli istnieje -->
+                 </div>
                 <div class="stacked-list4_progress">
                     <div class="stacked-list4_progress-bar ${progressClass} ${isError ? 'is-error' : ''}">
                         <div class="stacked-list4_progress-dot ${isComplete ? 'is-success' : ''} ${isError ? 'is-error' : ''}">
