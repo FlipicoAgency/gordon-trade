@@ -219,7 +219,7 @@ router.get('/sheets/containers', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Containers!A1:R', // Zakres danych
+            range: 'Containers!A1:S', // Zakres danych
         });
 
         const rows = response.data.values;
