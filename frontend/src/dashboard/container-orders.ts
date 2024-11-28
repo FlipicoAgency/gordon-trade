@@ -212,6 +212,8 @@ function showOrderInfo(container: Container, containers: Container[]): void {
         </div>
     `;
 
+    mapWrapper.appendChild(modalWrapper);
+
     // Sekcja kontenerów o tym samym statusie
     const containerListWrapper = document.createElement("div");
     containerListWrapper.className = "container-list";
@@ -261,6 +263,8 @@ function showOrderInfo(container: Container, containers: Container[]): void {
 
         containerListWrapper.appendChild(containerElement);
     });
+
+    console.log('jestem tu', containerListWrapper);
 
     const shippingWrapper = modalWrapper.querySelector('.shipping-wrapper');
     if (shippingWrapper) {
