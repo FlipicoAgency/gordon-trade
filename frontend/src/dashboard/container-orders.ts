@@ -186,62 +186,33 @@ function showOrderInfo(container: Container, containers: Container[]): void {
     const mapWrapper = document.getElementById("map-wrapper") as HTMLElement;
 
     // Usuń istniejący element modala, jeśli istnieje
-    const existingElement = mapWrapper.querySelector(".map-shipping-info");
-    if (existingElement) {
-        mapWrapper.removeChild(existingElement);
-    }
+    mapWrapper.querySelector(".map-shipping-info")?.remove();
 
     // Filtruj kontenery z tym samym statusem
     const containersInSameStatus = containers.filter(
         c => c["Delivery status"].name === container["Delivery status"].name
     );
 
-    // Tworzenie elementu głównego modala
-    const modalWrapper = document.createElement("div");
-    modalWrapper.className = "map-shipping-info active";
+    // Oblicz listę kontenerów o tym samym statusie
+    const containerListHTML = containersInSameStatus.map(sameStatusContainer => {
+        const delayInfoHTML = sameStatusContainer["Extended delivery date"]
+            ? `<div class="delay-info">
+                <div class="text-style-error">Opóźnienie:</div>
+                <div class="text-style-bold">Zamówienie opóźnione o ${
+                Math.ceil(
+                    (new Date(sameStatusContainer["Extended delivery date"]).getTime() -
+                        new Date(sameStatusContainer["Estimated time of arrival"]).getTime()) /
+                    (1000 * 60 * 60 * 24)
+                )
+            } dni</div>
+               </div>`
+            : "";
 
-    // Nagłówek modala
-    modalWrapper.innerHTML = `
-        <div class="shipping-wrapper">
-            <div class="shipping-header" style="display: flex; justify-content: space-between">
-                <div class="shipping-heading">${container["Delivery status"].name} (${containersInSameStatus.length})</div>
-                <button class="modal1_close-button w-inline-block" style="background-color: var(--base-color-brand--main-600)">
-                    <img src="https://cdn.prod.website-files.com/624380709031623bfe4aee60/624380709031623afe4aee7e_icon_close-modal.svg" loading="lazy" alt="Close button">
-                </button>
-            </div>
-        </div>
-    `;
-
-    mapWrapper.appendChild(modalWrapper);
-
-    // Sekcja kontenerów o tym samym statusie
-    const containerListWrapper = document.createElement("div");
-    containerListWrapper.className = "container-list";
-
-    containersInSameStatus.forEach(sameStatusContainer => {
-        const extendedDeliveryDate = sameStatusContainer["Extended delivery date"];
-        let delayInfoHTML = "";
-
-        // Obliczanie opóźnienia
-        if (extendedDeliveryDate) {
-            const extendedDate = new Date(extendedDeliveryDate);
-            const estimatedDate = new Date(sameStatusContainer["Estimated time of arrival"]);
-            const delayDays = Math.ceil((extendedDate.getTime() - estimatedDate.getTime()) / (1000 * 60 * 60 * 24));
-            delayInfoHTML = `
-                <div class="delay-info">
-                    <div class="text-style-error">Opóźnienie:</div>
-                    <div class="text-style-bold">Zamówienie opóźnione o ${delayDays} dni</div>
-                </div>
-            `;
-        }
-
-        // Lista produktów w kontenerze
         const productListHTML = sameStatusContainer.Products.map(
             item => `<div class="collection-item w-dyn-item"><div class="text-block">${item.name}</div></div>`
         ).join("");
 
-        // Dane kontenera
-        const containerHTML = `
+        return `
             <div class="container-item">
                 <div class="text-style-muted">Numer kontenera:</div>
                 <div><strong>${sameStatusContainer["Container No"]}</strong></div>
@@ -255,43 +226,42 @@ function showOrderInfo(container: Container, containers: Container[]): void {
                 ${delayInfoHTML}
             </div>
         `;
+    }).join("");
 
-        // Dodanie kontenera do listy
-        const containerElement = document.createElement("div");
-        containerElement.className = "container-wrapper";
-        containerElement.innerHTML = containerHTML;
+    // Tworzenie całego HTML modala
+    const modalHTML = `
+        <div class="map-shipping-info active">
+            <div class="shipping-wrapper">
+                <div class="shipping-header" style="display: flex; justify-content: space-between">
+                    <div class="shipping-heading">${container["Delivery status"].name} (${containersInSameStatus.length})</div>
+                    <button class="modal1_close-button w-inline-block" style="background-color: var(--base-color-brand--main-600)">
+                        <img src="https://cdn.prod.website-files.com/624380709031623bfe4aee60/624380709031623afe4aee7e_icon_close-modal.svg" loading="lazy" alt="Close button">
+                    </button>
+                </div>
+                <div class="container-list">
+                    ${containerListHTML}
+                </div>
+            </div>
+        </div>
+    `;
 
-        containerListWrapper.appendChild(containerElement);
+    // Dodanie modala do wrappera
+    mapWrapper.insertAdjacentHTML("beforeend", modalHTML);
+
+    // Pobierz nowo utworzony modal i obsłuż zamknięcie
+    const modalWrapper = mapWrapper.querySelector(".map-shipping-info") as HTMLElement;
+    modalWrapper.querySelector(".modal1_close-button")?.addEventListener("click", () => {
+        modalWrapper.remove();
     });
 
-    console.log('jestem tu', containerListWrapper);
-
-    const shippingWrapper = modalWrapper.querySelector('.shipping-wrapper');
-    if (shippingWrapper) {
-        shippingWrapper.appendChild(containerListWrapper);
-    } else {
-        console.error("Shipping wrapper not found in the modal.");
-    }
-
-    // Obsługa przycisku zamknięcia
-    const closeButton = modalWrapper.querySelector(".modal1_close-button") as HTMLButtonElement;
-    closeButton.addEventListener("click", () => {
-        if (modalWrapper.parentElement === mapWrapper) {
-            mapWrapper.removeChild(modalWrapper);
-        }
-    });
-
-    // Zamknięcie przy kliknięciu poza elementem
+    // Zamknięcie przy kliknięciu poza modalem
     const handleOutsideClick = (event: MouseEvent) => {
         if (!modalWrapper.contains(event.target as Node)) {
-            if (modalWrapper.parentElement === mapWrapper) {
-                mapWrapper.removeChild(modalWrapper);
-            }
+            modalWrapper.remove();
             document.removeEventListener("click", handleOutsideClick);
         }
     };
 
-    // Ustawienie nasłuchiwania kliknięcia poza elementem
     setTimeout(() => {
         document.addEventListener("click", handleOutsideClick);
     }, 0);
