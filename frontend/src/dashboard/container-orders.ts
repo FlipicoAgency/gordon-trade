@@ -182,85 +182,106 @@ function chooseStatus(departureDate: string, loadingPort: string): Status {
     };
 }
 
-function showOrderInfo(container: Container): void {
-    const shipNumber: string = container["Container No"] || "";
-    const loadDate: string = formatDate(container["Estimated time of departure"]) || "";
-    const departureDate: string = formatDate(container["Estimated time of departure"]) || "";
-    const arrivalDate: string = formatDate(container["Estimated time of arrival"]) || "";
-    const personalization: string = container.Personalization;
-
-    const statusName: string = container["Delivery status"].name || "";
-    const extendedDeliveryDate: string = container["Extended delivery date"] || "";
-    const zawartosc: OrderProduct[] = container.Products || [];
-
+function showOrderInfo(container: Container, containers: Container[]): void {
     const mapWrapper = document.getElementById("map-wrapper") as HTMLElement;
 
-    // Usunięcie istniejącego elementu, jeśli istnieje
+    // Usuń istniejący element modala, jeśli istnieje
     const existingElement = mapWrapper.querySelector(".map-shipping-info");
     if (existingElement) {
         mapWrapper.removeChild(existingElement);
     }
 
-    // Obliczanie opóźnienia, jeśli istnieje
-    let delayInfoHTML = "";
-    if (extendedDeliveryDate) {
-        const extendedDate = new Date(extendedDeliveryDate);
-        const estimatedDate = new Date(container["Estimated time of arrival"]);
-        const delayDays = Math.ceil((extendedDate.getTime() - estimatedDate.getTime()) / (1000 * 60 * 60 * 24));
-        delayInfoHTML = `
-            <div class="delay-info">
-                <div class="text-style-error">Opóźnienie:</div>
-                <div class="text-style-bold">Zamówienie opóźnione o ${delayDays} dni</div>
-            </div>
-        `;
-    }
+    // Filtruj kontenery z tym samym statusem
+    const containersInSameStatus = containers.filter(
+        c => c["Delivery status"].name === container["Delivery status"].name
+    );
 
-    // Tworzenie listy produktów
-    const zawartoscHTML = zawartosc
-        .map(item => `<div class="collection-item w-dyn-item"><div class="text-block">${item.name}</div></div>`)
-        .join("");
+    // Tworzenie elementu głównego modala
+    const modalWrapper = document.createElement("div");
+    modalWrapper.className = "map-shipping-info active";
 
-    const newElement = document.createElement("div");
-    newElement.className = "map-shipping-info active";
-    newElement.innerHTML = `
+    // Nagłówek modala
+    modalWrapper.innerHTML = `
         <div class="shipping-wrapper">
             <div class="shipping-header" style="display: flex; justify-content: space-between">
-                <div class="shipping-heading">${statusName}</div>
+                <div class="shipping-heading">${container["Delivery status"].name} (${containersInSameStatus.length})</div>
                 <button class="modal1_close-button w-inline-block" style="background-color: var(--base-color-brand--main-600)">
                     <img src="https://cdn.prod.website-files.com/624380709031623bfe4aee60/624380709031623afe4aee7e_icon_close-modal.svg" loading="lazy" alt="Close button">
-                </button>            
-            </div>
-            <div class="w-dyn-list">
-                <div class="collection-list w-dyn-items" role="list">
-                    ${zawartoscHTML}
-                </div>
-            </div>
-            <div class="shipping-details">
-                <div class="text-style-muted">Numer rejsu:</div><div>${shipNumber}</div>
-                <div class="text-style-muted">Data załadunku:</div><div>${loadDate}</div>
-                <div class="text-style-muted">Data wypłynięcia:</div><div>${departureDate}</div>
-                <div class="text-style-muted">Przewidywana dostawa:</div><div>${arrivalDate}</div>
-                <div class="text-style-muted">Personalizacja:</div><div>${personalization}</div>
-                ${delayInfoHTML}
+                </button>
             </div>
         </div>
     `;
 
-    mapWrapper.appendChild(newElement);
+    // Sekcja kontenerów o tym samym statusie
+    const containerListWrapper = document.createElement("div");
+    containerListWrapper.className = "container-list";
+
+    containersInSameStatus.forEach(sameStatusContainer => {
+        const extendedDeliveryDate = sameStatusContainer["Extended delivery date"];
+        let delayInfoHTML = "";
+
+        // Obliczanie opóźnienia
+        if (extendedDeliveryDate) {
+            const extendedDate = new Date(extendedDeliveryDate);
+            const estimatedDate = new Date(sameStatusContainer["Estimated time of arrival"]);
+            const delayDays = Math.ceil((extendedDate.getTime() - estimatedDate.getTime()) / (1000 * 60 * 60 * 24));
+            delayInfoHTML = `
+                <div class="delay-info">
+                    <div class="text-style-error">Opóźnienie:</div>
+                    <div class="text-style-bold">Zamówienie opóźnione o ${delayDays} dni</div>
+                </div>
+            `;
+        }
+
+        // Lista produktów w kontenerze
+        const productListHTML = sameStatusContainer.Products.map(
+            item => `<div class="collection-item w-dyn-item"><div class="text-block">${item.name}</div></div>`
+        ).join("");
+
+        // Dane kontenera
+        const containerHTML = `
+            <div class="container-item">
+                <div class="text-style-muted">Numer kontenera:</div>
+                <div><strong>${sameStatusContainer["Container No"]}</strong></div>
+                <div class="w-dyn-list">
+                    <div class="collection-list w-dyn-items" role="list">
+                        ${productListHTML}
+                    </div>
+                </div>
+                <div class="text-style-muted">Planowana dostawa:</div>
+                <div>${formatDate(sameStatusContainer["Estimated time of arrival"])}</div>
+                ${delayInfoHTML}
+            </div>
+        `;
+
+        // Dodanie kontenera do listy
+        const containerElement = document.createElement("div");
+        containerElement.className = "container-wrapper";
+        containerElement.innerHTML = containerHTML;
+
+        containerListWrapper.appendChild(containerElement);
+    });
+
+    const shippingWrapper = modalWrapper.querySelector('.shipping-wrapper');
+    if (shippingWrapper) {
+        shippingWrapper.appendChild(containerListWrapper);
+    } else {
+        console.error("Shipping wrapper not found in the modal.");
+    }
 
     // Obsługa przycisku zamknięcia
-    const closeButton = newElement.querySelector(".modal1_close-button") as HTMLButtonElement;
+    const closeButton = modalWrapper.querySelector(".modal1_close-button") as HTMLButtonElement;
     closeButton.addEventListener("click", () => {
-        if (newElement.parentElement === mapWrapper) {
-            mapWrapper.removeChild(newElement); // Usunięcie elementu z DOM
+        if (modalWrapper.parentElement === mapWrapper) {
+            mapWrapper.removeChild(modalWrapper);
         }
     });
 
     // Zamknięcie przy kliknięciu poza elementem
     const handleOutsideClick = (event: MouseEvent) => {
-        if (!newElement.contains(event.target as Node)) {
-            if (newElement.parentElement === mapWrapper) {
-                mapWrapper.removeChild(newElement); // Usunięcie elementu z DOM
+        if (!modalWrapper.contains(event.target as Node)) {
+            if (modalWrapper.parentElement === mapWrapper) {
+                mapWrapper.removeChild(modalWrapper);
             }
             document.removeEventListener("click", handleOutsideClick);
         }
@@ -272,10 +293,17 @@ function showOrderInfo(container: Container): void {
     }, 0);
 }
 
-function generateShipItem(container: Container): void {
+function countContainersWithSameStatus(containers: Container[], statusName: string): number {
+    return containers.filter(container => container["Delivery status"].name === statusName).length;
+}
+
+function generateShipItem(container: Container, containers: Container[]): void {
     const position: string = container["Delivery status"].position || "";
     const statusName: string = container["Delivery status"].name || "";
     const mapWrapper = document.getElementById("map-wrapper") as HTMLElement;
+
+    // Liczba kontenerów w tym samym statusie
+    const containersInSameStatus = countContainersWithSameStatus(containers, statusName);
 
     // Generowanie struktury HTML
     const newElement = document.createElement("div");
@@ -289,7 +317,7 @@ function generateShipItem(container: Container): void {
                 <div class="text-size-tiny text-weight-bold text-style-nowrap">${statusName}</div>
             </div>
             <button class="map-shipping-button">
-                <div class="text-size-tiny text-weight-bold">1</div>
+                <div class="text-size-tiny text-weight-bold">${containersInSameStatus}</div>
                 <div class="icon-1x1-xxsmall">
                     <svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256">
                         <path d="M222.33,106.79,212,103.35V56a20,20,0,0,0-20-20H140V24a12,12,0,0,0-24,0V36H64A20,20,0,0,0,44,56v47.35l-10.33,3.44a20,20,0,0,0-13.67,19V152c0,64.63,100.8,90.57,105.09,91.64a11.94,11.94,0,0,0,5.82,0C135.2,242.57,236,216.63,236,152V125.77A20,20,0,0,0,222.33,106.79ZM68,60H188V95.35L131.79,76.62a11.85,11.85,0,0,0-7.58,0L68,95.35Zm144,92c0,36.69-58.08,60.43-84,67.59-25.94-7.17-84-30.9-84-67.59V128.65l72-24V168a12,12,0,0,0,24,0V104.65l72,24Z"></path>
@@ -305,7 +333,7 @@ function generateShipItem(container: Container): void {
 
     mapShippingButton.addEventListener("click", (event) => {
         event.stopPropagation();
-        showOrderInfo(container);
+        showOrderInfo(container, containers);
     });
 }
 
@@ -333,26 +361,26 @@ function generateShipListItem(container: Container): void {
         : ""; // Jeśli puste, ustawiamy pusty string
 
     htmlElement.innerHTML = `
-                <div class="stacked-list4_content-top">
-                    <div class="text-size-small">Numer kontenera: <span class="text-weight-semibold text-style-link">${container["Container No"]}</span></div>
-                    <div class="text-size-small">Planowana dostawa: <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
-                    ${delayInfoHTML} <!-- Dodawanie informacji o opóźnieniu tylko jeśli istnieje -->
-                 </div>
-                <div class="stacked-list4_progress">
-                    <div class="stacked-list4_progress-bar ${progressClass} ${isError ? 'is-error' : ''}">
-                        <div class="stacked-list4_progress-dot ${isComplete ? 'is-success' : ''} ${isError ? 'is-error' : ''}">
-                            <div class="stacked-list4_progress-status-text ${isComplete ? 'is-success' : ''} ${isError ? 'is-error' : ''}">${container["Delivery status"].name}</div>
-                            <div class="icon-embed-custom1 w-embed">
-                                ${iconSVG}
-                            </div>
-                        </div>
+        <div class="stacked-list4_content-top">
+            <div class="text-size-small">Numer kontenera: <span class="text-weight-semibold text-style-link">${container["Container No"]}</span></div>
+            <div class="text-size-small">Planowana dostawa: <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
+            ${delayInfoHTML} <!-- Dodawanie informacji o opóźnieniu tylko jeśli istnieje -->
+         </div>
+        <div class="stacked-list4_progress">
+            <div class="stacked-list4_progress-bar ${progressClass} ${isError ? 'is-error' : ''}">
+                <div class="stacked-list4_progress-dot ${isComplete ? 'is-success' : ''} ${isError ? 'is-error' : ''}">
+                    <div class="stacked-list4_progress-status-text ${isComplete ? 'is-success' : ''} ${isError ? 'is-error' : ''}">${container["Delivery status"].name}</div>
+                    <div class="icon-embed-custom1 w-embed">
+                        ${iconSVG}
                     </div>
                 </div>
-                <div class="stacked-list4_content-bottom">
-                    <div class="text-size-small">Chiny</div>
-                    <div class="text-size-small">Polska</div>
-                </div>
-            `;
+            </div>
+        </div>
+        <div class="stacked-list4_content-bottom">
+            <div class="text-size-small">Chiny</div>
+            <div class="text-size-small">Polska</div>
+        </div>
+    `;
 
     // Dodajemy nowo utworzony element do kontenera
     listWrapper.appendChild(htmlElement);
@@ -390,7 +418,7 @@ export async function fetchContainers(memberData: Member) {
             console.log('Status name:', container["Delivery status"].name);
 
             // Utwórz znacznik na mapie
-            generateShipItem(container);
+            generateShipItem(container, containers);
 
             // Utwórz element w liście
             generateShipListItem(container);
