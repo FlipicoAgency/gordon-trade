@@ -52,17 +52,17 @@ const locations: Status[] = [
     },
     {
         name: "Tianjin",
-        position: "top: 16%; left: 75%;",
+        position: "top: 15%; left: 73%;",
         procent: "is-0",
     },
     {
         name: "Qingdao",
-        position: "top: 28%; left: 77%;",
+        position: "top: 27%; left: 77%;",
         procent: "is-0",
     },
     {
         name: "Shanghai",
-        position: "top: 36%; left: 77%;",
+        position: "top: 40%; left: 79%;",
         procent: "is-0",
     },
     {
@@ -71,42 +71,42 @@ const locations: Status[] = [
         procent: "is-0",
     },
     {
-        name: "Morze Południowochińskie (okolice Wysp Riau)",
+        name: "Morze Południowochińskie",
         position: "top: 71%; left: 67.75%;",
         procent: "is-15",
     },
     {
-        name: "Morze Lakkadiwskie (okolice Sri Lanki)",
+        name: "Morze Lakkadiwskie",
         position: "top: 66%; left: 61%;",
         procent: "is-25",
     },
     {
-        name: "Morze Arabskie (środek między Sri Lanką a Zatoką Adeńską)",
+        name: "Morze Arabskie",
         position: "top: 64%; left: 47%;",
         procent: "is-35",
     },
     {
-        name: "Morze Czerwone (okolice Dżeddy, Arabia Saudyjska)",
+        name: "Morze Czerwone",
         position: "top: 50%; left: 33%;",
         procent: "is-50",
     },
     {
-        name: "Morze Śródziemne (okolice Malty)",
+        name: "Morze Śródziemne",
         position: "top: 45%; left: 40%;",
         procent: "is-65",
     },
     {
-        name: "Ocean Atlantycki (okolice Lizbony, Portugalia)",
+        name: "Ocean Atlantycki",
         position: "top: 36%; left: 10%;",
         procent: "is-75",
     },
     {
-        name: "Kanał La Manche (okolice Bournemouth, Anglia)",
+        name: "Kanał La Manche",
         position: "top: 22%; left: 15%;",
         procent: "is-85",
     },
     {
-        name: "Port w Gdańsku (Polska)",
+        name: "Port w Gdańsku",
         position: "top: 18%; left: 23%;",
         procent: "is-100",
     },
