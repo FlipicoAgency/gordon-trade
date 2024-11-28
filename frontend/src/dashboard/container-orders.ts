@@ -211,21 +211,32 @@ function generateShipItem(container: Container): void {
     mapDotWrapper.appendChild(mapDot);
     mapDotWrapper.appendChild(mapDot2);
 
-    // Element map-ship
+    // Element map-shipping-wrapper
     const mapShip = document.createElement("div");
-    mapShip.className = "map-ship";
+    mapShip.className = "map-shipping-wrapper";
     mapShip.style.cssText = position;
+
+    // Element map-shipping-location
+    const mapShipLocation = document.createElement("div");
+    mapShipLocation.className = "map-shipping-location";
+
+    // Element map-shipping-button
+    const mapShipButton = document.createElement("button");
+    mapShipButton.className = "map-shipping-button";
 
     // Informacje o statusie
     const mapShippingInfo = document.createElement("div");
     mapShippingInfo.className = "map-shipping-info";
+    const mapShipWrapper = document.createElement("div");
+    mapShipWrapper.className = "shipping-wrapper";
+    mapShippingInfo.appendChild(mapShipWrapper);
     //mapShippingInfo.style.opacity = "0"; // initial state
 
     // Dodanie nazwy statusu
-    const divBlock = document.createElement("div");
-    divBlock.className = "div-block";
-    divBlock.innerHTML = `<div>${statusName}</div>`;
-    mapShippingInfo.appendChild(divBlock);
+    const mapShipHeading = document.createElement("div");
+    mapShipHeading.className = "shipping-heading";
+    mapShipHeading.innerHTML = `<div>${statusName}</div>`;
+    mapShipWrapper.appendChild(mapShipHeading);
 
     // Lista zawartości
     const zawartoscList = document.createElement("div");
@@ -243,12 +254,12 @@ function generateShipItem(container: Container): void {
     });
 
     zawartoscList.appendChild(zawartoscListContainer);
-    mapShippingInfo.appendChild(zawartoscList);
+    mapShipWrapper.appendChild(zawartoscList);
 
     // Informacje o numerze rejsu i datach
-    const divBlock2 = document.createElement("div");
-    divBlock2.className = "div-block-2";
-    divBlock2.innerHTML = `
+    const mapShipDetails = document.createElement("div");
+    mapShipDetails.className = "shipping-details";
+    mapShipDetails.innerHTML = `
       <div class="text-style-muted">Numer rejsu:</div><div>${shipNumber}</div>
       <div class="text-style-muted">Data załadunku:</div><div>${loadDate}</div>
       <div class="text-style-muted">Data wypłynięcia z portu ${container["Loading port"]}:</div><div>${departureDate}</div>
@@ -268,11 +279,16 @@ function generateShipItem(container: Container): void {
           <div class="text-style-error">Opóźnienie:</div>
           <div class="text-style-bold">Zamówienie opóźnione o ${delayDays} dni</div>
         `;
-        divBlock2.appendChild(delayInfo);
+        mapShipDetails.appendChild(delayInfo);
     }
 
-    mapShippingInfo.appendChild(divBlock2);
+    mapShipWrapper.appendChild(mapShipDetails);
     mapShip.appendChild(mapShippingInfo);
+
+    // Lokalizacja
+    const location = document.createElement("div");
+    location.className = "text-size-tiny text-weight-bold text-style-nowrap";
+    location.innerText = `${statusName}`;
 
     // Licznik
     const counter = document.createElement("div");
@@ -281,16 +297,17 @@ function generateShipItem(container: Container): void {
 
     // Ikona
     const iconEmbed = document.createElement("div");
-    iconEmbed.className = "icon-embed-xxsmall w-embed";
+    iconEmbed.className = "icon-1x1-xxsmall";
     iconEmbed.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--tabler" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
-          <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 20a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2-1a2.4 2.4 0 0 1 2-1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2-1a2.4 2.4 0 0 1 2-1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2-1M4 18l-1-5h18l-2 4M5 13V7h8l4 6M7 7V3H6"></path>
-      </svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256"><path d="M222.33,106.79,212,103.35V56a20,20,0,0,0-20-20H140V24a12,12,0,0,0-24,0V36H64A20,20,0,0,0,44,56v47.35l-10.33,3.44a20,20,0,0,0-13.67,19V152c0,64.63,100.8,90.57,105.09,91.64a11.94,11.94,0,0,0,5.82,0C135.2,242.57,236,216.63,236,152V125.77A20,20,0,0,0,222.33,106.79ZM68,60H188V95.35L131.79,76.62a11.85,11.85,0,0,0-7.58,0L68,95.35Zm144,92c0,36.69-58.08,60.43-84,67.59-25.94-7.17-84-30.9-84-67.59V128.65l72-24V168a12,12,0,0,0,24,0V104.65l72,24Z"></path></svg>
   `;
 
     // Złożenie całego elementu
-    mapShip.appendChild(counter);
-    mapShip.appendChild(iconEmbed);
+    mapShip.appendChild(mapShipLocation);
+    mapShip.appendChild(mapShipButton);
+    mapShipLocation.appendChild(location);
+    mapShipButton.appendChild(counter);
+    mapShipButton.appendChild(iconEmbed);
     mapWrapper.appendChild(mapDotWrapper);
     mapWrapper.appendChild(mapShip);
 
@@ -298,12 +315,13 @@ function generateShipItem(container: Container): void {
     mapShip.addEventListener("click", (event) => {
         event.stopPropagation(); // Zapobiega zamknięciu modala od razu po otwarciu
 
-        // Usuwamy klasę 'active' ze wszystkich innych elementów map-shipping-info
-        document.querySelectorAll(".map-shipping-info").forEach(el => {
+        // Usuwamy klasę 'active' ze wszystkich innych elementów map-shipping-info / 
+        document.querySelectorAll(".map-shipping-wrapper, .map-shipping-info").forEach(el => {
             el.classList.remove("active");
         });
 
         // Przełączanie klasy 'active' dla pierwszego dziecka mapShip (czyli mapShippingInfo)
+        mapShip.classList.toggle("active");
         mapShippingInfo.classList.toggle("active");
     });
 
