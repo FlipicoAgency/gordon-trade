@@ -29,6 +29,8 @@ interface Container {
     "Estimated time of arrival": string;
     "Extended delivery date": string;
     "Personalization": string;
+    "Change in transportation cost": string;
+    "Periodicity": string;
 }
 
 // SVG ikony
@@ -141,6 +143,8 @@ function formatToContainers(data: any): Container[] {
             "Estimated time of arrival": order["Estimated time of arrival"],
             "Extended delivery date": order["Extended delivery date"],
             "Personalization": order["Personalization"] || "Brak",
+            "Change in transportation cost": order["Change in transportation cost"] || "Brak",
+            "Periodicity": order["Periodicity"] || "Brak",
         };
     });
 }
@@ -198,7 +202,7 @@ function showOrderInfo(container: Container, containers: Container[]): void {
         const delayInfoHTML = sameStatusContainer["Extended delivery date"]
             ? `<div class="delay-info">
                 <div class="text-style-error">Opóźnienie:</div>
-                <div class="text-style-bold">Zamówienie opóźnione o ${
+                <div class="text-style-bold">${
                 Math.ceil(
                     (new Date(sameStatusContainer["Extended delivery date"]).getTime() -
                         new Date(sameStatusContainer["Estimated time of arrival"]).getTime()) /
@@ -221,6 +225,12 @@ function showOrderInfo(container: Container, containers: Container[]): void {
                         ${productListHTML}
                     </div>
                 </div>
+                <div class="text-style-muted">Personalizacja:</div>
+                <div>${sameStatusContainer.Personalization}</div>
+                <div class="text-style-muted">Cykliczność:</div>
+                <div>${sameStatusContainer.Periodicity === 'Yes' ? 'Tak' : 'Nie'}</div>
+                <div class="text-style-muted">Zmiana kosztu transportu:</div>
+                <div>${sameStatusContainer["Change in transportation cost"]}</div>                
                 <div class="text-style-muted">Planowana dostawa:</div>
                 <div>${formatDate(sameStatusContainer["Estimated time of arrival"])}</div>
                 ${delayInfoHTML}
