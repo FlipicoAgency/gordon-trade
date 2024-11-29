@@ -200,16 +200,14 @@ function showOrderInfo(container: Container, containers: Container[]): void {
     // Oblicz listę kontenerów o tym samym statusie
     const containerListHTML = containersInSameStatus.map(sameStatusContainer => {
         const delayInfoHTML = sameStatusContainer["Extended delivery date"]
-            ? `<div class="delay-info">
-                <div class="text-style-error">Opóźnienie:</div>
-                <div class="text-style-bold">${
+            ? ` <div class="text-style-muted">Opóźnienie:</div>
+                <div>${
                 Math.ceil(
                     (new Date(sameStatusContainer["Extended delivery date"]).getTime() -
                         new Date(sameStatusContainer["Estimated time of arrival"]).getTime()) /
                     (1000 * 60 * 60 * 24)
                 )
-            } dni</div>
-               </div>`
+            } dni</div>`
             : "";
 
         const productListHTML = sameStatusContainer.Products.map(
@@ -217,9 +215,9 @@ function showOrderInfo(container: Container, containers: Container[]): void {
         ).join("");
 
         return `
-            <div class="container-item">
+            <div class="shipping-details-item">
                 <div class="text-style-muted">Numer kontenera:</div>
-                <div><strong>${sameStatusContainer["Container No"]}</strong></div>
+                <div class="text-weight-semibold">${sameStatusContainer["Container No"]}</div>
                 <div class="w-dyn-list">
                     <div class="collection-list w-dyn-items" role="list">
                         ${productListHTML}
@@ -243,12 +241,13 @@ function showOrderInfo(container: Container, containers: Container[]): void {
         <div class="map-shipping-info active">
             <div class="shipping-wrapper">
                 <div class="shipping-header" style="display: flex; justify-content: space-between">
-                    <div class="shipping-heading">${container["Delivery status"].name} (${containersInSameStatus.length})</div>
-                    <button class="modal1_close-button w-inline-block" style="background-color: var(--base-color-brand--main-600)">
-                        <img src="https://cdn.prod.website-files.com/624380709031623bfe4aee60/624380709031623afe4aee7e_icon_close-modal.svg" loading="lazy" alt="Close button">
-                    </button>
+                    <div class="shipping-heading">
+                        <div>${container["Delivery status"].name} (${containersInSameStatus.length})</div>
+                        <button class="shipping-modal-close-button"><div class="icon-1x1-xsmall"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg></div>
+                        </button>
+                    </div>
                 </div>
-                <div class="container-list">
+                <div class="shipping-details">
                     ${containerListHTML}
                 </div>
             </div>
@@ -256,11 +255,12 @@ function showOrderInfo(container: Container, containers: Container[]): void {
     `;
 
     // Dodanie modala do wrappera
-    mapWrapper.insertAdjacentHTML("beforeend", modalHTML);
+    const mainWrapper = document.getElementById('container-map-wrapper');
+    mainWrapper.insertAdjacentHTML('afterbegin', modalHTML);
 
     // Pobierz nowo utworzony modal i obsłuż zamknięcie
-    const modalWrapper = mapWrapper.querySelector(".map-shipping-info") as HTMLElement;
-    modalWrapper.querySelector(".modal1_close-button")?.addEventListener("click", () => {
+    const modalWrapper = mainWrapper.querySelector(".map-shipping-info") as HTMLElement;
+    modalWrapper.querySelector(".shipping-modal-close-button")?.addEventListener("click", () => {
         modalWrapper.remove();
     });
 
@@ -316,7 +316,7 @@ function generateShipItem(container: Container, containers: Container[]): void {
     const mapShippingButton = newElement.querySelector(".map-shipping-button") as HTMLElement;
 
     mapShippingButton.addEventListener("click", (event) => {
-        event.stopPropagation();
+        //event.stopPropagation();
         showOrderInfo(container, containers);
     });
 }
