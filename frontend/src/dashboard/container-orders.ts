@@ -254,8 +254,13 @@ function showOrderInfo(container: Container, containers: Container[]): void {
         </div>
     `;
 
-    // Dodanie modala do wrappera
     const mainWrapper = document.getElementById('container-map-wrapper');
+
+    if (!mainWrapper) {
+        throw new Error("Main wrapper not found in the DOM");
+    }
+
+    // Dodanie modala do wrappera
     mainWrapper.insertAdjacentHTML('afterbegin', modalHTML);
 
     // Pobierz nowo utworzony modal i obsłuż zamknięcie

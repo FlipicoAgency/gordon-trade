@@ -3,6 +3,7 @@ import {getMemberData} from './memberstack';
 import {fetchContainers} from "./dashboard/container-orders";
 import {initializeFavorites} from './dashboard/favorites';
 import {initializeOrders} from "./dashboard/orders";
+import {initializeUppy} from "./dashboard/product-pricing";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const mapWrapper = document.getElementById('container-map-wrapper') as HTMLElement;
@@ -36,4 +37,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     await fetchContainers(memberData);
     await initializeFavorites();
     await initializeOrders(memberData);
+    await initializeUppy(memberData);
 });
