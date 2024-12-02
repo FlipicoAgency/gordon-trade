@@ -17,23 +17,17 @@ interface Order {
     Quantity: string;
     "Order value": string;
     "Order date": string;
-    "Estimated freight": string;
-    Capacity: string;
     "FV amount (netto)": string;
     "FV number": string;
     "FV PDF": string;
     "Payment status": string;
     "Delivery status": string;
-    "Container ID": string;
-    "Container number": string;
-    "Loading port": string;
     "Estimated time of departure": string;
     "Fastest possible shipping date": string;
     "Estimated time of arrival": string;
     "Extended delivery date": string;
     "Recurring order": string;
     Comments: string;
-    orderId: string;
 }
 
 const noResultElement = document.querySelector('[orders="none"]') as HTMLElement;
@@ -170,17 +164,11 @@ async function handleOrderAgain(button: HTMLElement) {
             product.quantity,
             index === 0 ? order["Order value"] : '', // Scal Order value
             index === 0 ? getTodayDate() : '', // Scal Order date
-            '',
-            '',
-            '',
-            '',
-            '',
+            '', // Scal FV ammount (netto)
+            '', // Scal FV number
+            '', // Scal FV PDF
             index === 0 ? 'Oczekiwanie na płatność' : '', // Scal Payment status
             index === 0 ? 'Oczekiwanie na płatność' : '', // Scal Delivery status
-            '',
-            '',
-            '',
-            '',
             '',
             '',
             '',
@@ -376,13 +364,15 @@ async function generateOrderItem(order: Order) {
                             </div>
                              <div class="order_details_grid_item">
                                 <div class="text-size-small">${order['Extended delivery date'] ? `Tak, ${order['Extended delivery date']}` : 'Nie'}</div>
-                            </div>      
+                            </div>     
+                            <!-- 
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">Zamówienie cykliczne?</div>
                             </div>
                              <div class="order_details_grid_item">
                                 <div class="text-size-small">${order['Recurring order'] ? `Tak` : 'Nie'}</div>
-                            </div>             
+                            </div>
+                            -->             
                         </div>
                     </div>
                 </div>
@@ -425,6 +415,10 @@ async function generateOrderItem(order: Order) {
                             <div class="text-size-small">Kwota za sztukę:</div>
                             <div class="text-size-small">${productDetails.fieldData.cena.toFixed(2) || '0.00'} zł</div>
                         </div>
+                        <div class="order_details_grid_item">
+                            <div class="text-size-small">SKU:</div>
+                            <div class="text-size-small">${productDetails.fieldData.sku || 'Nieznane'}</div>
+                        </div>
                     </div>
                 </div>
                 <div class="order_product_price">
@@ -445,7 +439,7 @@ async function generateOrderItem(order: Order) {
     actionDiv.className = 'order_again';
     actionDiv.innerHTML = `
         <div class="margin-vertical margin-xsmall">
-            <div class="button is-secondary is-small" orders="again" data-order-id="${order.orderId}">
+            <div class="button is-secondary is-small" orders="again" data-order-id="${order["Order ID"]}">
                 <div>Zamów ponownie</div>
             </div>
         </div>

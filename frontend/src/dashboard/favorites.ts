@@ -1,6 +1,7 @@
 import {getMemberJSON, updateMemberJSON} from "../memberstack";
 import {fetchProductDetails, initializeAddToCartButtons} from "../cartItems";
 import type {Product} from "../cartItems";
+import {initializeGenerateOffer} from "./generate-offer";
 
 export interface Category {
     id: string;
@@ -29,7 +30,7 @@ export interface Category {
 const noResultElement = document.querySelector('[favorites="none"]') as HTMLElement;
 const favoriteList = document.querySelector('.favorite_list') as HTMLElement;
 
-let categoryMap: Record<string, string> = {};
+export let categoryMap: Record<string, string> = {};
 
 // Function to fetch product details by productId
 const fetchCategories = async (): Promise<void> => {
@@ -182,4 +183,5 @@ export const initializeFavorites = async (): Promise<void> => {
 
     const favorites: string[] = memberJson.data.favorites || [];
     await renderFavorites(favorites);
+    await initializeGenerateOffer(favorites);
 };
