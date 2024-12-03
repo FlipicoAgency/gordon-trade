@@ -6,7 +6,7 @@ const { getSheetsInstance } = require('../googleSheetsClient');
 
 const webflowConfig = {
     webflowApiUrl: 'https://api.webflow.com/v2',
-    webflowToken: process.env.WEBLOW_TOKEN,
+    webflowToken: `${process.env.WEBLOW_TOKEN}`,
     containersCollectionId: '6723715370c537f5a2e31c79',
     productsCollectionId: '671f74158ad8b36b6c82188c',
     statusesCollectionId: '671fa6eea160e723f30e9c27',
