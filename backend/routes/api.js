@@ -257,10 +257,10 @@ router.get('/sheets/containers', async (req, res) => {
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    name: row[3],               // Kolumna Product name
+                    productName: row[3],        // Kolumna Product name
                     orderValue: row[5],         // Kolumna Order value
-                    EstimatedFreight: row[6],   // Kolumna Estimated freight
-                    Capacity: row[7],           // Kolumna Capacity
+                    estimatedFreight: row[6],   // Kolumna Estimated freight
+                    capacity: row[7],           // Kolumna Capacity
                     quantity: row[4],           // Kolumna Quantity
                 });
             }
