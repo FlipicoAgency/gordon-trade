@@ -6,7 +6,7 @@ const { getSheetsInstance } = require('../googleSheetsClient');
 
 const webflowConfig = {
     webflowApiUrl: 'https://api.webflow.com/v2',
-    webflowToken: '34f47bfe4c8cb71babd3bfda12102276c33e2a48c532dde5d11a5540e7edd27c',
+    webflowToken: process.env.WEBLOW_TOKEN,
     containersCollectionId: '6723715370c537f5a2e31c79',
     productsCollectionId: '671f74158ad8b36b6c82188c',
     statusesCollectionId: '671fa6eea160e723f30e9c27',
@@ -27,7 +27,7 @@ router.get('/sheets/orders', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:W', // Zakres danych
+            range: 'Orders!A1:Q', // Zakres danych
         });
 
         const rows = response.data.values;
@@ -64,9 +64,9 @@ router.get('/sheets/orders', async (req, res) => {
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    productId: row[3], // Kolumna Product ID
-                    quantity: row[4], // Kolumna Quantity
-                    productName: row[2], // Kolumna Product name
+                    productId: row[3],      // Kolumna Product ID
+                    quantity: row[4],       // Kolumna Quantity
+                    productName: row[2],    // Kolumna Product name
                 });
             }
         });
@@ -91,7 +91,7 @@ router.post('/sheets/orders', async (req, res) => {
         // Dodaj nowe wiersze
         const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:W',
+            range: 'Orders!A1:Q',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
@@ -106,7 +106,7 @@ router.post('/sheets/orders', async (req, res) => {
                 const startRow = currentRow + index;
                 const endRow = startRow + values.filter((r) => r[0] === '').length || startRow + 1;
 
-                const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+                const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
                 columnsToMerge.forEach((colIndex) => {
                     mergeRequests.push({
                         mergeCells: {
@@ -132,7 +132,7 @@ router.post('/sheets/orders', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do obramowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz (liczba dodanych wierszy)
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 17, // Kolumna Q (17, bo endColumnIndex jest wyłączny)
                 },
                 top: {
                     style: 'SOLID',
@@ -175,7 +175,7 @@ router.post('/sheets/orders', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do wycentrowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 17, // Kolumna Q (23, bo endColumnIndex jest wyłączny)
                 },
                 cell: {
                     userEnteredFormat: {
@@ -256,11 +256,11 @@ router.get('/sheets/containers', async (req, res) => {
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    name: row[3], // Kolumna Product name
-                    orderValue: row[5], // Kolumna Order value
-                    EstimatedFreight: row[6], // Kolumna Estimated freight
-                    Capacity: row[7], // Kolumna Capacity
-                    quantity: row[4], // Kolumna Quantity
+                    name: row[3],               // Kolumna Product name
+                    orderValue: row[5],         // Kolumna Order value
+                    EstimatedFreight: row[6],   // Kolumna Estimated freight
+                    Capacity: row[7],           // Kolumna Capacity
+                    quantity: row[4],           // Kolumna Quantity
                 });
             }
         });
@@ -285,7 +285,7 @@ router.post('/sheets/containers', async (req, res) => {
         // Dodaj nowe wiersze
         const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:W',
+            range: 'Orders!A1:S',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
@@ -398,72 +398,6 @@ router.post('/sheets/containers', async (req, res) => {
         res.status(201).json({ message: 'Dane zostały dodane do arkusza.' });
     } catch (error) {
         console.error('Błąd dodawania danych do arkusza:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
-// Pobierz zamówienia kontenerowe [Webflow]
-router.post('/kontenery', async (req, res) => {
-    try {
-        const { body: webhookData } = req;
-
-        // Fetch all containers, filter by webhookData, and process contents
-        const allContainers = await axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.containersCollectionId}/items`, {
-            headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
-        }).then(({ data }) => data.items);
-
-        const filteredContainers = allContainers.filter(({ fieldData }) => fieldData['data-ms-member-klient-id'] === webhookData.id);
-        const flattenedContents = filteredContainers.flatMap(({ fieldData }) => fieldData.zawartosc);
-
-        // Fetch product details and statuses concurrently
-        const [productDetails, statuses] = await Promise.all([
-            Promise.all(flattenedContents.map(itemId =>
-                axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.productsCollectionId}/items/${itemId}`, {
-                    headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
-                }).then(({ data }) => data.fieldData)
-            )),
-            Promise.all(filteredContainers.map(({ fieldData }) =>
-                axios.get(`${webflowConfig.webflowApiUrl}/collections/${webflowConfig.statusesCollectionId}/items/${fieldData.status}`, {
-                    headers: { Authorization: `Bearer ${webflowConfig.webflowToken}` }
-                }).then(({ data }) => data.fieldData)
-            ))
-        ]);
-
-        // Aggregate final data
-        const aggregatedData = filteredContainers.map(({ fieldData: containerFieldData }, index) => ({
-            array: [
-                {
-                    array: [
-                        {
-                            fieldData: {
-                                name: statuses[index].name,
-                                slug: statuses[index].slug,
-                                'data-ms-content': statuses[index]['data-ms-content'],
-                                position: statuses[index].position,
-                                procent: statuses[index].procent
-                            }
-                        }
-                    ]
-                }
-            ],
-            Products: containerFieldData.zawartosc.map(id => productDetails.find(product => product['cms-id'] === id)),
-            fieldData: {
-                'data-przybycia': containerFieldData['data-przybycia'],
-                'data-zaladunku': containerFieldData['data-zaladunku'],
-                'data-wyjscia': containerFieldData['data-wyjscia'],
-                name: containerFieldData.name,
-                slug: containerFieldData.slug,
-                'data-ms-member-klient-id': containerFieldData['data-ms-member-klient-id'],
-                zawartosc: containerFieldData.zawartosc,
-                status: containerFieldData.status,
-                'planowana-dostawa': containerFieldData['planowana-dostawa'],
-                error: containerFieldData.error
-            }
-        }));
-
-        res.status(200).json(aggregatedData);
-    } catch (error) {
-        console.error('Error running workflow:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -569,23 +503,6 @@ router.delete('/cart/:itemId', (req, res) => {
 router.delete('/cart', (req, res) => {
     req.session.cart = [];
     res.send(req.session.cart);
-});
-
-
-// Endpoint aktualizujący użytkownika w Memberstack
-router.post('/memberstack/update-user/:userId', async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const { order } = req.body;
-
-        const { updateMemberstackUser } = await import('../memberstack.mjs');
-        const result = await updateMemberstackUser(userId, order);
-
-        res.status(200).json({ message: 'User updated successfully', data: result });
-    } catch (error) {
-        console.error(`Error updating user: ${error.message}`);
-        res.status(500).json({ error: error.message });
-    }
 });
 
 module.exports = router;
