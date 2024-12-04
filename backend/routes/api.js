@@ -28,7 +28,7 @@ router.get('/sheets/orders', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:Q', // Zakres danych
+            range: 'Orders B2B!A1:Q', // Zakres danych
         });
 
         const rows = response.data.values;
@@ -92,7 +92,7 @@ router.post('/sheets/orders', async (req, res) => {
         // Dodaj nowe wiersze
         const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:Q',
+            range: 'Orders B2B!A1:Q',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
