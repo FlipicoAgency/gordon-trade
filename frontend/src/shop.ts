@@ -142,6 +142,107 @@ document.addEventListener("DOMContentLoaded", async () => {
                 initializeAddToCartButtons();
                 initializeFavoritesState();
             });
+
+            async function onCmsLoad() {
+                try {
+                    // Wait for the rendering queue to finish
+                    const productItems = await listInstance.items;
+
+                    const categorySet = new Set<string>();
+                    const tagSet = new Set<string>();
+
+                    productItems.forEach((item: { element: HTMLElement }) => {
+                        const categoryElement = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="category"]');
+                        const tagElement = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="tag"]');
+
+                        // Safely check textContent and add trimmed value to the set if it exists
+                        if (categoryElement?.textContent?.trim()) {
+                            categorySet.add(categoryElement.textContent.trim());
+                        }
+
+                        if (tagElement?.textContent?.trim()) {
+                            tagSet.add(tagElement.textContent.trim());
+                        }
+                    });
+
+                    // Function to create filter items
+                    function createFilterItem(value: string, filterField: string): HTMLElement {
+                        const filterItem = document.createElement('div');
+                        filterItem.className = 'filters3_item';
+                        const label = document.createElement('label');
+                        label.className = 'w-checkbox filters3_form-checkbox1';
+
+                        const divCheckbox = document.createElement('div');
+                        divCheckbox.className = 'w-checkbox-input w-checkbox-input--inputType-custom filters3_form-checkbox1-icon';
+
+                        const inputCheckbox = document.createElement('input');
+                        inputCheckbox.type = 'checkbox';
+                        inputCheckbox.name = 'filter';
+                        inputCheckbox.style.opacity = '0';
+                        inputCheckbox.style.position = 'absolute';
+                        inputCheckbox.style.zIndex = '-1';
+
+                        const span = document.createElement('span');
+                        span.className = 'filters3_form-checkbox1-label w-form-label';
+                        span.textContent = value;
+                        span.setAttribute('fs-cmsfilter-field', filterField);
+
+                        // Element to display the count of results
+                        const resultsCount = document.createElement('span');
+                        resultsCount.className = 'filter-results-count';
+                        resultsCount.style.marginLeft = '10px';
+                        resultsCount.style.fontWeight = 'bold';
+                        resultsCount.textContent = '0'; // Initial results count
+
+                        label.appendChild(divCheckbox);
+                        label.appendChild(inputCheckbox);
+                        label.appendChild(span);
+                        label.appendChild(resultsCount); // Add result element
+                        filterItem.appendChild(label);
+
+                        return filterItem;
+                    }
+
+                    // Add filter items to #lista-kategoria
+                    const categoryList = document.getElementById('lista-kategoria');
+                    if (categoryList) {
+                        Array.from(categorySet)
+                            .sort((a, b) => a.localeCompare(b)) // Use localeCompare for sorting strings
+                            .forEach((category) => {
+                                const filterItem = createFilterItem(category, 'category');
+                                categoryList.appendChild(filterItem);
+                            });
+                    } else {
+                        console.error('Element #lista-kategoria not found');
+                    }
+
+                    // Add filter items to #lista-tag
+                    const tagList = document.getElementById('lista-tag');
+                    if (tagList) {
+                        Array.from(tagSet)
+                            .sort((a, b) => a.localeCompare(b)) // Use localeCompare for sorting strings
+                            .forEach((tag) => {
+                                const filterItem = createFilterItem(tag, 'tag');
+                                tagList.appendChild(filterItem);
+                            });
+                    } else {
+                        console.error('Element #lista-tag not found');
+                    }
+
+
+                } catch (error) {
+                    console.error('Error during CMS load handling:', error);
+                }
+            }
+
+            onCmsLoad();
         },
     ]);
+
+    /*
+    // @ts-ignore
+    window.fsAttributes.cmsfilter.destroy();
+    // @ts-ignore
+    window.fsAttributes.cmsfilter.init();
+    */
 });
