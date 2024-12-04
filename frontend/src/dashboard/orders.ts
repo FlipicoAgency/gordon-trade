@@ -1,223 +1,78 @@
 import {fetchProductDetails} from "../cartItems";
 import type {Member} from "../memberstack";
-import type {Product} from "../cartItems";
-
-interface OrderProduct {
-    productId: string;
-    quantity: string;
-    productName: string;
-}
-
-interface Order {
-    products: OrderProduct[];
-    "Customer NIP": string;
-    "Order ID": string;
-    "Product name": string;
-    "Product ID": string;
-    Quantity: string;
-    "Order value": string;
-    "Order date": string;
-    "FV amount (netto)": string;
-    "FV number": string;
-    "FV PDF": string;
-    "Payment status": string;
-    "Delivery status": string;
-    "Estimated time of departure": string;
-    "Fastest possible shipping date": string;
-    "Estimated time of arrival": string;
-    "Extended delivery date": string;
-    "Recurring order": string;
-    Comments: string;
-}
+import type {Product, ProductInCart} from "../../types/cart";
+import {getMemberData} from "../memberstack";
+import type {Order} from "../../types/orders-b2b";
+import {addNewOrderToExcel, fetchOrdersByNip} from "../excel";
 
 const noResultElement = document.querySelector('[orders="none"]') as HTMLElement;
 const orderList = document.querySelector('.order_list') as HTMLElement;
-const orderedAgainModal = document.querySelector('#re-ordered') as HTMLElement;
-
-const fetchOrdersByNip = async (customerNip: string): Promise<any> => {
-    try {
-        const response = await fetch(
-            `https://gordon-trade.onrender.com/api/sheets/orders?nip=${encodeURIComponent(customerNip)}`,
-            {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error('Failed to fetch sheets data');
-        }
-
-        const rawData = await response.json();
-
-        // Oczyszczanie i formatowanie danych
-        const cleanData = cleanAndFormatData(rawData);
-        console.log('Zamówienia:', cleanData);
-
-        return cleanData;
-    } catch (error) {
-        console.error('Error fetching orders:', error);
-        return null;
-    }
-};
-
-// Funkcja pomocnicza do czyszczenia i formatowania danych z Excela
-export const cleanAndFormatData = (data: Record<string, any>): Record<string, any> => {
-    const cleanedData: Record<string, any> = {};
-
-    for (const key in data) {
-        if (data.hasOwnProperty(key)) {
-            const order = data[key];
-            const cleanedOrder: Record<string, any> = { ...order };
-
-            for (const field in cleanedOrder) {
-                if (typeof cleanedOrder[field] === 'string') {
-                    // Usuwanie białych znaków przed pierwszym znakiem
-                    cleanedOrder[field] = cleanedOrder[field].replace(/^\s+/, '');
-                }
-            }
-
-            cleanedData[key] = cleanedOrder;
-        }
-    }
-
-    return cleanedData;
-};
 
 async function handleOrderAgain(button: HTMLElement) {
-    // Pobierz ID zamówienia z przycisku
     const orderId = button.getAttribute('data-order-id');
     if (!orderId) {
         console.error('Brak ID zamówienia dla tego przycisku.');
         return;
     }
 
-    async function fetchNewOrder(customerNip: string) {
+    // Wyszukaj zamówienie w już pobranych danych
+    const orders = JSON.parse(localStorage.getItem('orders') || '{}'); // Wczytaj dane z localStorage
+    const orderArray = Object.values(orders) as Order[]; // Rzutowanie na tablicę typu Order[]
+
+    // Znajdź zamówienie w tablicy
+    const foundOrder = orderArray.find((order: Order) => order["Order ID"] === orderId);
+
+    // Sprawdź, czy znaleziono zamówienie
+    if (!foundOrder) {
+        console.error(`Nie znaleziono zamówienia o ID: ${orderId}`);
+        return; // Przerwij dalsze przetwarzanie, jeśli zamówienie nie istnieje
+    }
+
+    // Teraz wiemy, że foundOrder istnieje, więc możemy go przypisać do zmiennej typu Order
+    const order: Order = foundOrder;
+
+    async function sendNewOrderViaMake(order: Order) {
+        const items: ProductInCart[] = [];
+
+        for (const product of order.products) {
+            const productDetails: Product = await fetchProductDetails(product.productId);
+
+            // Dodaj szczegóły produktu z ilością
+            items.push({
+                ...productDetails,
+                quantity: Number(product.quantity),
+            });
+        }
+        console.log('Items to process:', items);
+
+        const makeUrl = 'https://hook.eu2.make.com/ey0oofllpglvwpgbjm0pw6t0yvx37cnd';
+
         try {
-            // Pobierz zaktualizowane zamówienia
-            const orders = await fetchOrdersByNip(customerNip);
+            const memberData = await getMemberData();
 
-            if (!orders) {
-                console.error('Nie udało się pobrać nowych zamówień.');
-                return;
+            const payload = {
+                items: items,
+                member: memberData,
+            };
+
+            const response = await fetch(makeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
             }
-
-            // Pobierz istniejące zamówienia z localStorage
-            const existingOrders = JSON.parse(localStorage.getItem('orders') || '{}') as Record<string, Order>;
-
-            // Pobierz istniejące Order ID
-            const existingOrderIds = Object.values(existingOrders).map((order: Order) => order["Order ID"]);
-
-            // Filtruj nowe zamówienia
-            const newOrders = Object.values(orders as Record<string, Order>).filter(
-                (order: Order) => !existingOrderIds.includes(order["Order ID"])
-            );
-
-            if (newOrders.length === 0) {
-                console.log('Brak nowych zamówień do dodania.');
-                return;
-            }
-
-            // Dodaj nowe zamówienia do localStorage
-            const updatedOrders = { ...existingOrders, ...orders };
-            localStorage.setItem('orders', JSON.stringify(updatedOrders));
-
-            // Dodaj nowe zamówienia do listy
-            for (const newOrder of newOrders) {
-                const orderItem = await generateOrderItem(newOrder as Order);
-                orderList.appendChild(orderItem);
-            }
-
-            console.log('Nowe zamówienia zostały dodane do listy.');
         } catch (error) {
-            console.error('Błąd podczas dodawania nowych zamówień:', error);
+            console.error('Błąd podczas wysyłania maila zamówienia:', error);
         }
     }
 
-    try {
-        // Wyszukaj zamówienie w już pobranych danych
-        const orders = JSON.parse(localStorage.getItem('orders') || '{}'); // Wczytaj dane z localStorage
-        const orderArray = Object.values(orders) as Order[]; // Rzutowanie na tablicę typu Order[]
-        const order = orderArray.find((order) => order["Order ID"] === orderId); // Znajdź zamówienie
-
-        if (!order) {
-            console.error(`Nie znaleziono zamówienia o ID: ${orderId}`);
-            return; // Przerwij dalsze przetwarzanie, jeśli zamówienie nie istnieje
-        }
-
-        const getTodayDate = (): string => {
-            const today = new Date();
-            const day = String(today.getDate()).padStart(2, '0'); // Dodaj zero na początku, jeśli potrzeba
-            const month = String(today.getMonth() + 1).padStart(2, '0'); // Miesiące są indeksowane od 0
-            const year = today.getFullYear();
-            return `${day}.${month}.${year}`;
-        };
-
-        // Przygotuj dane do wysłania do arkusza
-        const formattedData = order.products.map((product: OrderProduct, index: number) => [
-            index === 0 ? order["Customer NIP"] : '', // Scal NIP
-            index === 0 ? String(Math.floor(100000000 + Math.random() * 900000000)) : '', // Scal Order ID
-            product.productName,
-            product.productId,
-            product.quantity,
-            index === 0 ? order["Order value"] : '', // Scal Order value
-            index === 0 ? getTodayDate() : '', // Scal Order date
-            '', // Scal FV ammount (netto)
-            '', // Scal FV number
-            '', // Scal FV PDF
-            index === 0 ? 'Oczekiwanie na płatność' : '', // Scal Payment status
-            index === 0 ? 'Oczekiwanie na płatność' : '', // Scal Delivery status
-            '',
-            '',
-            '',
-            '',
-            index === 0 ? order["Comments"] : '', // Scal Comments
-        ]);
-
-        console.log('Formatted data:', formattedData);
-
-        // Wyślij dane do backendu
-        const response = await fetch('https://gordon-trade.onrender.com/api/sheets/data', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ values: formattedData }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Nie udało się dodać danych do arkusza.');
-        }
-
-        console.log('Dane zostały dodane do arkusza.');
-        if (orderedAgainModal) {
-            // Ustawienie początkowego stylu dla animacji
-            orderedAgainModal.style.display = 'flex';
-            orderedAgainModal.style.opacity = '0';
-            orderedAgainModal.style.transition = 'opacity 0.5s ease'; // Animacja płynnego przejścia
-
-            // Ustawienie opacity na 1 po krótkim czasie, aby uruchomić animację
-            setTimeout(() => {
-                orderedAgainModal.style.opacity = '1';
-            }, 10); // 10 ms, aby zapewnić płynne przejście
-
-            // Po 1.5 sekundy zaczynamy ukrywanie
-            setTimeout(() => {
-                orderedAgainModal.style.opacity = '0'; // Zmiana opacity na 0, co uruchomi animację zanikania
-
-                // Po zakończeniu animacji (500 ms), ustawiamy display: none
-                setTimeout(() => {
-                    orderedAgainModal.style.display = 'none';
-                }, 500); // Czas trwania animacji (zgodny z transition: 500 ms)
-            }, 1500); // Ukrywanie elementu po 1.5 sekundy
-        }
-
-        await fetchNewOrder(order["Customer NIP"]);
-    } catch (error) {
-        console.error('Błąd podczas obsługi zamówienia ponownie:', error);
-    }
+    await addNewOrderToExcel(order, order);
+    await sendNewOrderViaMake(order);
 }
 
 async function initializeOrderAgain() {
@@ -273,7 +128,7 @@ function getIconPath(iconType: string): string {
     }
 }
 
-async function generateOrderItem(order: Order) {
+export async function generateOrderItem(order: Order) {
     // Stwórz element <li> dla zamówienia
     const li = document.createElement('li');
     li.className = 'order_list_item';

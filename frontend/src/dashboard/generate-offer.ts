@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type {Product} from "../cartItems";
+import type {Product} from "../../types/cart";
 import {fetchProductDetails} from "../cartItems";
 import {categoryMap} from "./favorites";
 

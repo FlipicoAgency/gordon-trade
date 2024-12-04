@@ -1,62 +1,7 @@
 import {getMemberData} from "./memberstack";
+import type {Product, ProductInCart} from "../types/cart";
+import {addNewOrderToExcel} from "./excel";
 
-export interface Product {
-  id: string;
-  cmsLocaleId: string;
-  lastPublished: string;
-  lastUpdated: string;
-  createdOn: string;
-  isArchived: boolean;
-  isDraft: boolean;
-  fieldData: {
-    cena: number;
-    waga: number;
-    ean: number;
-    wysokosc: number;
-    szerokosc: number;
-    dlugosc: number;
-    iloscWKartonie: number;
-    slug: string;
-    name: string;
-    opis: string;
-    krotkiOpis: string;
-    sku: string;
-    miniatura: {
-      fileId: string;
-      url: string;
-      alt: string | null;
-    };
-    kategoria: string;
-    galeria: Array<{
-      fileId: string;
-      url: string;
-      alt: string | null;
-    }>;
-    cmsId: string;
-    promocja: boolean;
-    produktNiedostepny: boolean;
-  };
-}
-
-export interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  imageUrl: string;
-  weight: number;
-  length: number;
-  sku: string;
-  slug: string;
-}
-
-interface GalleryItem {
-  fileId: string;
-  url: string;
-  alt: string;
-}
-
-const cartButton = document.querySelector<HTMLElement>('#cart-button');
 const addedToCartModal = document.querySelector<HTMLElement>('#added-to-cart');
 
 export async function fetchCartData() {
@@ -73,7 +18,7 @@ export async function fetchCartData() {
     return cartItems;
   } catch (error) {
     console.error('Failed to fetch cart items:', error);
-    return [];
+    return []; // Zwróć pustą tablicę jako domyślną wartość
   }
 }
 
@@ -84,8 +29,8 @@ async function updateCartUI() {
   const stateError = document.querySelector<HTMLElement>('.state-error');
 
   try {
-    const cartItems: CartItem[] = await fetchCartData();
-    const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const cartItems: ProductInCart[] = await fetchCartData();
+    const totalAmount = cartItems.reduce((sum, item) => sum + item.fieldData.cena * item.quantity, 0);
     const totalAmountElement = document.getElementById('cart-total');
     const cartQuantityElement = document.getElementById('cart-quantity');
 
@@ -187,33 +132,13 @@ export async function handleAddToCart(button: HTMLElement) {
         'Content-Type': 'application/json',
       },
     });
-    const data = await response.json();
+    const data: Product = await response.json();
     //console.log('data: ', data);
 
-    const actualData = data.fieldData;
-
-    const selectedItem = {
-      id: data.id,
-      name: actualData.name,
-      price: actualData.cena,
+    const selectedItem: ProductInCart = {
+      ...data,
       quantity,
-      imageUrl: actualData.miniatura?.url,
-      weight: actualData.waga,
-      length: actualData.dlugosc,
-      width: actualData.szerokosc,
-      height: actualData.wysokosc,
-      sku: actualData.sku,
-      slug: actualData.slug,
-      description: actualData.opis,
-      shortDescription: actualData['krotki-opis'],
-      cartonQuantity: actualData['ilosc-w-kartonie'],
-      gallery: actualData.galeria.map((image: GalleryItem) => ({
-        fileId: image.fileId,
-        url: image.url,
-        alt: image.alt,
-      })),
     };
-
 
     await addItemToCart(selectedItem);
   } catch (err) {
@@ -221,7 +146,7 @@ export async function handleAddToCart(button: HTMLElement) {
   }
 }
 
-async function addItemToCart(item: CartItem) {
+async function addItemToCart(item: ProductInCart) {
   try {
     const response = await fetch('https://gordon-trade.onrender.com/api/cart', {
       method: 'POST',
@@ -322,7 +247,7 @@ function addQuantityChangeListener() {
   });
 }
 
-function renderCartItems(cartItems: CartItem[]) {
+function renderCartItems(cartItems: ProductInCart[]) {
   const cartListElement = document.querySelector<HTMLElement>('.cart-list');
   if (!cartListElement) return;
 
@@ -334,12 +259,12 @@ function renderCartItems(cartItems: CartItem[]) {
     const itemElement = document.createElement('div');
     itemElement.className = 'cart-item';
     itemElement.innerHTML = `
-      <img src="${item.imageUrl}" loading="lazy" alt="${item.name}" class="image-2">
-      <a href="/product/${item.slug}" class="product-link">
+      <img src="${item.fieldData.miniatura.url}" loading="lazy" alt="${item.fieldData.miniatura.alt}" class="image-2">
+      <a href="/product/${item.fieldData.slug}" class="product-link">
         <div>
-          <div class="text-weight-bold text-style-2lines">${item.name}</div>
+          <div class="text-weight-bold text-style-2lines">${item.fieldData.name}</div>
           <div class="div-block">
-            <div class="text-color-brand">Cena: ${item.price.toFixed(2)} zł</div>
+            <div class="text-color-brand">Cena: ${item.fieldData.cena.toFixed(2)} zł</div>
             <div class="text-color-brand">Ilość: ${item.quantity}</div>
           </div>
         </div>
@@ -386,7 +311,7 @@ function renderCartItems(cartItems: CartItem[]) {
   }
 }
 
-async function processOrder(cartItems: CartItem[]) {
+export async function processOrder(cartItems: ProductInCart[]) {
   console.log('Items to process:', cartItems);
 
   const makeUrl = 'https://hook.eu2.make.com/ey0oofllpglvwpgbjm0pw6t0yvx37cnd';
@@ -413,6 +338,8 @@ async function processOrder(cartItems: CartItem[]) {
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
+
+    await addNewOrderToExcel(cartItems, undefined, memberData || undefined);
 
     if (stateSuccess && stateDefault) {
       stateDefault.style.display = 'none';
@@ -448,45 +375,14 @@ export async function fetchProductDetails(productId: string): Promise<any> {
       throw new Error(`Failed to fetch product details for ID: ${productId}`);
     }
 
-    const data = await response.json();
-
     // Log the response data
     //console.log(`Response for product ID ${productId}:`, data);
 
-    return data;
+    return await response.json();
   } catch (error) {
     console.error(`Error fetching product details:`, error);
     return null;
   }
-};
-
-export function renderCheckoutItems(cartItems: CartItem[]) {
-  const orderItemLists = document.querySelectorAll<HTMLElement>('.order-item-list');
-
-  orderItemLists.forEach((orderItemList) => {
-    if (orderItemList) {
-      orderItemList.innerHTML = '';
-
-      cartItems.forEach((item: CartItem) => {
-        const mainImageUrl = item.imageUrl;
-
-        const itemElement = document.createElement('div');
-        itemElement.className = 'w-commerce-commercecheckoutorderitem order-item';
-        itemElement.innerHTML = `
-          <img src="${mainImageUrl}" alt="${item.name}" class="w-commerce-commercecartitemimage">
-          <div class="w-commerce-commercecheckoutorderitemdescriptionwrapper">
-            <div class="w-commerce-commerceboldtextblock">${item.name}</div>
-            <div class="w-commerce-commercecheckoutorderitemquantitywrapper">
-              <div>Ilość: </div>
-              <div>${item.quantity}</div>
-            </div>
-          </div>
-          <div>${item.price.toFixed(2)} zł</div>
-        `;
-        orderItemList.appendChild(itemElement);
-      });
-    }
-  });
 }
 
 export async function clearCart() {

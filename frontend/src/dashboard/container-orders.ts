@@ -1,37 +1,7 @@
 import type {Member} from '../memberstack';
-import {cleanAndFormatData} from "./orders";
-
-interface Status {
-    name: string;
-    position: string;
-    procent: string;
-}
-
-interface OrderProduct {
-    quantity: number;
-    name: string;
-    orderValue: number;
-    estimatedFreight: number;
-    capacity: number;
-}
-
-interface Container {
-    "Customer NIP": string;
-    "Order ID": string;
-    "Container No": string;
-    "Products": OrderProduct[];
-    "FV amount (netto)": string;
-    "FV No": string;
-    "Loading port": string;
-    "Delivery status": Status;
-    "Estimated time of departure": string;
-    "Fastest possible shipping date": string;
-    "Estimated time of arrival": string;
-    "Extended delivery date": string;
-    "Personalization": string;
-    "Change in transportation cost": string;
-    "Periodicity": string;
-}
+import {cleanAndFormatData} from "../excel";
+import type {Container, Status} from "../../types/containers";
+import type {OrderProduct} from "../../types/cart";
 
 // SVG ikony
 const icons: Record<string, string> = {
@@ -117,12 +87,12 @@ const locations: Status[] = [
 function formatToContainers(data: any): Container[] {
     return Object.values(data).map((order: any) => {
         // Mapowanie produktów
-        const products: OrderProduct[] = order.products.map((product: any) => ({
-            name: product.name,
+        const products: OrderProduct[] = order.products.map((product: OrderProduct) => ({
+            productName: product.productName,
             quantity: parseInt(product.quantity, 10),
-            orderValue: parseFloat(product.orderValue.replace("$", "")),
-            estimatedFreight: parseFloat(product.EstimatedFreight.trim()),
-            capacity: parseFloat(product.Capacity.trim()),
+            orderValue: parseFloat(<string>product.orderValue),
+            estimatedFreight: parseFloat(<string>product.estimatedFreight),
+            capacity: parseFloat(<string>product.capacity),
         }));
 
         // Wybór statusu na podstawie daty wypłynięcia
@@ -211,7 +181,7 @@ function showOrderInfo(container: Container, containers: Container[]): void {
             : "";
 
         const productListHTML = sameStatusContainer.Products.map(
-            item => `<div class="collection-item w-dyn-item"><div class="text-block">${item.name}</div></div>`
+            item => `<div class="collection-item w-dyn-item"><div class="text-block">${item.productName}</div></div>`
         ).join("");
 
         return `

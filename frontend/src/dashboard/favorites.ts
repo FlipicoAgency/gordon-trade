@@ -1,31 +1,7 @@
 import {getMemberJSON, updateMemberJSON} from "../memberstack";
 import {fetchProductDetails, initializeAddToCartButtons} from "../cartItems";
-import type {Product} from "../cartItems";
+import type {Category, Product} from "../../types/cart";
 import {initializeGenerateOffer} from "./generate-offer";
-
-export interface Category {
-    id: string;
-    cmsLocaleId: string;
-    lastPublished: string;
-    lastUpdated: string;
-    createdOn: string;
-    isArchived: boolean;
-    isDraft: boolean;
-    fieldData: {
-        name: string;
-        slug: string;
-        zdjecie: {
-            fileId: string;
-            url: string;
-            alt: string | null;
-        };
-        ikona: {
-            fileId: string;
-            url: string;
-            alt: string | null;
-        };
-    };
-}
 
 const noResultElement = document.querySelector('[favorites="none"]') as HTMLElement;
 const favoriteList = document.querySelector('.favorite_list') as HTMLElement;
