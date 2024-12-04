@@ -2,8 +2,6 @@ import {initializeAddToCartButtons} from "./cartItems";
 import {getMemberData, getMemberJSON, updateMemberJSON} from './memberstack';
 
 document.addEventListener("DOMContentLoaded", async () => {
-    await initializeAddToCartButtons();
-
     // Function to calculate JSON size in bytes
     const calculateJSONSize = (json: any): number =>
         new Blob([JSON.stringify(json)]).size;
@@ -94,6 +92,56 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     };
 
-    // Initialize
-    await initializeFavoritesState();
+    function calculatePromoPercentage(): void {
+        // Select all product items
+        const productItems = document.querySelectorAll<HTMLDivElement>('.product_item-wrapper');
+
+        productItems.forEach((productItem) => {
+            // Query elements with proper type assertions
+            const promo = productItem.querySelector<HTMLElement>('[data-price="promo"]');
+            const normal = productItem.querySelector<HTMLElement>('[data-price="normal"]');
+            const tagline = productItem.querySelector<HTMLElement>('.promo-tagline');
+            const span = productItem.querySelector<HTMLSpanElement>('.promo-percentage');
+
+            // Ensure all required elements are present
+            if (promo && normal && tagline && span) {
+                // Extract and parse text content to numbers
+                const promoPrice = parseFloat(promo.textContent?.trim() || '');
+                const normalPrice = parseFloat(normal.textContent?.trim() || '');
+
+                if (!isNaN(promoPrice) && !isNaN(normalPrice) && normalPrice > 0 && !promo.classList.contains('w-dyn-bind-empty')) {
+                    // Calculate percentage
+                    const percentage = Math.round(((promoPrice - normalPrice) / normalPrice) * 100);
+
+                    // Update span content and display tagline
+                    span.textContent = Math.abs(percentage) + '%';
+                    tagline.style.display = 'block';
+                }
+            }
+        });
+    }
+
+    // @ts-ignore
+    window.fsAttributes = window.fsAttributes || [];
+    // @ts-ignore
+    window.fsAttributes.push([
+        'cmsload',
+        // @ts-ignore
+        (listInstances) => {
+            console.log('cmsload Successfully loaded!');
+
+            const [listInstance] = listInstances;
+
+            calculatePromoPercentage();
+            initializeAddToCartButtons();
+            initializeFavoritesState();
+
+            // @ts-ignore
+            listInstance.on('renderitems', (renderedItems) => {
+                calculatePromoPercentage();
+                initializeAddToCartButtons();
+                initializeFavoritesState();
+            });
+        },
+    ]);
 });

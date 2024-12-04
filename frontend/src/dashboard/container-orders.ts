@@ -181,7 +181,7 @@ function showOrderInfo(container: Container, containers: Container[]): void {
             : "";
 
         const productListHTML = sameStatusContainer.Products.map(
-            item => `<div class="collection-item w-dyn-item"><div class="text-block">${item.productName}</div></div>`
+            item => `<div class="collection-item w-dyn-item"><div class="text-block" style="text-wrap: initial">${item.productName}</div></div>`
         ).join("");
 
         return `

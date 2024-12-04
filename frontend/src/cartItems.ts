@@ -260,7 +260,7 @@ function renderCartItems(cartItems: ProductInCart[]) {
     itemElement.className = 'cart-item';
     itemElement.innerHTML = `
       <img src="${item.fieldData.miniatura.url}" loading="lazy" alt="${item.fieldData.miniatura.alt}" class="image-2">
-      <a href="/product/${item.fieldData.slug}" class="product-link">
+      <a href="/produkty/${item.fieldData.slug}" class="product-link">
         <div>
           <div class="text-weight-bold text-style-2lines">${item.fieldData.name}</div>
           <div class="div-block">
