@@ -146,22 +146,59 @@ document.addEventListener("DOMContentLoaded", async () => {
             async function onCmsLoad() {
                 try {
                     // Wait for the rendering queue to finish
+                    await listInstance.renderingQueue;
+                    console.log('Wszystko załadowane!');
+
+                    // Wait for the rendering queue to finish
                     const productItems = await listInstance.items;
 
                     const categorySet = new Set<string>();
                     const tagSet = new Set<string>();
 
                     productItems.forEach((item: { element: HTMLElement }) => {
-                        const categoryElement = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="category"]');
-                        const tagElement = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="tag"]');
+                        const categoryElement = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="Kategoria"]');
+
+                        const priceNormal = item.element.querySelector<HTMLElement>('[data-price="normal"]')?.textContent;
+                        const pricePromo = item.element.querySelector<HTMLElement>('[data-price="promo"]')?.textContent;
+
+                        if (priceNormal || pricePromo) {
+                            // Tworzymy nowy element span
+                            const priceElement = document.createElement('span');
+                            priceElement.style.display = 'none'; // Ukrywamy element
+                            priceElement.setAttribute('fs-cmsfilter-field', 'Cena');
+                            priceElement.setAttribute('fs-cmssort-field', 'Cena');
+
+                            // Dodajemy odpowiednią wartość do elementu
+                            if (pricePromo) {
+                                priceElement.textContent = pricePromo; // Ustawiamy cenę promocyjną, jeśli jest dostępna
+                            } else if (priceNormal) {
+                                priceElement.textContent = priceNormal; // Ustawiamy cenę normalną, jeśli nie ma promocyjnej
+                            }
+
+                            // Dodajemy nowy element do `item.element`
+                            item.element.appendChild(priceElement);
+                        }
+
+                        const tags = item.element.querySelector<HTMLElement>('[data-product="tags"]')?.textContent?.trim().split(',');
+                        if (tags) {
+                            //console.log('Tagi:', tags);
+
+                            tags.forEach(tag => {
+                                // Tworzymy nowy element span dla każdego tagu
+                                const tagElement = document.createElement('span');
+                                tagElement.style.display = 'none';
+                                tagElement.setAttribute('fs-cmsfilter-field', 'Tag');
+                                tagElement.textContent = tag.trim(); // Dodajemy treść tagu
+                                if (tagElement.textContent !== '') tagSet.add(tagElement.textContent);
+
+                                // Dodajemy nowy element do `item.element`
+                                item.element.appendChild(tagElement);
+                            });
+                        }
 
                         // Safely check textContent and add trimmed value to the set if it exists
                         if (categoryElement?.textContent?.trim()) {
                             categorySet.add(categoryElement.textContent.trim());
-                        }
-
-                        if (tagElement?.textContent?.trim()) {
-                            tagSet.add(tagElement.textContent.trim());
                         }
                     });
 
@@ -209,7 +246,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         Array.from(categorySet)
                             .sort((a, b) => a.localeCompare(b)) // Use localeCompare for sorting strings
                             .forEach((category) => {
-                                const filterItem = createFilterItem(category, 'category');
+                                const filterItem = createFilterItem(category, 'Kategoria');
                                 categoryList.appendChild(filterItem);
                             });
                     } else {
@@ -222,14 +259,68 @@ document.addEventListener("DOMContentLoaded", async () => {
                         Array.from(tagSet)
                             .sort((a, b) => a.localeCompare(b)) // Use localeCompare for sorting strings
                             .forEach((tag) => {
-                                const filterItem = createFilterItem(tag, 'tag');
+                                const filterItem = createFilterItem(tag, 'Tag');
                                 tagList.appendChild(filterItem);
                             });
                     } else {
                         console.error('Element #lista-tag not found');
                     }
 
+                    // @ts-ignore
+                    window.fsAttributes.cmsfilter.init();
 
+                    // @ts-ignore
+                    window.fsAttributes.push([
+                        'cmsfilter',
+                        // @ts-ignore
+                        (filterInstances) => {
+                            console.log('cmsfilter Successfully loaded!');
+
+                            const [filterInstance] = filterInstances;
+                            const filtersData = filterInstance.filtersData;
+
+                            function updateItemCount() {
+                                console.log('filtersData:', filtersData);  // Debugowanie
+
+                                // @ts-ignore
+                                filtersData.forEach(function (element) {
+                                    if (element.filterKeys.includes('kategoria') || element.filterKeys.includes('tag')) {
+                                        const elements = element.elements;
+                                        // @ts-ignore
+                                        elements.forEach(function (element) {
+                                            const filterValue = element.value;
+                                            const resultsNumber = element.resultsCount;
+                                            console.log('filterValue:', filterValue, 'resultsNumber:', resultsNumber);  // Debugowanie
+
+                                            // Znajdź elementy z fs-cmsfilter-field i dopasowanym tekstem
+                                            const matchingElements = Array.from(document.querySelectorAll('[fs-cmsfilter-field]')).filter(
+                                                function (el) {
+                                                    // @ts-ignore
+                                                    return el.textContent.trim().includes(filterValue);
+                                                }
+                                            );
+
+                                            console.log('matchingElements:', matchingElements);  // Debugowanie
+
+                                            matchingElements.forEach(function (matchingElement) {
+                                                const resultCountElement = matchingElement.nextElementSibling;
+                                                if (resultCountElement && resultCountElement.classList.contains('filter-results-count')) {
+                                                    resultCountElement.textContent = resultsNumber;
+                                                }
+                                            });
+                                        });
+                                    }
+                                });
+                            }
+
+                            updateItemCount();
+
+                            // @ts-ignore
+                            filterInstance.listInstance.on('renderitems', (renderedItems) => {
+                                updateItemCount();
+                            });
+                        },
+                    ]);
                 } catch (error) {
                     console.error('Error during CMS load handling:', error);
                 }
@@ -238,11 +329,4 @@ document.addEventListener("DOMContentLoaded", async () => {
             onCmsLoad();
         },
     ]);
-
-    /*
-    // @ts-ignore
-    window.fsAttributes.cmsfilter.destroy();
-    // @ts-ignore
-    window.fsAttributes.cmsfilter.init();
-    */
 });
