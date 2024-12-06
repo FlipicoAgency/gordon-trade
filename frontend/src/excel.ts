@@ -1,7 +1,10 @@
+import * as XLSX from 'xlsx';
 import type {Order} from "../types/orders-b2b";
 import {generateOrderItem} from "./dashboard/orders";
-import type {OrderProduct, ProductInCart} from "../types/cart";
+import type {OrderProduct, ProductInCart, Product} from "../types/cart";
 import type {Member} from "./memberstack";
+import {fetchCategories, fetchProductDetails} from "./cartItems";
+import {categoryMap} from "./cartItems";
 
 const orderedAgainModal = document.querySelector('#re-ordered') as HTMLElement;
 const orderList = document.querySelector('.order_list') as HTMLElement;
@@ -194,5 +197,50 @@ export async function addNewOrderToExcel(
         }
     } catch (error) {
         console.error('Błąd podczas dodawania zamówienia do arkusza:', error);
+    }
+}
+
+const generateExcelFile = (products: Product[]): void => {
+    // Przygotuj dane do Excela
+    const data = products.map(product => ({
+        Nazwa: product.fieldData.name,
+        Kategoria: categoryMap[product.fieldData.kategoria] || 'Nieznana kategoria',
+        Cena: `${product.fieldData.cena.toFixed(2)} zł`,
+        SKU: product.fieldData.sku,
+        Dostępność: product.fieldData.produktNiedostepny ? 'Brak na stanie' : 'W magazynie',
+    }));
+
+    // Utwórz arkusz Excela
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Oferta');
+
+    // Wygeneruj dane w formacie array
+    const excelData = XLSX.write(workbook, {bookType: 'xlsx', type: 'array'});
+
+    // Konwersja na Blob
+    const excelBlob = new Blob([excelData], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+
+    // Utwórz link do pobrania pliku
+    const url = window.URL.createObjectURL(excelBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'oferta.xlsx';
+    a.click();
+    window.URL.revokeObjectURL(url);
+};
+
+export const initializeGenerateOffer = async (productsToOffer: string[]): Promise<void> => {
+    // Dodaj obsługę przycisku "Pobierz ofertę"
+    const generateOfferButton = document.getElementById('generate-offer') as HTMLButtonElement;
+    if (generateOfferButton) {
+        generateOfferButton.addEventListener('click', async () => {
+            const products = await Promise.all(
+                productsToOffer.map(productId => fetchProductDetails(productId))
+            );
+            const validProducts = products.filter(product => product !== null) as Product[];
+            await fetchCategories();
+            generateExcelFile(validProducts);
+        });
     }
 }

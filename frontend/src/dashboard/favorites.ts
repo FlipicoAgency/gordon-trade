@@ -1,38 +1,9 @@
 import {getMemberJSON, updateMemberJSON} from "../memberstack";
-import {fetchProductDetails, initializeAddToCartButtons} from "../cartItems";
-import type {Category, Product} from "../../types/cart";
-import {initializeGenerateOffer} from "./generate-offer";
+import {categoryMap, fetchCategories, fetchProductDetails, initializeAddToCartButtons} from "../cartItems";
+import type {Product} from "../../types/cart";
 
 const noResultElement = document.querySelector('[favorites="none"]') as HTMLElement;
 const favoriteList = document.querySelector('.favorite_list') as HTMLElement;
-
-export let categoryMap: Record<string, string> = {};
-
-// Function to fetch product details by productId
-const fetchCategories = async (): Promise<void> => {
-    try {
-        const response = await fetch(`https://gordon-trade.onrender.com/api/categories`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch categories`);
-        }
-
-        const data: { items: Category[] } = await response.json();
-        categoryMap = data.items.reduce((map, category) => {
-            map[category.id] = category.fieldData.name;
-            return map;
-        }, {} as Record<string, string>);
-
-        //console.log(`Category map initialized:`, categoryMap);
-    } catch (error) {
-        console.error(`Error fetching categories:`, error);
-    }
-};
 
 const generateFavoriteItem = (product: Product): HTMLElement => {
     const categoryName = categoryMap[product.fieldData.kategoria] || 'Unknown Category';
@@ -80,10 +51,10 @@ const generateFavoriteItem = (product: Product): HTMLElement => {
             </div>
         </div>
         <div class="favorite_buttons">
-            <button blocks-name="button" data-ms-content="members" class="button is-small addtocartbutton" data-commerce-product-id="${product.id}">
+            <button data-ms-content="members" class="button is-small addtocartbutton" data-commerce-product-id="${product.id}">
                 <div class="text-visual-fix">Dodaj do koszyka</div>
             </button>
-            <button blocks-name="button" data-ms-content="members" class="button is-secondary is-small deletefromfavorites" data-product-id="${product.id}">
+            <button data-ms-content="members" class="button is-secondary is-small deletefromfavorites" data-product-id="${product.id}">
                 <div class="text-visual-fix">Usuń z ulubionych</div>
             </button>
         </div>
@@ -159,5 +130,4 @@ export const initializeFavorites = async (): Promise<void> => {
 
     const favorites: string[] = memberJson.data.favorites || [];
     await renderFavorites(favorites);
-    await initializeGenerateOffer(favorites);
 };

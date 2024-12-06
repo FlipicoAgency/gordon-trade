@@ -1,6 +1,7 @@
 import {getMemberData} from "./memberstack";
 import type {Product, ProductInCart} from "../types/cart";
 import {addNewOrderToExcel} from "./excel";
+import type {Category} from "../types/cart";
 
 const addedToCartModal = document.querySelector<HTMLElement>('#added-to-cart');
 
@@ -413,6 +414,34 @@ export async function getSessionID() {
     return null;
   }
 }
+
+export let categoryMap: Record<string, string> = {};
+
+// Function to fetch product details by productId
+export const fetchCategories = async (): Promise<void> => {
+  try {
+    const response = await fetch(`https://gordon-trade.onrender.com/api/categories`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch categories`);
+    }
+
+    const data: { items: Category[] } = await response.json();
+    categoryMap = data.items.reduce((map, category) => {
+      map[category.id] = category.fieldData.name;
+      return map;
+    }, {} as Record<string, string>);
+
+    //console.log(`Category map initialized:`, categoryMap);
+  } catch (error) {
+    console.error(`Error fetching categories:`, error);
+  }
+};
 
 export async function initializeCart() {
   await updateCartUI();

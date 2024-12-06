@@ -1,7 +1,11 @@
 import {initializeAddToCartButtons} from "./cartItems";
 import {getMemberData, getMemberJSON, updateMemberJSON} from './memberstack';
+import {initializeGenerateOffer} from "./excel";
 
 document.addEventListener("DOMContentLoaded", async () => {
+    // Array to hold selected CMS IDs
+    const selectedItems: string[] = [];
+
     // Function to calculate JSON size in bytes
     const calculateJSONSize = (json: any): number =>
         new Blob([JSON.stringify(json)]).size;
@@ -92,6 +96,55 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     };
 
+    // Initialize the checkboxes after items are fully loaded
+    const initializeCheckboxes = (): void => {
+        // Select all checkboxes
+        const checkboxes = document.querySelectorAll<HTMLInputElement>(
+            '.product_form_checkbox-field input[type="checkbox"]'
+        );
+
+        checkboxes.forEach((checkbox) => {
+            // Get the associated CMS ID
+            const cmsId = checkbox.closest('.product_item')?.querySelector<HTMLElement>(
+                '[data-commerce-product-id]'
+            )?.getAttribute('data-commerce-product-id');
+
+            if (cmsId) {
+                // Add event listener for checkbox change
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        // Add to selectedItems if not already present
+                        if (!selectedItems.includes(cmsId)) {
+                            selectedItems.push(cmsId);
+                        }
+                    } else {
+                        // Remove from selectedItems if unchecked
+                        const index = selectedItems.indexOf(cmsId);
+                        if (index > -1) {
+                            selectedItems.splice(index, 1);
+                        }
+                    }
+
+                    // Log the updated array (for debugging)
+                    console.log('Selected Items:', selectedItems);
+                });
+            }
+        });
+    };
+
+    // Attach event listener to the "Generate Offer" button
+    const initializeGenerateOfferButton = (): void => {
+        const generateOfferButton = document.getElementById('generate-offer') as HTMLButtonElement;
+        if (generateOfferButton) {
+            generateOfferButton.addEventListener('click', () => {
+                // Pass the selectedItems array to initializeGenerateOffer
+                initializeGenerateOffer(selectedItems).catch((error) => {
+                    console.error('Error generating offer:', error);
+                });
+            });
+        }
+    };
+
     function calculatePromoPercentage(): void {
         // Select all product items
         const productItems = document.querySelectorAll<HTMLDivElement>('.product_item-wrapper');
@@ -121,6 +174,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    initializeGenerateOfferButton();
+
     // @ts-ignore
     window.fsAttributes = window.fsAttributes || [];
     // @ts-ignore
@@ -128,26 +183,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         'cmsload',
         // @ts-ignore
         (listInstances) => {
-            console.log('cmsload Successfully loaded!');
+            //console.log('cmsload Successfully loaded!');
 
             const [listInstance] = listInstances;
 
             calculatePromoPercentage();
             initializeAddToCartButtons();
             initializeFavoritesState();
+            initializeCheckboxes();
 
             // @ts-ignore
             listInstance.on('renderitems', (renderedItems) => {
                 calculatePromoPercentage();
                 initializeAddToCartButtons();
                 initializeFavoritesState();
+                initializeCheckboxes();
             });
 
             async function onCmsLoad() {
                 try {
                     // Wait for the rendering queue to finish
                     await listInstance.renderingQueue;
-                    console.log('Wszystko załadowane!');
+                    //console.log('Wszystko załadowane!');
 
                     // Wait for the rendering queue to finish
                     const productItems = await listInstance.items;
@@ -268,19 +325,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                     // @ts-ignore
                     window.fsAttributes.cmsfilter.init();
-
                     // @ts-ignore
                     window.fsAttributes.push([
                         'cmsfilter',
                         // @ts-ignore
                         (filterInstances) => {
-                            console.log('cmsfilter Successfully loaded!');
+                            //console.log('cmsfilter Successfully loaded!');
 
                             const [filterInstance] = filterInstances;
                             const filtersData = filterInstance.filtersData;
 
                             function updateItemCount() {
-                                console.log('filtersData:', filtersData);  // Debugowanie
+                                //console.log('filtersData:', filtersData);  // Debugowanie
 
                                 // @ts-ignore
                                 filtersData.forEach(function (element) {
@@ -290,7 +346,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                                         elements.forEach(function (element) {
                                             const filterValue = element.value;
                                             const resultsNumber = element.resultsCount;
-                                            console.log('filterValue:', filterValue, 'resultsNumber:', resultsNumber);  // Debugowanie
+                                            //console.log('filterValue:', filterValue, 'resultsNumber:', resultsNumber);  // Debugowanie
 
                                             // Znajdź elementy z fs-cmsfilter-field i dopasowanym tekstem
                                             const matchingElements = Array.from(document.querySelectorAll('[fs-cmsfilter-field]')).filter(
@@ -300,7 +356,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                                                 }
                                             );
 
-                                            console.log('matchingElements:', matchingElements);  // Debugowanie
+                                            //console.log('matchingElements:', matchingElements);  // Debugowanie
 
                                             matchingElements.forEach(function (matchingElement) {
                                                 const resultCountElement = matchingElement.nextElementSibling;
