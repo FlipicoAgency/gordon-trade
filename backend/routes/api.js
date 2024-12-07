@@ -462,28 +462,49 @@ router.get('/session-id', (req, res) => {
 
 // Dodaj przedmiot do koszyka
 router.post('/cart', (req, res) => {
+    if (!req.session.cart) {
+        req.session.cart = []; // Inicjalizacja koszyka, jeśli nie istnieje
+    }
+
     const item = req.body;
-    const existingItem = req.session.cart.find(i => i.id === item.id);
+    const { id, variant } = item;
+
+    if (!id || typeof item.quantity !== 'number' || item.quantity <= 0) {
+        return res.status(400).send({ message: 'Invalid item data' });
+    }
+
+    // Sprawdź, czy przedmiot już istnieje w koszyku
+    const existingItem = req.session.cart.find(
+        i => i.id === id && i.variant === variant
+    );
 
     if (existingItem) {
         existingItem.quantity += item.quantity;
     } else {
         req.session.cart.push(item);
-        console.log('Koszyk został zaktualizowany:', req.session.cart);
     }
+
+    console.log('Koszyk został zaktualizowany:', req.session.cart);
     res.status(201).send(req.session.cart);
 });
 
 // Pobierz koszyk
 router.get('/cart', (req, res) => {
-    res.json(req.session.cart);
+    res.json(req.session.cart || []);
 });
 
 // Zaktualizuj ilość przedmiotu w koszyku
 router.put('/cart/:itemId', (req, res) => {
     const { itemId } = req.params;
-    const { quantity } = req.body;
-    const item = req.session.cart.find(i => i.id === itemId);
+    const { variant, quantity } = req.body;
+
+    if (!req.session.cart) {
+        return res.status(404).send({ message: 'Cart is empty' });
+    }
+
+    const item = req.session.cart.find(
+        i => i.id === itemId && i.variant === variant
+    );
 
     if (item) {
         item.quantity = quantity;
@@ -496,7 +517,16 @@ router.put('/cart/:itemId', (req, res) => {
 // Usuń przedmiot z koszyka
 router.delete('/cart/:itemId', (req, res) => {
     const { itemId } = req.params;
-    req.session.cart = req.session.cart.filter(i => i.id !== itemId);
+    const { variant } = req.body;
+
+    if (!req.session.cart) {
+        return res.status(404).send({ message: 'Cart is empty' });
+    }
+
+    req.session.cart = req.session.cart.filter(
+        i => !(i.id === itemId && i.variant === variant)
+    );
+
     res.send(req.session.cart);
 });
 
