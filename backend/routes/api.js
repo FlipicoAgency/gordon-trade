@@ -460,7 +460,7 @@ router.get('/session-id', (req, res) => {
     res.json({ sessionID: req.sessionID });
 });
 
-// Dodaj przedmiot do koszyka
+/// Dodaj przedmiot do koszyka
 router.post('/cart', (req, res) => {
     if (!req.session.cart) {
         req.session.cart = []; // Inicjalizacja koszyka, jeśli nie istnieje
@@ -475,7 +475,7 @@ router.post('/cart', (req, res) => {
 
     // Sprawdź, czy przedmiot już istnieje w koszyku
     const existingItem = req.session.cart.find(
-        i => i.id === id && i.variant === variant
+        i => i.id === id && (i.variant || null) === (variant || null)
     );
 
     if (existingItem) {
@@ -503,7 +503,7 @@ router.put('/cart/:itemId', (req, res) => {
     }
 
     const item = req.session.cart.find(
-        i => i.id === itemId && i.variant === variant
+        i => i.id === itemId && (i.variant || null) === (variant || null)
     );
 
     if (item) {
@@ -524,7 +524,7 @@ router.delete('/cart/:itemId', (req, res) => {
     }
 
     req.session.cart = req.session.cart.filter(
-        i => !(i.id === itemId && i.variant === variant)
+        i => !(i.id === itemId && (i.variant || null) === (variant || null))
     );
 
     res.send(req.session.cart);
