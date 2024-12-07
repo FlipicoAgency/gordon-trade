@@ -10,16 +10,16 @@ window.Webflow.push(async () => {
         let baseUrl = '';
         switch (true) {
             case currentUrl.includes("/cz"): // Czech
-                baseUrl = "https://gordon-trade.com/cz/panel-b2b?kategoria=";
+                baseUrl = "/panel-b2b?kategoria=";
                 break;
             case currentUrl.includes("/cn"): // Chinese
-                baseUrl = "https://gordon-trade.com/cn/panel-b2b?kategoria=";
+                baseUrl = "/panel-b2b?kategoria=";
                 break;
             case currentUrl.includes("/en"): // English
-                baseUrl = "https://gordon-trade.com/en/panel-b2b?kategoria=";
+                baseUrl = "/panel-b2b?kategoria=";
                 break;
             default: // Default language (e.g., Polish)
-                baseUrl = "https://gordon-trade.webflow.io/panel-b2b?kategoria=";
+                baseUrl = "/panel-b2b?kategoria=";
                 break;
         }
 

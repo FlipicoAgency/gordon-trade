@@ -219,15 +219,21 @@ document.addEventListener("DOMContentLoaded", async () => {
                         const pricePromo = item.element.querySelector<HTMLElement>('[data-price="promo"]')?.textContent;
 
                         if (priceNormal || pricePromo) {
-                            // Tworzymy nowy element span
+                            // Tworzymy nowy element span priceElement
                             const priceElement = document.createElement('span');
                             priceElement.style.display = 'none'; // Ukrywamy element
                             priceElement.setAttribute('fs-cmsfilter-field', 'Cena');
                             priceElement.setAttribute('fs-cmssort-field', 'Cena');
 
+                            const promoElement = document.createElement('span');
+                            promoElement.style.display = 'none'; // Ukrywamy element
+                            promoElement.setAttribute('fs-cmsfilter-field', 'Promocja');
+                            promoElement.textContent = 'true';
+
                             // Dodajemy odpowiednią wartość do elementu
                             if (pricePromo) {
                                 priceElement.textContent = pricePromo; // Ustawiamy cenę promocyjną, jeśli jest dostępna
+                                item.element.appendChild(promoElement); // Dodaj element span promoElement
                             } else if (priceNormal) {
                                 priceElement.textContent = priceNormal; // Ustawiamy cenę normalną, jeśli nie ma promocyjnej
                             }
@@ -336,7 +342,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                             const filtersData = filterInstance.filtersData;
 
                             function updateItemCount() {
-                                //console.log('filtersData:', filtersData);  // Debugowanie
+                                console.log('filtersData:', filtersData);  // Debugowanie
 
                                 // @ts-ignore
                                 filtersData.forEach(function (element) {
