@@ -17,6 +17,16 @@ const webflowConfig = {
 
 const SPREADSHEET_ID = '14vV1YgB7M2kc8uwIRHBUateZhB1RL1RzIwThdn1jbs8';
 
+// Funkcja pomocnicza do pobrania ostatniego wiersza
+async function getLastRow(sheets) {
+    const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'Orders!A:A', // Kolumna A
+    });
+
+    return response.data.values.length; // Liczba istniejących wierszy
+}
+
 // Pobierz zamówienia B2B
 router.get('/sheets/orders', async (req, res) => {
     const { nip } = req.query; // NIP przekazany jako query parameter
@@ -28,7 +38,7 @@ router.get('/sheets/orders', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders B2B!A1:Q', // Zakres danych
+            range: 'Orders B2B!A1:N', // Zakres danych
         });
 
         const rows = response.data.values;
@@ -65,9 +75,10 @@ router.get('/sheets/orders', async (req, res) => {
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    productId: row[3],      // Kolumna Product ID
-                    quantity: row[4],       // Kolumna Quantity
-                    productName: row[2],    // Kolumna Product name
+                    name: row[2],       // Kolumna Product name
+                    id: row[3],         // Kolumna Product ID
+                    variant: row[4],    // Kolumna Product variant
+                    quantity: row[5],   // Kolumna Quantity
                 });
             }
         });
@@ -92,7 +103,7 @@ router.post('/sheets/orders', async (req, res) => {
         // Dodaj nowe wiersze
         const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders B2B!A1:Q',
+            range: 'Orders B2B!A1:N',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
@@ -107,7 +118,7 @@ router.post('/sheets/orders', async (req, res) => {
                 const startRow = currentRow + index;
                 const endRow = startRow + values.filter((r) => r[0] === '').length || startRow + 1;
 
-                const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+                const columnsToMerge = [0, 1, 6, 7, 8, 9, 10, 11, 12, 13];
                 columnsToMerge.forEach((colIndex) => {
                     mergeRequests.push({
                         mergeCells: {
@@ -133,7 +144,7 @@ router.post('/sheets/orders', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do obramowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz (liczba dodanych wierszy)
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 17, // Kolumna Q (17, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 14, // Kolumna N (14, bo endColumnIndex jest wyłączny)
                 },
                 top: {
                     style: 'SOLID',
@@ -176,7 +187,7 @@ router.post('/sheets/orders', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do wycentrowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 17, // Kolumna Q (23, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 14, // Kolumna N (14, bo endColumnIndex jest wyłączny)
                 },
                 cell: {
                     userEnteredFormat: {
@@ -220,7 +231,7 @@ router.get('/sheets/containers', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Containers!A1:S', // Zakres danych
+            range: 'Containers!A1:T', // Zakres danych
         });
 
         const rows = response.data.values;
@@ -257,11 +268,12 @@ router.get('/sheets/containers', async (req, res) => {
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    productName: row[3],        // Kolumna Product name
-                    orderValue: row[5],         // Kolumna Order value
-                    estimatedFreight: row[6],   // Kolumna Estimated freight
-                    capacity: row[7],           // Kolumna Capacity
-                    quantity: row[4],           // Kolumna Quantity
+                    name: row[3],               // Kolumna Product name
+                    variant: row[4],            // Kolumna Product variant
+                    quantity: row[5],           // Kolumna Quantity
+                    orderValue: row[6],         // Kolumna Order value
+                    estimatedFreight: row[7],   // Kolumna Estimated freight
+                    capacity: row[8],           // Kolumna Capacity
                 });
             }
         });
@@ -286,7 +298,7 @@ router.post('/sheets/containers', async (req, res) => {
         // Dodaj nowe wiersze
         const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:S',
+            range: 'Orders!A1:T',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
@@ -402,16 +414,6 @@ router.post('/sheets/containers', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
-// Funkcja pomocnicza do pobrania ostatniego wiersza
-async function getLastRow(sheets) {
-    const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: 'Orders!A:A', // Kolumna A
-    });
-
-    return response.data.values.length; // Liczba istniejących wierszy
-}
 
 // Pobierz określony produkt na podstawie ID
 router.get('/products/:productId', async (req, res) => {
