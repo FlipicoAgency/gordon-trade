@@ -21,7 +21,7 @@ const SPREADSHEET_ID = '14vV1YgB7M2kc8uwIRHBUateZhB1RL1RzIwThdn1jbs8';
 async function getLastRow(sheets) {
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Orders!A:A', // Kolumna A
+        range: 'Orders B2B!A:A', // Kolumna A
     });
 
     return response.data.values.length; // Liczba istniejących wierszy
