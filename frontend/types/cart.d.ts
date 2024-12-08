@@ -44,12 +44,13 @@ export interface ProductInCart extends Product {
 }
 
 export interface OrderProduct {
-    productId: string; // Identyfikator produktu
-    quantity: string;  // Ilość w zamówieniu (jako string)
-    productName: string; // Nazwa produktu
-    orderValue?: string; // Opcjonalnie wartość zamówienia
-    estimatedFreight?: string; // Opcjonalnie szacowany koszt transportu
-    capacity?: string; // Opcjonalna pojemność
+    name: string;
+    id: string;
+    quantity: string;
+    variant?: string | null;
+    orderValue?: string;
+    estimatedFreight?: string;
+    capacity?: string;
 }
 
 export interface Category {

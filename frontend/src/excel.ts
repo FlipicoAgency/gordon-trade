@@ -124,6 +124,7 @@ export async function addNewOrderToExcel(
                 index === 0 ? String(Math.floor(100000000 + Math.random() * 900000000)) : '', // Generuj losowe Order ID
                 product.fieldData.name || '',
                 product.id || '',
+                product.variant || '',
                 product.quantity || '',
                 index === 0 ? items.reduce((sum, item) => sum + item.fieldData.cena * item.quantity, 0).toFixed(2) : '', // Całkowita wartość zamówienia
                 index === 0 ? getTodayDate() : '', // Data zamówienia
@@ -132,17 +133,18 @@ export async function addNewOrderToExcel(
                 '', // FV PDF
                 index === 0 ? 'Oczekiwanie na płatność' : '', // Status płatności
                 index === 0 ? 'Oczekiwanie na płatność' : '', // Status dostawy
-                '', // Estimated time of departure
-                '', // Fastest possible shipping date
-                '', // Estimated time of arrival
-                '', // Extended delivery date
+                // '', // Estimated time of departure
+                // '', // Fastest possible shipping date
+                // '', // Estimated time of arrival
+                // '', // Extended delivery date
                 '', // Comments
             ])
             : items.products.map((product, index) => [
                 index === 0 ? items["Customer NIP"] : '',
                 index === 0 ? String(Math.floor(100000000 + Math.random() * 900000000)) : '', // Generuj losowe Order ID
-                product.productName || '',
-                product.productId || '',
+                product.name || '',
+                product.id || '',
+                product.variant || '',
                 product.quantity || '',
                 index === 0 ? items["Order value"] : '',
                 index === 0 ? getTodayDate() : '',
@@ -151,10 +153,10 @@ export async function addNewOrderToExcel(
                 '', // FV PDF
                 index === 0 ? 'Oczekiwanie na płatność' : '',
                 index === 0 ? 'Oczekiwanie na płatność' : '',
-                '', // Estimated time of departure
-                '', // Fastest possible shipping date
-                '', // Estimated time of arrival
-                '', // Extended delivery date
+                // '', // Estimated time of departure
+                // '', // Fastest possible shipping date
+                // '', // Estimated time of arrival
+                // '', // Extended delivery date
                 '', // Comments
             ]);
 
@@ -205,6 +207,7 @@ const generateExcelFile = (products: Product[]): void => {
     const data = products.map(product => ({
         Nazwa: product.fieldData.name,
         Kategoria: categoryMap[product.fieldData.kategoria] || 'Nieznana kategoria',
+        Wariant: '',
         Cena: `${product.fieldData.cena.toFixed(2)} zł`,
         SKU: product.fieldData.sku,
         Dostępność: product.fieldData.produktNiedostepny ? 'Brak na stanie' : 'W magazynie',

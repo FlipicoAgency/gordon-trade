@@ -35,11 +35,12 @@ async function handleOrderAgain(button: HTMLElement) {
         const items: ProductInCart[] = [];
 
         for (const product of order.products) {
-            const productDetails: Product = await fetchProductDetails(product.productId);
+            const productDetails: Product = await fetchProductDetails(product.id);
 
             // Dodaj szczegóły produktu z ilością
             items.push({
                 ...productDetails,
+                variant: product.variant,
                 quantity: Number(product.quantity),
             });
         }
@@ -208,6 +209,7 @@ export async function generateOrderItem(order: Order) {
                                     )}
                                 </div>       
                             </div>   
+                            <!--
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">Planowana data dostawy:</div>
                             </div>
@@ -220,7 +222,6 @@ export async function generateOrderItem(order: Order) {
                              <div class="order_details_grid_item">
                                 <div class="text-size-small">${order['Extended delivery date'] ? `Tak, ${order['Extended delivery date']}` : 'Nie'}</div>
                             </div>     
-                            <!-- 
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">Zamówienie cykliczne?</div>
                             </div>
@@ -246,7 +247,7 @@ export async function generateOrderItem(order: Order) {
 
     // Dodaj produkty do zamówienia
     for (const product of order.products) {
-        const productDetails: Product = await fetchProductDetails(product.productId); // Pobierz szczegóły produktu
+        const productDetails: Product = await fetchProductDetails(product.id); // Pobierz szczegóły produktu
 
         const productQuantity = Number(product.quantity) || 0;
         const productPrice = productDetails.fieldData.cena || 0;
@@ -274,6 +275,11 @@ export async function generateOrderItem(order: Order) {
                             <div class="text-size-small">SKU:</div>
                             <div class="text-size-small">${productDetails.fieldData.sku || 'Nieznane'}</div>
                         </div>
+                        ${product.variant ? `
+                        <div class="order_details_grid_item">
+                            <div class="text-size-small">Wariant:</div>
+                            <div class="text-size-small">${product.variant || 'Nieznany'}</div>
+                        </div>` : ''}
                     </div>
                 </div>
                 <div class="order_product_price">

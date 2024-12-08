@@ -88,7 +88,8 @@ function formatToContainers(data: any): Container[] {
     return Object.values(data).map((order: any) => {
         // Mapowanie produktów
         const products: OrderProduct[] = order.products.map((product: OrderProduct) => ({
-            productName: product.productName,
+            name: product.name,
+            variant: product.variant,
             quantity: parseInt(product.quantity, 10),
             orderValue: parseFloat(<string>product.orderValue),
             estimatedFreight: parseFloat(<string>product.estimatedFreight),
@@ -181,7 +182,10 @@ function showOrderInfo(container: Container, containers: Container[]): void {
             : "";
 
         const productListHTML = sameStatusContainer.Products.map(
-            item => `<div class="collection-item w-dyn-item"><div class="text-block" style="text-wrap: initial">${item.productName}</div></div>`
+            item => `
+                <div class="collection-item w-dyn-item">
+                    <div class="text-block" style="text-wrap: initial">${item.name}${item.variant ? `, Wariant: ${item.variant}` : ''}</div>
+                </div>`
         ).join("");
 
         return `
