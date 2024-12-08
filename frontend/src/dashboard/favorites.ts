@@ -13,7 +13,7 @@ const generateFavoriteItem = (product: Product): HTMLElement => {
     li.innerHTML = `
         <div class="favorite_wrapper">
             <img loading="lazy" src="${product.fieldData.miniatura?.url}" alt="${product.fieldData.miniatura?.alt || product.fieldData.name}" class="favorite_image">
-            <div class="favorite_product">
+            <a class="favorite_product" href="${window.location.origin}/produkty/${product.fieldData.slug}">
                 <div class="favorite_product_name">
                     <div class="text-size-medium text-weight-semibold">${product.fieldData.name}</div>
                     <div class="text-size-small">${categoryName}</div>
@@ -48,14 +48,16 @@ const generateFavoriteItem = (product: Product): HTMLElement => {
                         <div class="text-size-small">SKU: ${product.fieldData.sku}</div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
-        <div class="favorite_buttons">
+        <div class="favorite_buttons" style="align-self: flex-start">
+            <!--
             <button data-ms-content="members" class="button is-small addtocartbutton" data-commerce-product-id="${product.id}">
                 <div class="text-visual-fix">Dodaj do koszyka</div>
             </button>
+            -->
             <button data-ms-content="members" class="button is-secondary is-small deletefromfavorites" data-product-id="${product.id}">
-                <div class="text-visual-fix">Usuń z ulubionych</div>
+                <div class="text-visual-fix" style="white-space: nowrap">Usuń z ulubionych</div>
             </button>
         </div>
     `;
@@ -110,7 +112,7 @@ const renderFavorites = async (favorites: string[]): Promise<void> => {
         }
 
         // Inicjalizuj przyciski "Dodaj do koszyka" po renderowaniu elementów
-        await initializeAddToCartButtons();
+        // await initializeAddToCartButtons();
     }
 };
 
