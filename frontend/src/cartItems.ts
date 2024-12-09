@@ -196,27 +196,43 @@ export const initializeAddToCartButtons = (): void => {
     });
 };
 
-async function removeItemFromCart(itemId: string) {
+async function removeItemFromCart(itemId: string, variant: string | null = null) {
     try {
-        await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
+        const cleanVariant = variant === "null" ? null : variant; // Zamiana "null" na null
+        const response = await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
             method: 'DELETE',
             credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ variant: cleanVariant }), // Użyj prawdziwego `null`
         });
-        await updateCartUI();
+
+        if (!response.ok) {
+            throw new Error(`Failed to remove item: ${response.statusText}`);
+        }
+
+        await updateCartUI(); // Aktualizacja koszyka po usunięciu
     } catch (error) {
         console.error('Failed to remove item from cart:', error);
     }
 }
 
-async function updateItemQuantity(itemId: string, quantity: number) {
+async function updateItemQuantity(itemId: string, quantity: number, variant: string | null = null) {
     try {
-        await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
+        const cleanVariant = variant === "null" ? null : variant; // Zamiana "null" na null
+        const response = await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
             method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({quantity}),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quantity, variant: cleanVariant }), // Przekaż ilość i wariant
             credentials: 'include',
         });
-        await updateCartUI();
+
+        if (!response.ok) {
+            throw new Error(`Failed to update item quantity: ${response.statusText}`);
+        }
+
+        await updateCartUI(); // Zaktualizuj interfejs użytkownika
     } catch (error) {
         console.error('Failed to update item quantity:', error);
     }
@@ -225,16 +241,16 @@ async function updateItemQuantity(itemId: string, quantity: number) {
 function addQuantityChangeListener() {
     document.addEventListener('change', async (event) => {
         const input = event.target as HTMLInputElement;
+
         if (!input.classList.contains('is-quantity-input')) return;
 
         const newQuantity = parseInt(input.value, 10);
-        const itemId = input
-            .closest('.cart-item')
-            ?.querySelector('.deletebutton')
-            ?.getAttribute('data-item-id');
+        const cartItemElement = input.closest('.cart-item');
+        const itemId = cartItemElement?.querySelector('.deletebutton')?.getAttribute('data-item-id');
+        const variant = cartItemElement?.querySelector('.deletebutton')?.getAttribute('data-variant') || null;
 
         if (itemId && newQuantity > 0) {
-            await updateItemQuantity(itemId, newQuantity);
+            await updateItemQuantity(itemId, newQuantity, variant); // Przekaż również `variant`
         }
     });
 }
@@ -270,7 +286,7 @@ function renderCartItems(cartItems: ProductInCart[]) {
             <div class="card-product-form w-form">
                 <input class="form_input is-quantity-input w-input" data-input="quantity" maxlength="256" value="${item.quantity}" type="number">
             </div>
-            <button class="button deletebutton" data-item-id="${item.id}">
+            <button class="button deletebutton" data-item-id="${item.id}" data-variant="${item.variant}">
                 <div class="icon-1x1-xsmall">
                     <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-x">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
@@ -289,11 +305,14 @@ function renderCartItems(cartItems: ProductInCart[]) {
     const removeButtons = document.querySelectorAll('.deletebutton');
     removeButtons.forEach((button) => {
         button.addEventListener('click', async (event) => {
-            const itemId = (event.currentTarget as HTMLElement).getAttribute('data-item-id');
+            const buttonElement = event.currentTarget as HTMLElement;
+            const itemId = buttonElement.getAttribute('data-item-id');
+            const variant = buttonElement.getAttribute('data-variant') || null;
+
             if (itemId) {
-                await removeItemFromCart(itemId);
+                await removeItemFromCart(itemId, variant); // Przekaż `variant` do funkcji
             } else {
-                console.error('Failed to remove item from cart:', error);
+                console.error('Failed to remove item from cart: missing item ID');
             }
         });
     });
@@ -493,6 +512,5 @@ export const fetchCategories = async (): Promise<void> => {
 };
 
 export async function initializeCart() {
-    //await clearCart();
     await updateCartUI();
 }
