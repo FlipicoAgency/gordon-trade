@@ -230,7 +230,7 @@ function addQuantityChangeListener() {
         const newQuantity = parseInt(input.value, 10);
         const itemId = input
             .closest('.cart-item')
-            ?.querySelector('.remove-from-cart')
+            ?.querySelector('.deletebutton')
             ?.getAttribute('data-item-id');
 
         if (itemId && newQuantity > 0) {
@@ -251,38 +251,49 @@ function renderCartItems(cartItems: ProductInCart[]) {
         const itemElement = document.createElement('div');
         itemElement.className = 'cart-item';
         itemElement.innerHTML = `
-      <img src="${item.fieldData.thumbnail.url}" loading="lazy" alt="${item.fieldData.thumbnail.alt}" class="image-2">
-      <a href="/produkty/${item.fieldData.slug}" class="product-link">
-        <div>
-          <div class="text-weight-bold text-style-2lines">${item.fieldData.name}</div>
-          <div class="text-color-brand" style="display: ${item.variant !== null ? 'block' : 'none'}">Wariant: ${item.variant}</div>
-          <div class="div-block">
-            <div class="text-color-brand">Cena: ${item.fieldData.pricePromo ? item.fieldData.pricePromo.toFixed(2) : item.fieldData.priceNormal.toFixed(2)} zł</div>
-            <div class="text-color-brand">Ilość: ${item.quantity}</div>
-          </div>
-        </div>
-      </a>
-      <div class="w-form">
-        <input class="form_input is-quantity-input w-input" maxlength="256" value="${item.quantity}" type="number" min="1" />
-      </div>
-      <div class="icon-embed-xsmall w-embed remove-from-cart" data-item-id="${item.id}">
-        <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="100%" height="100%" viewBox="0 0 24 24">
-          <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"></path>
-        </svg>
-      </div>
-    `;
-
+            <img sizes="100vw" alt="" src="${item.fieldData.thumbnail.url}" loading="lazy" class="cart-product-image">
+            <div class="cart-product-info">
+                <a href="/produkty/${item.fieldData.slug}" class="text-weight-semibold text-style-2lines">${item.fieldData.name}</a>
+                <div class="cart-product-parameter" style="display: ${item.variant !== null ? 'block' : 'none'}">
+                    <div class="display-inline">Wariant:</div>
+                    <div class="display-inline text-weight-semibold text-color-brand"> ${item.variant}</div>
+                </div>
+                <div class="cart-product-parameter">
+                    <div class="display-inline">Cena:</div>
+                    <div class="display-inline text-weight-semibold text-color-brand"> ${item.fieldData.pricePromo ? item.fieldData.pricePromo.toFixed(2) : item.fieldData.priceNormal.toFixed(2)} zł</div>
+                </div>
+                <div class="cart-product-parameter">
+                    <div class="display-inline">Ilość:</div>
+                    <div class="display-inline text-weight-semibold text-color-brand"> ${item.quantity}</div>
+                </div>
+            </div>
+            <div class="card-product-form w-form">
+                <input class="form_input is-quantity-input w-input" data-input="quantity" maxlength="256" value="${item.quantity}" type="number">
+            </div>
+            <button class="button deletebutton" data-item-id="${item.id}">
+                <div class="icon-1x1-xsmall">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-x">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M18 6l-12 12"></path>
+                        <path d="M6 6l12 12"></path>
+                    </svg>
+                </div>
+            </button>
+        `;
+    
         cartListElement.appendChild(itemElement);
     });
 
     addQuantityChangeListener();
 
-    const removeButtons = document.querySelectorAll('.remove-from-cart');
+    const removeButtons = document.querySelectorAll('.deletebutton');
     removeButtons.forEach((button) => {
         button.addEventListener('click', async (event) => {
             const itemId = (event.currentTarget as HTMLElement).getAttribute('data-item-id');
             if (itemId) {
                 await removeItemFromCart(itemId);
+            } else {
+                console.error('Failed to remove item from cart:', error);
             }
         });
     });
