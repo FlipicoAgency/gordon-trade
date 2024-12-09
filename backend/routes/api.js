@@ -504,14 +504,25 @@ router.put('/cart/:itemId', (req, res) => {
         return res.status(404).send({ message: 'Cart is empty' });
     }
 
+    console.log('Koszyk przed aktualizacją:', req.session.cart);
+    console.log('Dane żądania:', { itemId, variant, quantity });
+
+    // Znajdź przedmiot w koszyku
     const item = req.session.cart.find(
-        i => i.id === itemId && (i.variant || null) === (variant || null)
+        i => i.id === itemId && (i.variant ?? null) === (variant ?? null)
     );
 
     if (item) {
+        console.log('Znaleziono przedmiot do aktualizacji:', item);
+
+        // Zaktualizuj ilość
         item.quantity = quantity;
+
+        console.log('Koszyk po aktualizacji:', req.session.cart);
+
         res.send(req.session.cart);
     } else {
+        console.error('Nie znaleziono przedmiotu w koszyku:', { itemId, variant });
         res.status(404).send({ message: 'Item not found' });
     }
 });
@@ -525,9 +536,14 @@ router.delete('/cart/:itemId', (req, res) => {
         return res.status(404).send({ message: 'Cart is empty' });
     }
 
+    console.log('Przed usunięciem:', req.session.cart);
+
+    // Upewnij się, że porównanie variant obsługuje brak wartości null lub undefined
     req.session.cart = req.session.cart.filter(
-        i => !(i.id === itemId && (i.variant || null) === (variant || null))
+        i => !(i.id === itemId && (i.variant ?? null) === (variant ?? null))
     );
+
+    console.log('Po usunięciu:', req.session.cart);
 
     res.send(req.session.cart);
 });
