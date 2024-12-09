@@ -137,8 +137,8 @@ export async function addNewOrderToExcel(
                 '', // FV amount netto
                 '', // FV number
                 '', // FV PDF
-                index === 0 ? 'Oczekiwanie na płatność' : '', // Status płatności
-                index === 0 ? 'Oczekiwanie na płatność' : '', // Status dostawy
+                index === 0 ? 'Złożono zapytanie' : '', // Status płatności
+                index === 0 ? 'Złożono zapytanie' : '', // Status dostawy
                 // '', // Estimated time of departure
                 // '', // Fastest possible shipping date
                 // '', // Estimated time of arrival
@@ -157,8 +157,8 @@ export async function addNewOrderToExcel(
                 '', // FV amount netto
                 '', // FV number
                 '', // FV PDF
-                index === 0 ? 'Oczekiwanie na płatność' : '',
-                index === 0 ? 'Oczekiwanie na płatność' : '',
+                index === 0 ? 'Złożono zapytanie' : '',
+                index === 0 ? 'Złożono zapytanie' : '',
                 // '', // Estimated time of departure
                 // '', // Fastest possible shipping date
                 // '', // Estimated time of arrival

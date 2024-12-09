@@ -4,7 +4,7 @@ import {initializeGenerateOffer} from "./excel";
 
 document.addEventListener("DOMContentLoaded", async () => {
     // Array to hold selected CMS IDs
-    const selectedItems: string[] = [];
+    let selectedItems: string[] = [];
 
     // Function to calculate JSON size in bytes
     const calculateJSONSize = (json: any): number =>
@@ -96,52 +96,77 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     };
 
-    // Initialize the checkboxes after items are fully loaded
+// Initialize the checkboxes after items are fully loaded
     const initializeCheckboxes = (): void => {
-        // Select all checkboxes
-        const checkboxes = document.querySelectorAll<HTMLInputElement>(
-            '.product_form_checkbox-field input[type="checkbox"]'
-        );
+        // Upewnij się, że selectedItems jest poprawnie zainicjalizowane
+        if (!Array.isArray(selectedItems)) {
+            console.error('selectedItems is not an array. Initializing as an empty array.');
+            selectedItems = [];
+        }
 
-        checkboxes.forEach((checkbox) => {
-            // Get the associated CMS ID
-            const cmsId = checkbox.closest('.product_item')?.querySelector<HTMLElement>(
-                '[data-commerce-product-id]'
-            )?.getAttribute('data-commerce-product-id');
+        try {
+            // Select all checkboxes
+            const checkboxes = document.querySelectorAll<HTMLInputElement>(
+                '.product_form input[type="checkbox"]'
+            );
 
-            if (cmsId) {
-                // Add event listener for checkbox change
-                checkbox.addEventListener('change', () => {
-                    if (checkbox.checked) {
-                        // Add to selectedItems if not already present
-                        if (!selectedItems.includes(cmsId)) {
-                            selectedItems.push(cmsId);
-                        }
-                    } else {
-                        // Remove from selectedItems if unchecked
-                        const index = selectedItems.indexOf(cmsId);
-                        if (index > -1) {
-                            selectedItems.splice(index, 1);
-                        }
+            if (!checkboxes.length) {
+                console.warn('No checkboxes found to initialize.');
+                return;
+            }
+
+            checkboxes.forEach((checkbox) => {
+                try {
+                    // Get the associated CMS ID
+                    const productItem = checkbox.closest('.product_item');
+                    if (!productItem) {
+                        console.warn('Checkbox is not inside a product_item container.');
+                        return;
                     }
 
-                    // Log the updated array (for debugging)
-                    console.log('Selected Items:', selectedItems);
-                });
-            }
-        });
-    };
+                    const cmsId = productItem.querySelector<HTMLElement>(
+                        '[data-commerce-product-id]'
+                    )?.getAttribute('data-commerce-product-id');
 
-    // Attach event listener to the "Generate Offer" button
-    const initializeGenerateOfferButton = (): void => {
-        const generateOfferButton = document.getElementById('generate-offer') as HTMLButtonElement;
-        if (generateOfferButton) {
-            generateOfferButton.addEventListener('click', () => {
-                // Pass the selectedItems array to initializeGenerateOffer
-                initializeGenerateOffer(selectedItems).catch((error) => {
-                    console.error('Error generating offer:', error);
-                });
+                    if (!cmsId) {
+                        console.warn('CMS ID not found for a checkbox.');
+                        return;
+                    }
+
+                    // Add event listener for checkbox change
+                    checkbox.addEventListener('change', () => {
+                        try {
+                            if (checkbox.checked) {
+                                // Add to selectedItems if not already present
+                                if (!selectedItems.includes(cmsId)) {
+                                    selectedItems.push(cmsId);
+                                    console.log(`Item added: ${cmsId}`);
+                                } else {
+                                    console.warn(`Item already in the list: ${cmsId}`);
+                                }
+                            } else {
+                                // Remove from selectedItems if unchecked
+                                const index = selectedItems.indexOf(cmsId);
+                                if (index > -1) {
+                                    selectedItems.splice(index, 1);
+                                    console.log(`Item removed: ${cmsId}`);
+                                } else {
+                                    console.warn(`Item not found in the list for removal: ${cmsId}`);
+                                }
+                            }
+
+                            // Log the updated array (for debugging)
+                            console.log('Updated Selected Items:', selectedItems);
+                        } catch (error) {
+                            console.error('Error handling checkbox change:', error);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error initializing a checkbox:', error);
+                }
             });
+        } catch (error) {
+            console.error('Error during checkbox initialization:', error);
         }
     };
 
@@ -174,7 +199,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    initializeGenerateOfferButton();
+    await initializeGenerateOffer(selectedItems)
 
     // @ts-ignore
     window.fsAttributes = window.fsAttributes || [];
