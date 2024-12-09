@@ -101,8 +101,14 @@ async function fetchNewOrder(customerNip: string) {
 
         // Dodaj nowe zamówienia do listy
         for (const newOrder of newOrders) {
-            const orderItem = await generateOrderItem(newOrder as Order);
-            orderList.appendChild(orderItem);
+            try {
+                const orderItem = await generateOrderItem(newOrder);
+                if (orderItem) {
+                    orderList.appendChild(orderItem);
+                }
+            } catch (error) {
+                console.error(`Błąd podczas generowania zamówienia:`, error);
+            }
         }
 
         console.log('Nowe zamówienia zostały dodane do listy.');
@@ -126,7 +132,7 @@ export async function addNewOrderToExcel(
                 product.id || '',
                 product.variant || '',
                 product.quantity || '',
-                index === 0 ? items.reduce((sum, item) => sum + item.fieldData.cena * item.quantity, 0).toFixed(2) : '', // Całkowita wartość zamówienia
+                index === 0 ? items.reduce((sum, item) => sum + item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal * item.quantity, 0).toFixed(2) : '', // Całkowita wartość zamówienia
                 index === 0 ? getTodayDate() : '', // Data zamówienia
                 '', // FV amount netto
                 '', // FV number
@@ -206,11 +212,11 @@ const generateExcelFile = (products: Product[]): void => {
     // Przygotuj dane do Excela
     const data = products.map(product => ({
         Nazwa: product.fieldData.name,
-        Kategoria: categoryMap[product.fieldData.kategoria] || 'Nieznana kategoria',
+        Kategoria: categoryMap[product.fieldData.category] || 'Nieznana kategoria',
         Wariant: '',
-        Cena: `${product.fieldData.cena.toFixed(2)} zł`,
+        Cena: `${product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo : product.fieldData.priceNormal.toFixed(2)} zł`,
         SKU: product.fieldData.sku,
-        Dostępność: product.fieldData.produktNiedostepny ? 'Brak na stanie' : 'W magazynie',
+        Dostępność: product.fieldData.productUnavailable ? 'Brak na stanie' : 'W magazynie',
     }));
 
     // Utwórz arkusz Excela

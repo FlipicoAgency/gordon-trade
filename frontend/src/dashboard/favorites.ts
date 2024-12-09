@@ -6,13 +6,13 @@ const noResultElement = document.querySelector('[favorites="none"]') as HTMLElem
 const favoriteList = document.querySelector('.favorite_list') as HTMLElement;
 
 const generateFavoriteItem = (product: Product): HTMLElement => {
-    const categoryName = categoryMap[product.fieldData.kategoria] || 'Unknown Category';
+    const categoryName = categoryMap[product.fieldData.category] || 'Unknown Category';
 
     const li = document.createElement('li');
     li.className = 'favorite_list_item';
     li.innerHTML = `
         <div class="favorite_wrapper">
-            <img loading="lazy" src="${product.fieldData.miniatura?.url}" alt="${product.fieldData.miniatura?.alt || product.fieldData.name}" class="favorite_image">
+            <img loading="lazy" src="${product.fieldData.thumbnail?.url}" alt="${product.fieldData.thumbnail?.alt || product.fieldData.name}" class="favorite_image">
             <a class="favorite_product" href="${window.location.origin}/produkty/${product.fieldData.slug}">
                 <div class="favorite_product_name">
                     <div class="text-size-medium text-weight-semibold">${product.fieldData.name}</div>
@@ -20,22 +20,22 @@ const generateFavoriteItem = (product: Product): HTMLElement => {
                 </div>
                 <div class="favorite_product_price">
                     <div class="price-embed w-embed">
-                        <p class="heading-style-h6 text-color-brand"><span>${product.fieldData.cena.toFixed(2)}</span> zł</p>
+                        <p class="heading-style-h6 text-color-brand"><span>${product.fieldData.pricePromo ? product.fieldData.pricePromo.toFixed(2) : product.fieldData.priceNormal.toFixed(2)}</span> zł</p>
                     </div>
-                    ${product.fieldData.promocja ? `
-                    <div class="promo-tagline w-embed">
+                    ${product.fieldData.pricePromo ? `
+                    <div class="promo-tagline w-embed" style="display: block">
                         <span aria-label="Minus" style="position: relative; top:-0.0625rem">–</span>
-                        <span>10</span>% 
+                        <span>${Math.round(((product.fieldData.priceNormal - product.fieldData.pricePromo) / product.fieldData.priceNormal) * 100)}</span>% 
                     </div>` : ''}
                 </div>
                 <div class="favorite_product_details">
-                    <div class="favorite_product_details_stock ${product.fieldData.produktNiedostepny ? 'hide' : ''}">
+                    <div class="favorite_product_details_stock ${product.fieldData.productUnavailable ? 'hide' : ''}">
                         <div class="icon-1x1-xxsmall is-yes">
                             <svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256"><path d="M176.49,95.51a12,12,0,0,1,0,17l-56,56a12,12,0,0,1-17,0l-24-24a12,12,0,1,1,17-17L112,143l47.51-47.52A12,12,0,0,1,176.49,95.51ZM236,128A108,108,0,1,1,128,20,108.12,108.12,0,0,1,236,128Zm-24,0a84,84,0,1,0-84,84A84.09,84.09,0,0,0,212,128Z"></path></svg>
                         </div>
                         <div class="text-size-small">W magazynie</div>
                     </div>
-                    <div class="favorite_product_details_stock ${!product.fieldData.produktNiedostepny ? 'hide' : ''}">
+                    <div class="favorite_product_details_stock ${!product.fieldData.productUnavailable ? 'hide' : ''}">
                         <div class="icon-1x1-xxsmall is-no">
                             <svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256"><path d="M168.49,104.49,145,128l23.52,23.51a12,12,0,0,1-17,17L128,145l-23.51,23.52a12,12,0,0,1-17-17L111,128,87.51,104.49a12,12,0,0,1,17-17L128,111l23.51-23.52a12,12,0,0,1,17,17ZM236,128A108,108,0,1,1,128,20,108.12,108.12,0,0,1,236,128Zm-24,0a84,84,0,1,0-84,84A84.09,84.09,0,0,0,212,128Z"></path></svg>
                         </div>

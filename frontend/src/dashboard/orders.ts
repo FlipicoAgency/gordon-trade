@@ -239,18 +239,30 @@ export async function generateOrderItem(order: Order) {
     // Znajdź element `order_top-wrapper`, gdzie mają być dodane produkty
     const orderTopWrapper = li.querySelector('.order_top-wrapper');
     if (!orderTopWrapper) {
-        console.error('Nie znaleziono elementu .order_top-wrapper w li!');
-        return li; // Zakończ, jeśli struktura HTML jest niepoprawna
+        throw new Error('Nie znaleziono elementu .order_top-wrapper w li!');
     }
 
     let totalValue = 0; // Zmienna do przechowywania sumy
 
+    const orderValue = parseFloat(order["Order value"].replace(' zł', '').replace(',', '.')) || 0;
+
+    console.log('order value:', orderValue);
+    // Sprawdź, czy orderValue jest prawidłowe
+    if (orderValue <= 0) {
+        console.error('Nieprawidłowa wartość zamówienia:', order["Order value"]);
+        return; // Zakończ, jeśli wartość zamówienia jest nieprawidłowa
+    }
+
     // Dodaj produkty do zamówienia
     for (const product of order.products) {
-        const productDetails: Product = await fetchProductDetails(product.id); // Pobierz szczegóły produktu
+        const productDetails: Product = await fetchProductDetails(product.id);
 
         const productQuantity = Number(product.quantity) || 0;
-        const productPrice = productDetails.fieldData.cena || 0;
+
+        // Obliczenie ceny za sztukę na podstawie wartości zamówienia i ilości produktów
+        const totalQuantity = order.products.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0);
+        const productPrice = totalQuantity > 0 ? orderValue / totalQuantity : 0;
+
         const productTotal = productQuantity * productPrice;
 
         totalValue += productTotal; // Dodaj wartość produktu do całkowitej sumy
@@ -258,32 +270,32 @@ export async function generateOrderItem(order: Order) {
         const productDiv = document.createElement('div');
         productDiv.className = 'order_product';
         productDiv.innerHTML = `
-            <img loading="lazy" src="${productDetails.fieldData.miniatura?.url}" alt="${productDetails.fieldData.miniatura?.alt || productDetails.fieldData.name}" class="order_product_image">
+            <img loading="lazy" src="${productDetails.fieldData.thumbnail?.url}" alt="${productDetails.fieldData.thumbnail?.alt || productDetails.fieldData.name}" class="order_product_image">
             <div class="order_product_group">
                 <div class="order_product_details">
-                    <div class="text-weight-semibold">${productDetails.fieldData.name || 'Nieznany produkt'}</div>
+                    <div class="text-weight-semibold">${productDetails.fieldData.name}</div>
                     <div class="order_product_details_grid">
                         <div class="order_details_grid_item">
                             <div class="text-size-small">Ilość produktów:</div>
-                            <div class="text-size-small">${product.quantity || 0}</div>
+                            <div class="text-size-small">${productQuantity}</div>
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">Kwota za sztukę:</div>
-                            <div class="text-size-small">${productDetails.fieldData.cena.toFixed(2) || '0.00'} zł</div>
+                            <div class="text-size-small">${productPrice} zł</div>
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">SKU:</div>
-                            <div class="text-size-small">${productDetails.fieldData.sku || 'Nieznane'}</div>
+                            <div class="text-size-small">${productDetails.fieldData.sku}</div>
                         </div>
                         ${product.variant ? `
                         <div class="order_details_grid_item">
                             <div class="text-size-small">Wariant:</div>
-                            <div class="text-size-small">${product.variant || 'Nieznany'}</div>
+                            <div class="text-size-small">${product.variant}</div>
                         </div>` : ''}
                     </div>
                 </div>
                 <div class="order_product_price">
-                    <div class="heading-style-h6 text-color-brand">${(productDetails.fieldData.cena * Number(product.quantity)).toFixed(2)} zł</div>
+                    <div class="heading-style-h6 text-color-brand">${productTotal} zł</div>
                 </div>
             </div>
         `;
@@ -348,8 +360,14 @@ const renderOrders = async (orders: Record<string, Order>): Promise<void> => {
         noResultElement.style.display = 'none';
 
         for (const order of orderArray) {
-            const orderItem = generateOrderItem(order);
-            await orderList.appendChild(await orderItem);
+            try {
+                const orderItem = await generateOrderItem(order);
+                if (orderItem) {
+                    orderList.appendChild(orderItem);
+                }
+            } catch (error) {
+                console.error(`Błąd podczas generowania zamówienia:`, error);
+            }
         }
 
         // Inicjalizuj przyciski "Zamów ponownie" po renderowaniu elementów

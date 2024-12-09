@@ -31,7 +31,12 @@ async function updateCartUI() {
 
     try {
         const cartItems: ProductInCart[] = await fetchCartData();
-        const totalAmount = cartItems.reduce((sum, item) => sum + item.fieldData.cena * item.quantity, 0);
+
+        const totalAmount = cartItems.reduce((sum, item) => {
+            const price = item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal;
+            return sum + price * item.quantity;
+        }, 0);
+
         const totalAmountElement = document.getElementById('cart-total');
         const cartQuantityElement = document.getElementById('cart-quantity');
 
@@ -83,6 +88,10 @@ export async function handleAddToCart(button: HTMLElement) {
     }
 
     const productId = button.getAttribute('data-commerce-product-id');
+    if (!productId) {
+        console.error('Product ID not found');
+        return;
+    }
 
     const selectElement = productElement.querySelector('select[data-input="variant"]') as HTMLSelectElement;
     let selectedVariant: string | null = null;
@@ -115,16 +124,10 @@ export async function handleAddToCart(button: HTMLElement) {
         : 1;
 
     try {
-        const response = await fetch(`https://gordon-trade.onrender.com/api/products/${productId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-        const data: Product = await response.json();
+        const product: Product = await fetchProductDetails(productId);
 
         const selectedItem: ProductInCart = {
-            ...data,
+            ...product,
             quantity,
             variant: selectedVariant || null, // Dodaj wybrany wariant do obiektu
         };
@@ -248,13 +251,13 @@ function renderCartItems(cartItems: ProductInCart[]) {
         const itemElement = document.createElement('div');
         itemElement.className = 'cart-item';
         itemElement.innerHTML = `
-      <img src="${item.fieldData.miniatura.url}" loading="lazy" alt="${item.fieldData.miniatura.alt}" class="image-2">
+      <img src="${item.fieldData.thumbnail.url}" loading="lazy" alt="${item.fieldData.thumbnail.alt}" class="image-2">
       <a href="/produkty/${item.fieldData.slug}" class="product-link">
         <div>
           <div class="text-weight-bold text-style-2lines">${item.fieldData.name}</div>
           <div class="text-color-brand" style="display: ${item.variant !== null ? 'block' : 'none'}">Wariant: ${item.variant}</div>
           <div class="div-block">
-            <div class="text-color-brand">Cena: ${item.fieldData.cena.toFixed(2)} zł</div>
+            <div class="text-color-brand">Cena: ${item.fieldData.pricePromo ? item.fieldData.pricePromo.toFixed(2) : item.fieldData.priceNormal.toFixed(2)} zł</div>
             <div class="text-color-brand">Ilość: ${item.quantity}</div>
           </div>
         </div>
@@ -351,6 +354,49 @@ export async function processOrder(cartItems: ProductInCart[]) {
     }
 }
 
+// Function to map API response to Product Interface
+export function mapApiResponseToProduct(apiResponse: any): Product {
+    return {
+        id: apiResponse.id,
+        cmsLocaleId: apiResponse.cmsLocaleId,
+        lastPublished: apiResponse.lastPublished ?? null,
+        lastUpdated: apiResponse.lastUpdated,
+        createdOn: apiResponse.createdOn,
+        isArchived: apiResponse.isArchived,
+        isDraft: apiResponse.isDraft,
+        fieldData: {
+            priceNormal: apiResponse.fieldData["cena"] ?? 0,
+            pricePromo: apiResponse.fieldData["procent-znizki"] ?? 0, // assuming there might be a promo price key
+            promo: apiResponse.fieldData["promocja"] ?? false,
+            quantityInBox: apiResponse.fieldData["ilosc-w-kartonie"] ?? 0,
+            stockNumber: apiResponse.fieldData["stan-magazynowy"] ?? 0,
+            inStock: apiResponse.fieldData["w-magazynie"] ?? false,
+            weightCarton: apiResponse.fieldData["1-karton---waga"] ?? 0,
+            dimensionsCarton: apiResponse.fieldData["1-karton---wymiary-2"] ?? '',
+            name: apiResponse.fieldData["name"] ?? '',
+            description: apiResponse.fieldData["opis"] ?? '',
+            tags: apiResponse.fieldData["tagi"] ?? '',
+            ean: apiResponse.fieldData["ean-2"] ?? undefined,
+            sku: apiResponse.fieldData["sku"] ?? '',
+            thumbnail: {
+                fileId: apiResponse.fieldData["miniatura"]?.fileId ?? '',
+                url: apiResponse.fieldData["miniatura"]?.url ?? '',
+                alt: apiResponse.fieldData["miniatura"]?.alt ?? null,
+            },
+            gallery: apiResponse.fieldData["galeria"]?.map((item: any) => ({
+                fileId: item.fileId,
+                url: item.url,
+                alt: item.alt ?? null,
+            })) ?? [],
+            slug: apiResponse.fieldData["slug"] ?? '',
+            category: apiResponse.fieldData["kategoria"] ?? '',
+            productUnavailable: apiResponse.fieldData["produkt-niedostepny"] ?? false,
+            productFeatured: apiResponse.fieldData["produkt-wyrozniony"] ?? false,
+            productVisibleOnPage: apiResponse.fieldData["produkt-widoczny-na-stronie"] ?? false,
+        },
+    };
+}
+
 // Function to fetch product details by productId
 export async function fetchProductDetails(productId: string): Promise<any> {
     try {
@@ -365,10 +411,13 @@ export async function fetchProductDetails(productId: string): Promise<any> {
             throw new Error(`Failed to fetch product details for ID: ${productId}`);
         }
 
-        // Log the response data
+        const data = await response.json();
         //console.log(`Response for product ID ${productId}:`, data);
 
-        return await response.json();
+        const product: Product = mapApiResponseToProduct(data);
+        //console.log(`Response for product ID ${productId}:`, product);
+
+        return product;
     } catch (error) {
         console.error(`Error fetching product details:`, error);
         return null;
@@ -433,5 +482,6 @@ export const fetchCategories = async (): Promise<void> => {
 };
 
 export async function initializeCart() {
+    //await clearCart();
     await updateCartUI();
 }
