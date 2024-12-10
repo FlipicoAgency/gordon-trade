@@ -114,6 +114,7 @@ function formatToContainers(data: any): Container[] {
             "Estimated time of arrival": order["Estimated time of arrival"],
             "Extended delivery date": order["Extended delivery date"],
             "Personalization": order["Personalization"] || "Brak",
+            "Quality control photos": order["Quality control photos"] || "Brak",
             "Change in transportation cost": order["Change in transportation cost"] || "Brak",
             "Periodicity": order["Periodicity"] || "Brak",
         };
@@ -128,28 +129,39 @@ function chooseStatus(departureDate: string, loadingPort: string): Status {
     const diffTime = today.getTime() - departure.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
+    //console.log(`Checking status for departureDate: ${departureDate}, loadingPort: ${loadingPort}, diffDays: ${diffDays}`);
+
     // Dopasuj lokalizację na podstawie dni
     if (diffDays < 7) {
-        return locations.find(location => location.name.includes(loadingPort))!;
+        const location = locations.find(location => location.name.includes(loadingPort));
+        if (location) return location;
     } else if (diffDays >= 7 && diffDays < 14) {
         return locations.find(location => location.name.includes("Południowochińskie"))!;
-    } else if (diffDays <= 14) {
+    } else if (diffDays >= 14 && diffDays < 21) {
         return locations.find(location => location.name.includes("Lakkadiwskie"))!;
-    } else if (diffDays <= 21) {
+    } else if (diffDays >= 21 && diffDays < 28) {
         return locations.find(location => location.name.includes("Arabskie"))!;
-    } else if (diffDays <= 28) {
+    } else if (diffDays >= 28 && diffDays < 35) {
         return locations.find(location => location.name.includes("Czerwone"))!;
-    } else if (diffDays <= 35) {
+    } else if (diffDays >= 35 && diffDays < 42) {
         return locations.find(location => location.name.includes("Śródziemne"))!;
-    } else if (diffDays <= 42) {
+    } else if (diffDays >= 42 && diffDays < 49) {
         return locations.find(location => location.name.includes("Atlantycki"))!;
-    } else if (diffDays <= 49) {
+    } else if (diffDays >= 49 && diffDays < 56) {
         return locations.find(location => location.name.includes("La Manche"))!;
-    } else if (diffDays <= 56) {
+    } else if (diffDays >= 56 && diffDays < 63) {
         return locations.find(location => location.name.includes("Gdańsku"))!;
+    } else if (diffDays >= 63) {
+        // Status "Zrealizowano" dla ponad 56 dni
+        return {
+            name: "Zrealizowano",
+            position: "top: 0%; left: 0%;",
+            procent: "is-100",
+        };
     }
 
-    // Jeśli nic nie pasuje, zwróć ostatni status
+    // Ostrzeżenie o nieznanym statusie
+    console.warn(`Nieznany status dla departureDate: ${departureDate}, loadingPort: ${loadingPort}, diffDays: ${diffDays}`);
     return {
         name: "Nieznany status",
         position: "top: 0%; left: 0%;",
@@ -214,12 +226,16 @@ function showOrderInfo(container: Container, containers: Container[]): void {
     const modalHTML = `
         <div class="map-shipping-info active">
             <div class="shipping-wrapper">
-                <div class="shipping-header" style="display: flex; justify-content: space-between">
-                    <div class="shipping-heading">
-                        <div>${container["Delivery status"].name} (${containersInSameStatus.length})</div>
-                        <button class="shipping-modal-close-button"><div class="icon-1x1-xsmall"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg></div>
-                        </button>
-                    </div>
+                <div class="shipping-header" style="
+                        display: flex; 
+                        justify-content: space-between; 
+                        align-items: center;
+                        padding-left: 1rem;
+                        padding-right: 1rem;
+                        font-weight: 600;
+                        ">
+                    <div>${container["Delivery status"].name} (${containersInSameStatus.length})</div>
+                    <button class="shipping-modal-close-button"><div class="icon-1x1-xsmall"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg></div></button>
                 </div>
                 <div class="shipping-details">
                     ${containerListHTML}
@@ -261,8 +277,15 @@ function countContainersWithSameStatus(containers: Container[], statusName: stri
 }
 
 function generateShipItem(container: Container, containers: Container[]): void {
-    const position: string = container["Delivery status"].position || "";
     const statusName: string = container["Delivery status"].name || "";
+
+    // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
+    if (statusName === "Zrealizowano") {
+        console.log(`Pomijanie generowania ship item dla kontenera ${container["Container No"]} o statusie: ${statusName}`);
+        return;
+    }
+
+    const position: string = container["Delivery status"].position || "";
     const mapWrapper = document.getElementById("map-wrapper") as HTMLElement;
 
     // Liczba kontenerów w tym samym statusie
@@ -313,8 +336,7 @@ function generateShipListItem(container: Container): void {
     const iconSVG = isComplete ? icons.success : (isError ? icons.error : icons.default);
 
     // Tworzenie elementu listy
-    const htmlElement = document.createElement("a");
-    htmlElement.href = "#";
+    const htmlElement = document.createElement("div");
     htmlElement.classList.add("stacked-list4_item", "w-inline-block");
 
     // Sprawdzenie, czy pole "Extended delivery date" nie jest puste
@@ -341,8 +363,12 @@ function generateShipListItem(container: Container): void {
         </div>
         <div class="stacked-list4_content-bottom">
             <div class="text-size-small">Chiny</div>
-            <div class="text-size-small">Polska</div>
+            <div class="text-size-small">${container["Delivery status"].name === 'Zrealizowano' ? 'Zrealizowano' : 'Polska'}</div>
         </div>
+        ${container["Quality control photos"] !== 'Brak' ? `
+        <div style="padding: 1.25rem;">
+            <a class="button" href="${container["Quality control photos"]}">Zdjęcia kontroli jakości</a>
+        </div>` : ''}
     `;
 
     // Dodajemy nowo utworzony element do kontenera

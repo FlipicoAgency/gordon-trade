@@ -20,6 +20,7 @@ export interface Container {
     "Estimated time of arrival": string;
     "Extended delivery date": string;
     "Personalization": string;
+    "Quality control photos": string;
     "Change in transportation cost": string;
     "Periodicity": string;
 }
