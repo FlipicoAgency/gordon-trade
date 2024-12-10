@@ -227,7 +227,7 @@ const generateExcelFile = (products: ProductInCart[]): void => {
         Nazwa: product.fieldData.name,
         Kategoria: categoryMap[product.fieldData.category] || 'Nieznana kategoria',
         Wariant: product.variant || '',
-        Cena: `${product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo : product.fieldData.priceNormal.toFixed(2)} zł`,
+        Cena: `${product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo.toFixed(2) : product.fieldData.priceNormal.toFixed(2)} zł`,
         SKU: product.fieldData.sku,
         Dostępność: product.fieldData.productUnavailable ? 'Brak na stanie' : 'W magazynie',
     }));

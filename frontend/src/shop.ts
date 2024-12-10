@@ -144,7 +144,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                             );
                             if (variantSelect && variantSelect.getAttribute('validate') === 'true') {
                                 if (variantSelect.value === '') {
-                                    checkbox.checked = false;
+                                    // Remove the redirected class and reset checkbox state after alert
+                                    setTimeout(() => {
+                                        checkbox.checked = false;
+                                        checkbox.previousElementSibling?.classList.remove('w--redirected-checked');
+                                    }, 0);
                                     alert('Proszę wybrać wariant przed dodaniem produktu do listy.');
                                     return;
                                 }
@@ -161,8 +165,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                                 if (selectedPill) {
                                     selectedVariant = selectedPill.getAttribute('data-variant-value') || null;
                                 } else if (!variantSelect) {
+                                    // Remove the redirected class and reset checkbox state after alert
+                                    setTimeout(() => {
+                                        checkbox.checked = false;
+                                        checkbox.previousElementSibling?.classList.remove('w--redirected-checked');
+                                    }, 0);
                                     alert('Proszę wybrać wariant przed dodaniem produktu do listy.');
-                                    checkbox.checked = false; // Reset checkbox
                                     return;
                                 }
                             }
