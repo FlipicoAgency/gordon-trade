@@ -38,7 +38,7 @@ router.get('/sheets/orders', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders B2B!A1:N', // Zakres danych
+            range: 'Orders B2B!A1:O', // Zakres danych
         });
 
         const rows = response.data.values;
@@ -79,6 +79,7 @@ router.get('/sheets/orders', async (req, res) => {
                     id: row[3],         // Kolumna Product ID
                     variant: row[4],    // Kolumna Product variant
                     quantity: row[5],   // Kolumna Quantity
+                    price: row[6],      // Kolumna Quantity
                 });
             }
         });
@@ -103,7 +104,7 @@ router.post('/sheets/orders', async (req, res) => {
         // Dodaj nowe wiersze
         const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders B2B!A1:N',
+            range: 'Orders B2B!A1:O',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
@@ -118,7 +119,7 @@ router.post('/sheets/orders', async (req, res) => {
                 const startRow = currentRow + index;
                 const endRow = startRow + values.filter((r) => r[0] === '').length || startRow + 1;
 
-                const columnsToMerge = [0, 1, 6, 7, 8, 9, 10, 11, 12, 13];
+                const columnsToMerge = [0, 1, 7, 8, 9, 10, 11, 12, 13, 14];
                 columnsToMerge.forEach((colIndex) => {
                     mergeRequests.push({
                         mergeCells: {
@@ -136,7 +137,7 @@ router.post('/sheets/orders', async (req, res) => {
             }
         });
 
-        // Dodanie obramowań dla całego zakresu A:U
+        // Dodanie obramowań dla całego zakresu A:O
         mergeRequests.push({
             updateBorders: {
                 range: {
@@ -144,7 +145,7 @@ router.post('/sheets/orders', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do obramowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz (liczba dodanych wierszy)
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 14, // Kolumna N (14, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 15, // Kolumna O (15, bo endColumnIndex jest wyłączny)
                 },
                 top: {
                     style: 'SOLID',
@@ -187,7 +188,7 @@ router.post('/sheets/orders', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do wycentrowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 14, // Kolumna N (14, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 15, // Kolumna O (15, bo endColumnIndex jest wyłączny)
                 },
                 cell: {
                     userEnteredFormat: {
