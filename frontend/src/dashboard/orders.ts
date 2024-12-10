@@ -42,6 +42,7 @@ async function handleOrderAgain(button: HTMLElement) {
                 ...productDetails,
                 variant: product.variant,
                 quantity: Number(product.quantity),
+                price: Number(product.price),
             });
         }
         console.log('Items to process:', items);
@@ -140,19 +141,19 @@ export async function generateOrderItem(order: Order) {
             <div class="order_top-wrapper">
                 <div class="margin-vertical margin-xsmall">
                     <div class="order_details">
-                        <div class="heading-style-h6">Zamówienie nr <span class="order_number text-color-brand">${order['Order ID'] || 'Brak numeru'}</span></div>
+                        <div class="heading-style-h6">Zamówienie nr <span class="order_number text-color-brand">${order['Order ID']}</span></div>
                         <div class="order_details_grid">
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">Data zamówienia:</div>
                             </div>
                             <div class="order_details_grid_item">
-                                <div class="text-size-small">${order['Order date'] || 'Nieznana'}</div>
+                                <div class="text-size-small">${order['Order date']}</div>
                             </div>
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">Kwota zamówienia:</div>
                             </div>
                             <div class="order_details_grid_item">
-                                <div class="text-size-small">${order['Order value'] || '0.00 zł'}</div>
+                                <div class="text-size-small">${order['Order value']}</div>
                             </div>
                             <div class="spacer-xxsmall is-grid-2"></div>
                             <div class="order_details_grid_item">
@@ -176,6 +177,12 @@ export async function generateOrderItem(order: Order) {
                                     'is-warning',
                                     'Oczekiwanie na płatność',
                                     order['Payment status'] === 'Oczekiwanie na płatność'
+                                )}
+                                ${createOrderParameter(
+                                    'is-no-payment',
+                                    'is-info',
+                                    'Złożono zapytanie',
+                                    order['Payment status'] === 'Złożono zapytanie'
                                 )}
                             </div>
                             <div class="order_details_grid_item">
@@ -206,6 +213,12 @@ export async function generateOrderItem(order: Order) {
                                         'is-warning', 
                                         'Oczekiwanie na płatność',
                                         order['Delivery status'] === 'Oczekiwanie na płatność'
+                                    )}
+                                    ${createOrderParameter(
+                                        'is-no-payment',
+                                        'is-info',
+                                        'Złożono zapytanie',
+                                        order['Delivery status'] === 'Złożono zapytanie'
                                     )}
                                 </div>       
                             </div>   
@@ -242,9 +255,7 @@ export async function generateOrderItem(order: Order) {
         throw new Error('Nie znaleziono elementu .order_top-wrapper w li!');
     }
 
-    let totalValue = 0; // Zmienna do przechowywania sumy
-
-    const orderValue = parseFloat(order["Order value"].replace(' zł', '').replace(',', '.')) || 0;
+    const orderValue = parseFloat(order["Order value"].replace(' zł', '').replace(',', ''));
 
     console.log('order value:', orderValue);
     // Sprawdź, czy orderValue jest prawidłowe
@@ -257,15 +268,9 @@ export async function generateOrderItem(order: Order) {
     for (const product of order.products) {
         const productDetails: Product = await fetchProductDetails(product.id);
 
-        const productQuantity = Number(product.quantity) || 0;
-
-        // Obliczenie ceny za sztukę na podstawie wartości zamówienia i ilości produktów
-        const totalQuantity = order.products.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0);
-        const productPrice = totalQuantity > 0 ? orderValue / totalQuantity : 0;
-
+        const productQuantity = Number(product.quantity);
+        const productPrice = Number(product.price.replace(' zł', '').replace(',', ''));
         const productTotal = productQuantity * productPrice;
-
-        totalValue += productTotal; // Dodaj wartość produktu do całkowitej sumy
 
         const productDiv = document.createElement('div');
         productDiv.className = 'order_product';
@@ -281,7 +286,7 @@ export async function generateOrderItem(order: Order) {
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">Kwota za sztukę:</div>
-                            <div class="text-size-small">${productPrice} zł</div>
+                            <div class="text-size-small">${productPrice.toFixed(2)} zł</div>
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">SKU:</div>
@@ -295,7 +300,7 @@ export async function generateOrderItem(order: Order) {
                     </div>
                 </div>
                 <div class="order_product_price">
-                    <div class="heading-style-h6 text-color-brand">${productTotal} zł</div>
+                    <div class="heading-style-h6 text-color-brand">${productTotal.toFixed(2)} zł</div>
                 </div>
             </div>
         `;
@@ -331,15 +336,16 @@ export async function generateOrderItem(order: Order) {
         <div class="order_row is-reverse">
             <div class="order_total">
                 <div class="text-size-small">Razem:</div>
-                <div class="heading-style-h5">${totalValue.toFixed(2)} zł</div>
+                <div class="heading-style-h5">${orderValue.toFixed(2)} zł</div>
             </div>
-            <div class="button-group">
-                <a href="${order['FV PDF']}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
-                    <div class="order_download_faktura">Pobierz fakturę</div>
-<!--                    <div class="order_download_proforma">Pobierz proformę</div>-->
-                    <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
-                </a>
-            </div>
+            ${order['FV PDF'] ? `
+                <div class="button-group">
+                    <a href="${order['FV PDF']}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
+                        <div class="order_download_faktura">Pobierz fakturę</div>
+                        <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
+                    </a>
+                </div>
+            ` : ''}
         </div>
     `;
 

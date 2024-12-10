@@ -132,7 +132,19 @@ export async function addNewOrderToExcel(
                 product.id || '',
                 product.variant || '',
                 product.quantity || '',
-                index === 0 ? items.reduce((sum, item) => sum + item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal * item.quantity, 0).toFixed(2) : '', // Całkowita wartość zamówienia
+                product.price || '',
+                index === 0
+                    ? items
+                        .reduce(
+                            (sum, item) =>
+                                sum +
+                                (item.fieldData.pricePromo > 0
+                                    ? item.fieldData.pricePromo * item.quantity
+                                    : item.fieldData.priceNormal * item.quantity),
+                            0
+                        )
+                        .toFixed(2)
+                    : '',
                 index === 0 ? getTodayDate() : '', // Data zamówienia
                 '', // FV amount netto
                 '', // FV number
@@ -152,6 +164,7 @@ export async function addNewOrderToExcel(
                 product.id || '',
                 product.variant || '',
                 product.quantity || '',
+                product.price || '',
                 index === 0 ? items["Order value"] : '',
                 index === 0 ? getTodayDate() : '',
                 '', // FV amount netto
@@ -208,12 +221,12 @@ export async function addNewOrderToExcel(
     }
 }
 
-const generateExcelFile = (products: Product[]): void => {
+const generateExcelFile = (products: ProductInCart[]): void => {
     // Przygotuj dane do Excela
     const data = products.map(product => ({
         Nazwa: product.fieldData.name,
         Kategoria: categoryMap[product.fieldData.category] || 'Nieznana kategoria',
-        Wariant: '',
+        Wariant: product.variant || '',
         Cena: `${product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo : product.fieldData.priceNormal.toFixed(2)} zł`,
         SKU: product.fieldData.sku,
         Dostępność: product.fieldData.productUnavailable ? 'Brak na stanie' : 'W magazynie',
@@ -244,12 +257,25 @@ export const initializeGenerateOffer = async (productsToOffer: string[]): Promis
     const generateOfferButton = document.getElementById('generate-offer') as HTMLButtonElement;
     if (generateOfferButton) {
         generateOfferButton.addEventListener('click', async () => {
+            // Rozdziel ID i warianty
             const products = await Promise.all(
-                productsToOffer.map(productId => fetchProductDetails(productId))
+                productsToOffer.map(async (productIdWithVariant) => {
+                    const [productId, variant] = productIdWithVariant.split('|');
+                    const product = await fetchProductDetails(productId);
+
+                    // Dodaj wariant, jeśli istnieje
+                    if (product && variant) {
+                        product.variant = variant;
+                    }
+
+                    return product;
+                })
             );
-            const validProducts = products.filter(product => product !== null) as Product[];
+
+            // Filtruj tylko poprawne produkty
+            const validProducts = products.filter(product => product !== null) as ProductInCart[];
             await fetchCategories();
             generateExcelFile(validProducts);
         });
     }
-}
+};

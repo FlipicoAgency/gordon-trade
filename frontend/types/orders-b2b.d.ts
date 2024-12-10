@@ -7,6 +7,7 @@ export interface Order {
     "Product name": string;
     "Product ID": string;
     Quantity: string;
+    "Product price": string;
     "Order value": string;
     "Order date": string;
     "FV amount (netto)": string;

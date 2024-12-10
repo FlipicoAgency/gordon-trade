@@ -96,9 +96,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     };
 
-// Initialize the checkboxes after items are fully loaded
+    // Initialize the checkboxes after items are fully loaded
     const initializeCheckboxes = (): void => {
-        // Upewnij się, że selectedItems jest poprawnie zainicjalizowane
+        // Ensure selectedItems is properly initialized
         if (!Array.isArray(selectedItems)) {
             console.error('selectedItems is not an array. Initializing as an empty array.');
             selectedItems = [];
@@ -136,22 +136,55 @@ document.addEventListener("DOMContentLoaded", async () => {
                     // Add event listener for checkbox change
                     checkbox.addEventListener('change', () => {
                         try {
+                            // Get variant if available
+                            let selectedVariant: string | null = null;
+
+                            const variantSelect = productItem.querySelector<HTMLSelectElement>(
+                                'select[data-input="variant"]'
+                            );
+                            if (variantSelect && variantSelect.getAttribute('validate') === 'true') {
+                                if (variantSelect.value === '') {
+                                    checkbox.checked = false;
+                                    alert('Proszę wybrać wariant przed dodaniem produktu do listy.');
+                                    return;
+                                }
+                                selectedVariant = variantSelect.value;
+                            }
+
+                            const optionPillGroup = productItem.querySelector<HTMLDivElement>(
+                                'div[data-input="pill-group"]'
+                            );
+                            if (optionPillGroup) {
+                                const selectedPill = optionPillGroup.querySelector<HTMLDivElement>(
+                                    'div[aria-checked="true"]'
+                                );
+                                if (selectedPill) {
+                                    selectedVariant = selectedPill.getAttribute('data-variant-value') || null;
+                                } else if (!variantSelect) {
+                                    alert('Proszę wybrać wariant przed dodaniem produktu do listy.');
+                                    checkbox.checked = false; // Reset checkbox
+                                    return;
+                                }
+                            }
+
+                            const itemWithVariant = `${cmsId}${selectedVariant ? `|${selectedVariant}` : ''}`;
+
                             if (checkbox.checked) {
                                 // Add to selectedItems if not already present
-                                if (!selectedItems.includes(cmsId)) {
-                                    selectedItems.push(cmsId);
-                                    console.log(`Item added: ${cmsId}`);
+                                if (!selectedItems.includes(itemWithVariant)) {
+                                    selectedItems.push(itemWithVariant);
+                                    console.log(`Item added: ${itemWithVariant}`);
                                 } else {
-                                    console.warn(`Item already in the list: ${cmsId}`);
+                                    console.warn(`Item already in the list: ${itemWithVariant}`);
                                 }
                             } else {
                                 // Remove from selectedItems if unchecked
-                                const index = selectedItems.indexOf(cmsId);
+                                const index = selectedItems.indexOf(itemWithVariant);
                                 if (index > -1) {
                                     selectedItems.splice(index, 1);
-                                    console.log(`Item removed: ${cmsId}`);
+                                    console.log(`Item removed: ${itemWithVariant}`);
                                 } else {
-                                    console.warn(`Item not found in the list for removal: ${cmsId}`);
+                                    console.warn(`Item not found in the list for removal: ${itemWithVariant}`);
                                 }
                             }
 
@@ -207,22 +240,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.fsAttributes.push([
         'cmsload',
         // @ts-ignore
-        (listInstances) => {
+        async (listInstances) => {
             //console.log('cmsload Successfully loaded!');
 
             const [listInstance] = listInstances;
 
-            calculatePromoPercentage();
-            initializeAddToCartButtons();
-            initializeFavoritesState();
-            initializeCheckboxes();
+            await calculatePromoPercentage();
+            await initializeAddToCartButtons();
+            await initializeFavoritesState();
+            await initializeCheckboxes();
 
             // @ts-ignore
-            listInstance.on('renderitems', (renderedItems) => {
-                calculatePromoPercentage();
-                initializeAddToCartButtons();
-                initializeFavoritesState();
-                initializeCheckboxes();
+            listInstance.on('renderitems', async (renderedItems) => {
+                await calculatePromoPercentage();
+                await initializeAddToCartButtons();
+                await initializeFavoritesState();
+                await initializeCheckboxes();
             });
 
             async function onCmsLoad() {

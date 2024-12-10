@@ -40,6 +40,7 @@ export interface Product {
 
 export interface ProductInCart extends Product {
     quantity: number;
+    price: number;
     variant?: string | null;
 }
 
@@ -47,6 +48,7 @@ export interface OrderProduct {
     name: string;
     id: string;
     quantity: string;
+    price: string;
     variant?: string | null;
     orderValue?: string;
     estimatedFreight?: string;

@@ -128,8 +128,9 @@ export async function handleAddToCart(button: HTMLElement) {
 
         const selectedItem: ProductInCart = {
             ...product,
+            variant: selectedVariant || null,
             quantity,
-            variant: selectedVariant || null, // Dodaj wybrany wariant do obiektu
+            price: (product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo : product.fieldData.priceNormal),
         };
 
         await addItemToCart(selectedItem);
