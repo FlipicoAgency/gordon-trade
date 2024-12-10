@@ -184,6 +184,80 @@ export const initializeAddToCartButtons = (): void => {
     const addToCartButtons = document.querySelectorAll<HTMLElement>('.addtocartbutton');
 
     addToCartButtons.forEach((button) => {
+        // Sprawdź, czy przycisk ma już przypisany nasłuchiwacz
+        if (button.dataset.listenerAdded === "true") return;
+
+        const addToCartForm: HTMLFormElement | null = button.closest('.product-header2_default-state');
+
+        if (addToCartForm) {
+            addToCartForm.onsubmit = (event: Event) => {
+                event.preventDefault(); // Zapobiega domyślnemu działaniu formularza
+                event.stopPropagation();
+                console.log('Form submission prevented');
+            };
+        } else {
+            console.error('Add to Cart form not found');
+        }
+
+        // Pobierz elementy wariantów
+        const colorVariantsElement = addToCartForm?.querySelector<HTMLElement>('[data-variants="color"]');
+        const sizeVariantsElement = addToCartForm?.querySelector<HTMLElement>('[data-variants="size"]');
+
+        // Pobierz select
+        const variantSelect = addToCartForm?.querySelector<HTMLElement>('select[data-input="variant"]');
+        const variantWrapper = addToCartForm?.querySelector<HTMLElement>('[data-wrapper="variant"]');
+
+        if (variantSelect) {
+            // Czyścimy wcześniejsze opcje
+            variantSelect.innerHTML = '';
+
+            // Dodaj placeholder dla kolorów, jeśli istnieje
+            if (colorVariantsElement && colorVariantsElement.textContent !== '' && variantWrapper) {
+                variantWrapper.style.display = 'block';
+                variantSelect.setAttribute('validate', 'true');
+
+                const placeholderOption = document.createElement('option');
+                placeholderOption.textContent = 'Wybierz kolor';
+                placeholderOption.value = '';
+                placeholderOption.disabled = true;
+                placeholderOption.selected = true;
+                variantSelect.appendChild(placeholderOption);
+
+                // Pobierz warianty i dodaj do selecta
+                const colorVariants = colorVariantsElement.textContent?.split(',').map(v => v.trim()) || [];
+                colorVariants.forEach(color => {
+                    const option = document.createElement('option');
+                    option.value = color;
+                    option.textContent = color;
+                    variantSelect.appendChild(option);
+                });
+            }
+
+            // Dodaj placeholder dla rozmiarów, jeśli istnieje
+            if (sizeVariantsElement && sizeVariantsElement.textContent !== '' && variantWrapper) {
+                variantWrapper.style.display = 'block';
+                variantSelect.setAttribute('validate', 'true');
+
+                const placeholderOption = document.createElement('option');
+                placeholderOption.textContent = 'Wybierz rozmiar';
+                placeholderOption.value = '';
+                placeholderOption.disabled = true;
+                placeholderOption.selected = true;
+                variantSelect.appendChild(placeholderOption);
+
+                // Pobierz warianty i dodaj do selecta
+                const sizeVariants = sizeVariantsElement.textContent?.split(',').map(v => v.trim()) || [];
+                sizeVariants.forEach(size => {
+                    const option = document.createElement('option');
+                    option.value = size;
+                    option.textContent = size;
+                    variantSelect.appendChild(option);
+                });
+            }
+        } else {
+            console.error('Variant select not found');
+        }
+
         button.addEventListener('click', async (event) => {
             event.preventDefault();
 
@@ -193,6 +267,9 @@ export const initializeAddToCartButtons = (): void => {
                 console.error('Error adding to cart:', error);
             }
         });
+
+        // Oznacz przycisk jako już zainicjalizowany
+        button.dataset.listenerAdded = "true";
     });
 };
 

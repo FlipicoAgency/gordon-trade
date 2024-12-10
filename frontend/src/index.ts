@@ -1,5 +1,5 @@
 // Import funkcji z modułu `cartItems`
-import {initializeCart} from './cartItems';
+import {initializeAddToCartButtons, initializeCart} from './cartItems';
 
 window.Webflow ||= [];
 window.Webflow.push(async () => {
@@ -23,11 +23,14 @@ window.Webflow.push(async () => {
                 break;
         }
 
+        if (currentUrl.includes("/produkty")) { await initializeAddToCartButtons(); }
+
         const categoryListHome = document.querySelector('[category-list="home"]');
         const categoryListNav = document.querySelector('[category-list="nav"]');
         const categoryListFooter = document.querySelector('[category-list="footer"]');
         const categoryListCategories = document.querySelector('[category-list="categories"]');
         const promoListNav = document.querySelector('[promo-list="nav"]');
+        const promoListProductPage = document.querySelector('[promo-list="product"]');
 
         const updatePromoPrices = (promoList: Element | null) => {
             if (promoList) {
@@ -78,6 +81,7 @@ window.Webflow.push(async () => {
 
         // Update promo prices
         updatePromoPrices(promoListNav);
+        updatePromoPrices(promoListProductPage);
 
         // Update links for lists
         updateCategoryLinks(categoryListHome, baseUrl);
