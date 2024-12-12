@@ -5,9 +5,9 @@ import type {OrderProduct} from "../../types/cart";
 
 // SVG ikony
 const icons: Record<string, string> = {
-    default: `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--tabler" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="12" r="9"></circle></g></svg>`,
-    success: `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--tabler" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="m9 12l2 2l4-4"></path></g></svg>`,
-    error: `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--tabler" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4m0 4h.01"></path></g></svg>`
+    default: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Z"></path></svg>`,
+    success: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256"><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"></path></svg>`,
+    error: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"></path></svg>`
 };
 
 // Funkcja do konwersji daty do formatu "DD.MM.YYYY"
@@ -195,8 +195,9 @@ function showOrderInfo(container: Container, containers: Container[]): void {
 
         const productListHTML = sameStatusContainer.Products.map(
             item => `
-                <div class="collection-item w-dyn-item">
-                    <div class="text-block" style="text-wrap: initial">${item.name}${item.variant ? `, Wariant: ${item.variant}` : ''}</div>
+                <div class="shipping-collection-item">
+                    <div class="text-style-ellipsis">${item.name}</div>
+                    ${item.variant ? `<div class="text-weight-normal text-style-muted">Wariant: <span>${item.variant}</span></div>` : ''}
                 </div>`
         ).join("");
 
@@ -204,17 +205,15 @@ function showOrderInfo(container: Container, containers: Container[]): void {
             <div class="shipping-details-item">
                 <div class="text-style-muted">Numer kontenera:</div>
                 <div class="text-weight-semibold">${sameStatusContainer["Container No"]}</div>
-                <div class="w-dyn-list">
-                    <div class="collection-list w-dyn-items" role="list">
-                        ${productListHTML}
-                    </div>
+                <div class="shipping-collection-list">
+                    ${productListHTML}
                 </div>
                 <div class="text-style-muted">Personalizacja:</div>
                 <div>${sameStatusContainer.Personalization}</div>
                 <div class="text-style-muted">Cykliczność:</div>
                 <div>${sameStatusContainer.Periodicity === 'Yes' ? 'Tak' : 'Nie'}</div>
                 <div class="text-style-muted">Zmiana kosztu transportu:</div>
-                <div>${sameStatusContainer["Change in transportation cost"]}</div>                
+                <div>${sameStatusContainer["Change in transportation cost"]}</div>
                 <div class="text-style-muted">Planowana dostawa:</div>
                 <div>${formatDate(sameStatusContainer["Estimated time of arrival"])}</div>
                 ${delayInfoHTML}
@@ -224,18 +223,19 @@ function showOrderInfo(container: Container, containers: Container[]): void {
 
     // Tworzenie całego HTML modala
     const modalHTML = `
-        <div class="map-shipping-info active">
+        <div class="map-shipping-info">
             <div class="shipping-wrapper">
-                <div class="shipping-header" style="
-                        display: flex; 
-                        justify-content: space-between; 
-                        align-items: center;
-                        padding-left: 1rem;
-                        padding-right: 1rem;
-                        font-weight: 600;
-                        ">
-                    <div>${container["Delivery status"].name} (${containersInSameStatus.length})</div>
-                    <button class="shipping-modal-close-button"><div class="icon-1x1-xsmall"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg></div></button>
+                <div class="map-product-parameter">
+                    <div class="text-weight-semibold">${container["Delivery status"].name} (${containersInSameStatus.length})</div>
+                    <button class="shipping-modal-close-button">
+                        <div class="icon-1x1-xsmall">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-x">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                <path d="M18 6l-12 12"></path>
+                                <path d="M6 6l12 12"></path>
+                                </svg>
+                        </div>
+                    </button>
                 </div>
                 <div class="shipping-details">
                     ${containerListHTML}
@@ -244,17 +244,12 @@ function showOrderInfo(container: Container, containers: Container[]): void {
         </div>
     `;
 
-    const mainWrapper = document.getElementById('container-map-wrapper');
-
-    if (!mainWrapper) {
-        throw new Error("Main wrapper not found in the DOM");
-    }
 
     // Dodanie modala do wrappera
-    mainWrapper.insertAdjacentHTML('afterbegin', modalHTML);
+    mapWrapper.insertAdjacentHTML('afterbegin', modalHTML);
 
     // Pobierz nowo utworzony modal i obsłuż zamknięcie
-    const modalWrapper = mainWrapper.querySelector(".map-shipping-info") as HTMLElement;
+    const modalWrapper = mapWrapper.querySelector(".map-shipping-info") as HTMLElement;
     modalWrapper.querySelector(".shipping-modal-close-button")?.addEventListener("click", () => {
         modalWrapper.remove();
     });
@@ -293,6 +288,7 @@ function generateShipItem(container: Container, containers: Container[]): void {
 
     // Generowanie struktury HTML
     const newElement = document.createElement("div");
+    newElement.classList.add("map-pin");
     newElement.innerHTML = `
         <div class="map-dot-wrapper" style="${position}">
             <div class="map-dot"></div>
@@ -312,6 +308,8 @@ function generateShipItem(container: Container, containers: Container[]): void {
             </button>
         </div>
     `;
+    mapWrapper.querySelector(".map-shipping-info.hide")?.remove();
+    mapWrapper.querySelector(".map-pin.hide")?.remove();
     mapWrapper.appendChild(newElement);
 
     // Obsługa zdarzeń
@@ -347,15 +345,17 @@ function generateShipListItem(container: Container): void {
 
     htmlElement.innerHTML = `
         <div class="stacked-list4_content-top">
-            <div class="text-size-small">Numer kontenera: <span class="text-weight-semibold text-style-link">${container["Container No"]}</span></div>
-            <div class="text-size-small">Planowana dostawa: <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
-            ${delayInfoHTML} <!-- Dodawanie informacji o opóźnieniu tylko jeśli istnieje -->
+            <div class="text-size-small">Numer kontenera: <span class="text-weight-semibold text-color-brand">${container["Container No"]}</span></div>
+            <div class="stacked-list4_info">
+                <div class="text-size-small">Planowana dostawa: <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
+                ${delayInfoHTML} <!-- Dodawanie informacji o opóźnieniu tylko jeśli istnieje -->
+            </div>
          </div>
-        <div class="stacked-list4_progress">
+        <div class="stacked-list4_progress ${isError ? 'is-error' : ''}">
             <div class="stacked-list4_progress-bar ${progressClass} ${isError ? 'is-error' : ''}">
                 <div class="stacked-list4_progress-dot ${isComplete ? 'is-success' : ''} ${isError ? 'is-error' : ''}">
                     <div class="stacked-list4_progress-status-text ${isComplete ? 'is-success' : ''} ${isError ? 'is-error' : ''}">${container["Delivery status"].name}</div>
-                    <div class="icon-embed-custom1 w-embed">
+                    <div class="icon-1x1-xsmall">
                         ${iconSVG}
                     </div>
                 </div>
@@ -366,8 +366,8 @@ function generateShipListItem(container: Container): void {
             <div class="text-size-small">${container["Delivery status"].name === 'Zrealizowano' ? 'Zrealizowano' : 'Polska'}</div>
         </div>
         ${container["Quality control photos"] !== 'Brak' ? `
-        <div style="padding: 1.25rem;">
-            <a class="button" href="${container["Quality control photos"]}">Zdjęcia kontroli jakości</a>
+        <div class="stacked-list4_content-button">
+            <a href="${container["Quality control photos"]}" class="button">Zdjęcia kontroli jakości</a>
         </div>` : ''}
     `;
 

@@ -278,23 +278,31 @@ export async function generateOrderItem(order: Order) {
             <img loading="lazy" src="${productDetails.fieldData.thumbnail?.url}" alt="${productDetails.fieldData.thumbnail?.alt || productDetails.fieldData.name}" class="order_product_image">
             <div class="order_product_group">
                 <div class="order_product_details">
-                    <div class="text-weight-semibold">${productDetails.fieldData.name}</div>
+                    <div class="text-weight-semibold text-style-2lines">${productDetails.fieldData.name}</div>
                     <div class="order_product_details_grid">
                         <div class="order_details_grid_item">
                             <div class="text-size-small">Ilość produktów:</div>
+                        </div>
+                        <div class="order_details_grid_item">
                             <div class="text-size-small">${productQuantity}</div>
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">Kwota za sztukę:</div>
+                        </div>
+                        <div class="order_details_grid_item">
                             <div class="text-size-small">${productPrice.toFixed(2)} zł</div>
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">SKU:</div>
+                        </div>
+                        <div class="order_details_grid_item">
                             <div class="text-size-small">${productDetails.fieldData.sku}</div>
                         </div>
                         ${product.variant ? `
                         <div class="order_details_grid_item">
                             <div class="text-size-small">Wariant:</div>
+                        </div>
+                        <div class="order_details_grid_item">
                             <div class="text-size-small">${product.variant}</div>
                         </div>` : ''}
                     </div>
@@ -361,7 +369,7 @@ const renderOrders = async (orders: Record<string, Order>): Promise<void> => {
     const orderArray = Object.values(orders);
 
     if (orderArray.length === 0) {
-        noResultElement.style.display = 'block';
+        noResultElement.style.display = 'flex';
     } else {
         noResultElement.style.display = 'none';
 

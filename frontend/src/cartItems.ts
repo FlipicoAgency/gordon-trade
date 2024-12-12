@@ -347,18 +347,20 @@ function renderCartItems(cartItems: ProductInCart[]) {
         itemElement.innerHTML = `
             <img sizes="100vw" alt="" src="${item.fieldData.thumbnail.url}" loading="lazy" class="cart-product-image">
             <div class="cart-product-info">
-                <a href="/produkty/${item.fieldData.slug}" class="text-weight-semibold text-style-2lines">${item.fieldData.name}</a>
-                <div class="cart-product-parameter" style="display: ${item.variant !== null ? 'block' : 'none'}">
+                <div class="margin-bottom margin-custom5">    
+                    <a href="/produkty/${item.fieldData.slug}" class="text-weight-semibold text-style-2lines">${item.fieldData.name}</a>
+                </div>
+                <div class="cart-product-parameter" style="display: ${item.variant !== null ? 'flex' : 'none'}">
                     <div class="display-inline">Wariant:</div>
-                    <div class="display-inline text-weight-semibold text-color-brand"> ${item.variant}</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${item.variant}</div>
                 </div>
                 <div class="cart-product-parameter">
-                    <div class="display-inline">Cena:</div>
-                    <div class="display-inline text-weight-semibold text-color-brand"> ${item.fieldData.pricePromo ? item.fieldData.pricePromo.toFixed(2) : item.fieldData.priceNormal.toFixed(2)} zł</div>
+                    <div class="display-inline">Cena za szt.:</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${item.fieldData.pricePromo ? item.fieldData.pricePromo.toFixed(2) : item.fieldData.priceNormal.toFixed(2)} zł</div>
                 </div>
                 <div class="cart-product-parameter">
                     <div class="display-inline">Ilość:</div>
-                    <div class="display-inline text-weight-semibold text-color-brand"> ${item.quantity}</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${item.quantity}</div>
                 </div>
             </div>
             <div class="card-product-form w-form">
