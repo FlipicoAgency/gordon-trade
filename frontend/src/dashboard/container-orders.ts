@@ -19,7 +19,7 @@ function formatDate(dateString: string): string {
 const locations: Status[] = [
     {
         name: "Ningbo",
-        position: "top: 41%; left: 73%;",
+        position: "top: 44%; left: 74%;",
         procent: "is-0",
     },
     {
@@ -34,27 +34,27 @@ const locations: Status[] = [
     },
     {
         name: "Shanghai",
-        position: "top: 40%; left: 79%;",
+        position: "top: 40%; left: 77%;",
         procent: "is-0",
     },
     {
         name: "Shenzhen",
-        position: "top: 52%; left: 66%;",
+        position: "top: 51%; left: 69%;",
         procent: "is-0",
     },
     {
         name: "Morze Południowochińskie",
-        position: "top: 71%; left: 67.75%;",
+        position: "top: 68%; left: 69%;",
         procent: "is-15",
     },
     {
         name: "Morze Lakkadiwskie",
-        position: "top: 66%; left: 61%;",
+        position: "top: 68%; left: 56%;",
         procent: "is-25",
     },
     {
         name: "Morze Arabskie",
-        position: "top: 64%; left: 47%;",
+        position: "top: 65%; left: 46%;",
         procent: "is-35",
     },
     {
@@ -64,7 +64,7 @@ const locations: Status[] = [
     },
     {
         name: "Morze Śródziemne",
-        position: "top: 45%; left: 40%;",
+        position: "top: 37.5%; left: 23%;",
         procent: "is-65",
     },
     {
