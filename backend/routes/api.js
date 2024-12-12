@@ -245,12 +245,14 @@ router.get('/sheets/containers', async (req, res) => {
 
         let lastNIP = null;
         let lastOrderId = null;
+        let lastContainerNo = null; // Nowa zmienna dla Container No
         const orders = [];
 
         // Procesowanie danych
         data.forEach((row) => {
             if (row[0]) lastNIP = row[0]; // Aktualizacja NIP, jeśli komórka nie jest pusta
             if (row[1]) lastOrderId = row[1]; // Aktualizacja ID zamówienia, jeśli komórka nie jest pusta
+            if (row[2]) lastContainerNo = row[2]; // Aktualizacja Container No, jeśli komórka nie jest pusta
 
             // Filtruj zamówienia na podstawie NIP
             if (lastNIP === nip) {
@@ -264,17 +266,18 @@ router.get('/sheets/containers', async (req, res) => {
                         return acc;
                     }, { products: [] }); // Dodaj pole products
                     existingOrder.orderId = lastOrderId; // Ustaw ID zamówienia
+                    existingOrder["Container No"] = lastContainerNo; // Przypisz ostatni Container No
                     orders.push(existingOrder);
                 }
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    name: row[3],               // Kolumna Product name
-                    variant: row[4],            // Kolumna Product variant
-                    quantity: row[5],           // Kolumna Quantity
-                    orderValue: row[6],         // Kolumna Order value
-                    estimatedFreight: row[7],   // Kolumna Estimated freight
-                    capacity: row[8],           // Kolumna Capacity
+                    name: row[3] || '',               // Kolumna Product name
+                    variant: row[4] || '',            // Kolumna Product variant
+                    quantity: row[5] || '',           // Kolumna Quantity
+                    orderValue: row[6] || '',         // Kolumna Order value
+                    estimatedFreight: row[7] || '',   // Kolumna Estimated freight
+                    capacity: row[8] || '',           // Kolumna Capacity
                 });
             }
         });
