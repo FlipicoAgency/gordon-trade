@@ -85,16 +85,21 @@ const locations: Status[] = [
 ];
 
 function formatToContainers(data: any): Container[] {
-    return Object.values(data).map((order: any) => {
+    return Object.values(data).map((order: any, index: number) => {
         // Mapowanie produktów
-        const products: OrderProduct[] = order.products.map((product: OrderProduct) => ({
+        const products: OrderProduct[] = order.products.map((product: any) => ({
             name: product.name,
             variant: product.variant,
             quantity: parseInt(product.quantity, 10),
-            orderValue: parseFloat(<string>product.orderValue),
-            estimatedFreight: parseFloat(<string>product.estimatedFreight),
-            capacity: parseFloat(<string>product.capacity),
+            orderValue: parseFloat(product.orderValue as string),
+            estimatedFreight: parseFloat(product.estimatedFreight as string),
+            capacity: parseFloat(product.capacity as string),
         }));
+
+        // Sprawdzenie, czy `Order ID` istnieje
+        if (order["Container No"] === '') {
+            console.error(`Błąd! Kontener nie posiada ID. Index: ${index}`);
+        }
 
         // Wybór statusu na podstawie daty wypłynięcia
         const deliveryStatus = chooseStatus(order["Estimated time of departure"], order["Loading port"]);
@@ -161,7 +166,7 @@ function chooseStatus(departureDate: string, loadingPort: string): Status {
     }
 
     // Ostrzeżenie o nieznanym statusie
-    console.warn(`Nieznany status dla departureDate: ${departureDate}, loadingPort: ${loadingPort}, diffDays: ${diffDays}`);
+    console.error(`Nieznany status dla departureDate: ${departureDate}, loadingPort: ${loadingPort}, diffDays: ${diffDays}`);
     return {
         name: "Nieznany status",
         position: "top: 0%; left: 0%;",
@@ -276,7 +281,7 @@ function generateShipItem(container: Container, containers: Container[]): void {
 
     // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
     if (statusName === "Zrealizowano") {
-        console.log(`Pomijanie generowania ship item dla kontenera ${container["Container No"]} o statusie: ${statusName}`);
+        console.log(`Zrealizowany! Pomijanie generowania ship item dla kontenera ${container["Container No"]} o statusie: ${statusName}`);
         return;
     }
 
