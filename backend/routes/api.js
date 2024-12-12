@@ -243,21 +243,45 @@ router.get('/sheets/containers', async (req, res) => {
         // Pobierz nagłówki i dane
         const [headers, ...data] = rows;
 
-        let lastNIP = null;
-        let lastOrderId = null;
-        let lastContainerNo = null; // Nowa zmienna dla Container No
+        // Znajdź indeksy interesujących kolumn
+        const indices = {
+            customerNip: headers.indexOf('Customer NIP'),
+            orderId: headers.indexOf('Order ID'),
+            containerNo: headers.indexOf('Container No'),
+            estimatedDeparture: headers.indexOf('Estimated time of departure'),
+            fastestShipping: headers.indexOf('Fastest possible shipping date'),
+            estimatedArrival: headers.indexOf('Estimated time of arrival'),
+            extendedDelivery: headers.indexOf('Extended delivery date'),
+        };
+
+        // Zmienna do śledzenia ostatnich wartości dla scalonych komórek
+        let lastValues = {
+            customerNip: null,
+            orderId: null,
+            containerNo: null,
+            estimatedDeparture: null,
+            fastestShipping: null,
+            estimatedArrival: null,
+            extendedDelivery: null,
+        };
+
         const orders = [];
 
         // Procesowanie danych
         data.forEach((row) => {
-            if (row[0]) lastNIP = row[0]; // Aktualizacja NIP, jeśli komórka nie jest pusta
-            if (row[1]) lastOrderId = row[1]; // Aktualizacja ID zamówienia, jeśli komórka nie jest pusta
-            if (row[2]) lastContainerNo = row[2]; // Aktualizacja Container No, jeśli komórka nie jest pusta
+            // Aktualizuj ostatnie wartości dla scalonych kolumn
+            if (row[indices.customerNip]) lastValues.customerNip = row[indices.customerNip];
+            if (row[indices.orderId]) lastValues.orderId = row[indices.orderId];
+            if (row[indices.containerNo]) lastValues.containerNo = row[indices.containerNo];
+            if (row[indices.estimatedDeparture]) lastValues.estimatedDeparture = row[indices.estimatedDeparture];
+            if (row[indices.fastestShipping]) lastValues.fastestShipping = row[indices.fastestShipping];
+            if (row[indices.estimatedArrival]) lastValues.estimatedArrival = row[indices.estimatedArrival];
+            if (row[indices.extendedDelivery]) lastValues.extendedDelivery = row[indices.extendedDelivery];
 
             // Filtruj zamówienia na podstawie NIP
-            if (lastNIP === nip) {
+            if (lastValues.customerNip === nip) {
                 // Znajdź istniejące zamówienie
-                let existingOrder = orders.find((order) => order.orderId === lastOrderId);
+                let existingOrder = orders.find((order) => order.orderId === lastValues.orderId);
 
                 if (!existingOrder) {
                     // Twórz nowe zamówienie, jeśli nie istnieje
@@ -265,8 +289,16 @@ router.get('/sheets/containers', async (req, res) => {
                         acc[header] = row[index] || '';
                         return acc;
                     }, { products: [] }); // Dodaj pole products
-                    existingOrder.orderId = lastOrderId; // Ustaw ID zamówienia
-                    existingOrder["Container No"] = lastContainerNo; // Przypisz ostatni Container No
+
+                    // Przypisz ostatnie wartości scalonych kolumn
+                    existingOrder['Customer NIP'] = lastValues.customerNip;
+                    existingOrder['Order ID'] = lastValues.orderId;
+                    existingOrder['Container No'] = lastValues.containerNo;
+                    existingOrder['Estimated time of departure'] = lastValues.estimatedDeparture;
+                    existingOrder['Fastest possible shipping date'] = lastValues.fastestShipping;
+                    existingOrder['Estimated time of arrival'] = lastValues.estimatedArrival;
+                    existingOrder['Extended delivery date'] = lastValues.extendedDelivery;
+
                     orders.push(existingOrder);
                 }
 
