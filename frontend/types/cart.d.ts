@@ -15,6 +15,7 @@ export interface Product {
         inStock: boolean;
         weightCarton: number;
         dimensionsCarton: string;
+        priceCarton;
         name: string;
         description: string;
         tags: string;

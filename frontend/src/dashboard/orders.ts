@@ -155,6 +155,7 @@ export async function generateOrderItem(order: Order) {
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">${order['Order value']}</div>
                             </div>
+                            <!--
                             <div class="spacer-xxsmall is-grid-2"></div>
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">Status płatności:</div>
@@ -185,6 +186,7 @@ export async function generateOrderItem(order: Order) {
                                     order['Payment status'] === 'Złożono zapytanie'
                                 )}
                             </div>
+                            -->
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">Status przesyłki:</div>
                             </div>

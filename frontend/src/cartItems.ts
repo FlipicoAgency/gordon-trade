@@ -73,10 +73,10 @@ async function updateCartUI() {
     }
 }
 
-export async function handleAddToCart(button: HTMLElement) {
+export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boolean = false) {
     const productElement =
         button.closest('.additional-product-item') ||
-        button.closest('.product-header2_add-to-cart') ||
+        button.closest('.product_add-to-cart') ||
         button.closest('.product_item') ||
         (window.location.pathname.includes('/konto')
             ? button.parentElement?.parentElement?.children[0]?.children[1]
@@ -94,6 +94,7 @@ export async function handleAddToCart(button: HTMLElement) {
     }
 
     const selectElement = productElement.querySelector('select[data-input="variant"]') as HTMLSelectElement;
+    const optionPillGroup = productElement.querySelector('div[data-input="pill-group"]') as HTMLDivElement;
     let selectedVariant: string | null = null;
 
     // Obsługa selectElement (jeśli istnieje)
@@ -106,7 +107,6 @@ export async function handleAddToCart(button: HTMLElement) {
     }
 
     // Obsługa wariantów w formie pill (jeśli istnieje)
-    const optionPillGroup = productElement.querySelector('div[data-input="pill-group"]') as HTMLDivElement;
     if (optionPillGroup) {
         const selectedPill = optionPillGroup.querySelector<HTMLDivElement>('div[aria-checked="true"]');
         if (selectedPill) {
@@ -117,20 +117,35 @@ export async function handleAddToCart(button: HTMLElement) {
         }
     }
 
-    // Pobierz ilość
+    // Pobierz ilość z inputa (jeśli nie kupujemy pełnego kartonu)
+    let quantity = 1;
     const quantityInput = productElement.querySelector<HTMLInputElement>('input[data-input="quantity"]');
-    const quantity: number = quantityInput && quantityInput.value.trim() !== ''
-        ? parseInt(quantityInput.value, 10)
-        : 1;
+    if (!isCartonPurchase) {
+        quantity = quantityInput && quantityInput.value.trim() !== ''
+            ? parseInt(quantityInput.value, 10)
+            : 1;
+    }
 
     try {
         const product: Product = await fetchProductDetails(productId);
+        const quantityInBox = product.fieldData.quantityInBox;
+
+        // Jeśli kupujemy pełny karton i jest określony quantityInBox
+        if (isCartonPurchase && quantityInBox > 0) {
+            quantity = quantityInBox;
+        }
+
+        // Ustalanie ceny w zależności od ilości i dostępności ceny kartonowej
+        let finalPrice = product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo : product.fieldData.priceNormal;
+        if (product.fieldData.priceCarton > 0 && quantity >= quantityInBox) {
+            finalPrice = product.fieldData.priceCarton;
+        }
 
         const selectedItem: ProductInCart = {
             ...product,
             variant: selectedVariant || null,
             quantity,
-            price: (product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo : product.fieldData.priceNormal),
+            price: finalPrice,
         };
 
         await addItemToCart(selectedItem);
@@ -181,95 +196,112 @@ async function addItemToCart(item: ProductInCart) {
     }
 }
 
+function initializeVariantSelect(addToCartForm: HTMLFormElement | null): void {
+    if (!addToCartForm) return;
+
+    addToCartForm.onsubmit = (event: Event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        console.log('Form submission prevented');
+    };
+
+    const colorVariantsElement = addToCartForm.querySelector<HTMLElement>('[data-variants="color"]');
+    const sizeVariantsElement = addToCartForm.querySelector<HTMLElement>('[data-variants="size"]');
+    const variantSelect = addToCartForm.querySelector<HTMLSelectElement>('select[data-input="variant"]');
+    const variantWrapper = addToCartForm.querySelector<HTMLElement>('[data-wrapper="variant"]');
+
+    if (!variantSelect) {
+        console.error('Variant select not found');
+        return;
+    }
+
+    // Wyczyść poprzednie opcje
+    variantSelect.innerHTML = '';
+
+    // Inicjalizacja wariantów kolorów
+    const colorText = colorVariantsElement?.textContent?.trim();
+    if (colorText && colorText !== '' && variantWrapper) {
+        variantWrapper.style.display = 'block';
+        variantSelect.setAttribute('validate', 'true');
+
+        const placeholderColor = document.createElement('option');
+        placeholderColor.textContent = 'Wybierz kolor';
+        placeholderColor.value = '';
+        placeholderColor.disabled = true;
+        placeholderColor.selected = true;
+        variantSelect.appendChild(placeholderColor);
+
+        const colorVariants = colorText.split(',').map(v => v.trim());
+        colorVariants.forEach(color => {
+            const option = document.createElement('option');
+            option.value = color;
+            option.textContent = color;
+            variantSelect.appendChild(option);
+        });
+    }
+
+    // Inicjalizacja wariantów rozmiarów
+    const sizeText = sizeVariantsElement?.textContent?.trim();
+    if (sizeText && sizeText !== '' && variantWrapper) {
+        variantWrapper.style.display = 'block';
+        variantSelect.setAttribute('validate', 'true');
+
+        const placeholderSize = document.createElement('option');
+        placeholderSize.textContent = 'Wybierz rozmiar';
+        placeholderSize.value = '';
+        placeholderSize.disabled = true;
+        placeholderSize.selected = true;
+        variantSelect.appendChild(placeholderSize);
+
+        const sizeVariants = sizeText.split(',').map(v => v.trim());
+        sizeVariants.forEach(size => {
+            const option = document.createElement('option');
+            option.value = size;
+            option.textContent = size;
+            variantSelect.appendChild(option);
+        });
+    }
+}
+
 export const initializeAddToCartButtons = (): void => {
     const addToCartButtons = document.querySelectorAll<HTMLElement>('.addtocartbutton');
+    const addToCartBoxButtons = document.querySelectorAll<HTMLElement>('[data-quantity="box"]');
 
+    // Obsługa standardowych przycisków dodawania do koszyka
     addToCartButtons.forEach((button) => {
-        // Sprawdź, czy przycisk ma już przypisany nasłuchiwacz
         if (button.dataset.listenerAdded === "true") return;
+        const addToCartForm = button.closest('.product_default-state') as HTMLFormElement | null;
 
-        const addToCartForm: HTMLFormElement | null = button.closest('.product-header2_default-state');
-
-        if (addToCartForm) {
-            addToCartForm.onsubmit = (event: Event) => {
-                event.preventDefault(); // Zapobiega domyślnemu działaniu formularza
-                event.stopPropagation();
-                console.log('Form submission prevented');
-            };
-        } else {
-            console.error('Add to Cart form not found');
-        }
-
-        // Pobierz elementy wariantów
-        const colorVariantsElement = addToCartForm?.querySelector<HTMLElement>('[data-variants="color"]');
-        const sizeVariantsElement = addToCartForm?.querySelector<HTMLElement>('[data-variants="size"]');
-
-        // Pobierz select
-        const variantSelect = addToCartForm?.querySelector<HTMLElement>('select[data-input="variant"]');
-        const variantWrapper = addToCartForm?.querySelector<HTMLElement>('[data-wrapper="variant"]');
-
-        if (variantSelect) {
-            // Czyścimy wcześniejsze opcje
-            variantSelect.innerHTML = '';
-
-            // Dodaj placeholder dla kolorów, jeśli istnieje
-            if (colorVariantsElement && colorVariantsElement.textContent !== '' && variantWrapper) {
-                variantWrapper.style.display = 'block';
-                variantSelect.setAttribute('validate', 'true');
-
-                const placeholderOption = document.createElement('option');
-                placeholderOption.textContent = 'Wybierz kolor';
-                placeholderOption.value = '';
-                placeholderOption.disabled = true;
-                placeholderOption.selected = true;
-                variantSelect.appendChild(placeholderOption);
-
-                // Pobierz warianty i dodaj do selecta
-                const colorVariants = colorVariantsElement.textContent?.split(',').map(v => v.trim()) || [];
-                colorVariants.forEach(color => {
-                    const option = document.createElement('option');
-                    option.value = color;
-                    option.textContent = color;
-                    variantSelect.appendChild(option);
-                });
-            }
-
-            // Dodaj placeholder dla rozmiarów, jeśli istnieje
-            if (sizeVariantsElement && sizeVariantsElement.textContent !== '' && variantWrapper) {
-                variantWrapper.style.display = 'block';
-                variantSelect.setAttribute('validate', 'true');
-
-                const placeholderOption = document.createElement('option');
-                placeholderOption.textContent = 'Wybierz rozmiar';
-                placeholderOption.value = '';
-                placeholderOption.disabled = true;
-                placeholderOption.selected = true;
-                variantSelect.appendChild(placeholderOption);
-
-                // Pobierz warianty i dodaj do selecta
-                const sizeVariants = sizeVariantsElement.textContent?.split(',').map(v => v.trim()) || [];
-                sizeVariants.forEach(size => {
-                    const option = document.createElement('option');
-                    option.value = size;
-                    option.textContent = size;
-                    variantSelect.appendChild(option);
-                });
-            }
-        } else {
-            console.error('Variant select not found');
-        }
+        initializeVariantSelect(addToCartForm);
 
         button.addEventListener('click', async (event) => {
             event.preventDefault();
-
             try {
-                await handleAddToCart(button);
+                await handleAddToCart(button, false);
             } catch (error) {
                 console.error('Error adding to cart:', error);
             }
         });
 
-        // Oznacz przycisk jako już zainicjalizowany
+        button.dataset.listenerAdded = "true";
+    });
+
+    // Obsługa przycisków dodawania całego kartonu
+    addToCartBoxButtons.forEach((button) => {
+        if (button.dataset.listenerAdded === "true") return;
+        const addToCartForm = button.closest('.product_default-state') as HTMLFormElement | null;
+
+        initializeVariantSelect(addToCartForm);
+
+        button.addEventListener('click', async (event) => {
+            event.preventDefault();
+            try {
+                await handleAddToCart(button, true);
+            } catch (error) {
+                console.error('Error adding to cart by carton:', error);
+            }
+        });
+
         button.dataset.listenerAdded = "true";
     });
 };
@@ -341,6 +373,10 @@ function renderCartItems(cartItems: ProductInCart[]) {
 
     cartItems.forEach((item) => {
         //console.log(item);
+        let displayPrice = (item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal);
+        if (item.fieldData.priceCarton > 0 && item.quantity >= item.fieldData.quantityInBox) {
+            displayPrice = item.fieldData.priceCarton;
+        }
 
         const itemElement = document.createElement('div');
         itemElement.className = 'cart-item';
@@ -356,7 +392,7 @@ function renderCartItems(cartItems: ProductInCart[]) {
                 </div>
                 <div class="cart-product-parameter">
                     <div class="display-inline">Cena za szt.:</div>
-                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${item.fieldData.pricePromo ? item.fieldData.pricePromo.toFixed(2) : item.fieldData.priceNormal.toFixed(2)} zł</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${displayPrice.toFixed(2)} zł</div>
                 </div>
                 <div class="cart-product-parameter">
                     <div class="display-inline">Ilość:</div>
@@ -483,6 +519,7 @@ export function mapApiResponseToProduct(apiResponse: any): Product {
             inStock: apiResponse.fieldData["w-magazynie"] ?? false,
             weightCarton: apiResponse.fieldData["1-karton---waga"] ?? 0,
             dimensionsCarton: apiResponse.fieldData["1-karton---wymiary-2"] ?? '',
+            priceCarton: apiResponse.fieldData["cena-za-karton"],
             name: apiResponse.fieldData["name"] ?? '',
             description: apiResponse.fieldData["opis"] ?? '',
             tags: apiResponse.fieldData["tagi"] ?? '',
