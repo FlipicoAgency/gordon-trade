@@ -222,8 +222,19 @@ export async function addNewOrderToExcel(
     }
 }
 
+async function fetchImageAsArrayBuffer(url: string): Promise<ArrayBuffer> {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Błąd pobierania obrazu: ${url}`);
+    }
+    return await response.arrayBuffer();
+}
+
 const generateExcelFile = async (products: ProductInCart[]): Promise<void> => {
-    // Przygotuj dane do Excela
+    // Oddzielnie przechowujemy URL-e obrazów
+    const imageUrls = products.map(product => product.fieldData.thumbnail.url);
+
+    // Przygotuj dane do Excela, bez URL w kolumnie "Zdjęcie"
     const data = products.map(product => ({
         "Nazwa": product.fieldData.name,
         "Kategoria": categoryMap[product.fieldData.category],
@@ -231,43 +242,37 @@ const generateExcelFile = async (products: ProductInCart[]): Promise<void> => {
         "Cena": `${product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo.toFixed(2) : product.fieldData.priceNormal.toFixed(2)} zł`,
         "SKU": product.fieldData.sku,
         "Dostępność": product.fieldData.productUnavailable ? "Brak na stanie" : "W magazynie",
-        "Zdjęcie": product.fieldData.thumbnail.url,
+        "Zdjęcie": '', // Pusta komórka, obraz wstawimy za chwilę
         "Ilość w kartonie": product.fieldData.quantityInBox
     }));
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Oferta');
 
-    // Dodaj nagłówki na podstawie kluczy z obiektu data[0]
+    // Dodaj nagłówki
     const headers = Object.keys(data[0]);
     worksheet.columns = headers.map(header => ({
         header,
         key: header,
-        // Początkowa szerokość - później dostosujemy
         width: header.length + 10
     }));
 
-    // Dodaj dane do arkusza
+    // Dodaj dane
     data.forEach(row => {
         worksheet.addRow(row);
     });
 
-    // Ustaw wysokość wierszy i styl komórek
+    // Styl komórek, wierszy i nagłówków
     worksheet.eachRow((row, rowNumber) => {
         row.height = 66;
         row.eachCell(cell => {
-            // Wyśrodkowanie pionowe i poziome
             cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-
-            // Obramowanie komórki (cienka linia wokół)
             cell.border = {
                 top: { style: 'thin' },
                 left: { style: 'thin' },
                 bottom: { style: 'thin' },
                 right: { style: 'thin' }
             };
-
-            // Styl dla nagłówków (pierwszy wiersz)
             if (rowNumber === 1) {
                 cell.font = { bold: true };
                 cell.fill = {
@@ -279,8 +284,8 @@ const generateExcelFile = async (products: ProductInCart[]): Promise<void> => {
         });
     });
 
-    // Dostosowanie szerokości kolumn do najdłuższej wartości
-    (worksheet.columns as ExcelJS.Column[]).forEach((column) => {
+    // Dostosowanie szerokości kolumn
+    (worksheet.columns as ExcelJS.Column[]).forEach(column => {
         let maxLength = 10;
         column.eachCell({ includeEmpty: true }, cell => {
             const val = cell.value;
@@ -291,7 +296,32 @@ const generateExcelFile = async (products: ProductInCart[]): Promise<void> => {
         column.width = maxLength + 2;
     });
 
-    // Zapis do bufora i wygenerowanie pliku do pobrania
+    // Wstawianie obrazów
+    const imageColIndex = headers.indexOf("Zdjęcie") + 1;
+    if (imageColIndex > 0) {
+        const imageBuffers = await Promise.all(imageUrls.map(url => fetchImageAsArrayBuffer(url)));
+
+        imageBuffers.forEach((buffer, i) => {
+            const rowNumber = i + 2; // Dane od drugiego wiersza
+            const imageId = workbook.addImage({
+                buffer: new Uint8Array(buffer),
+                extension: 'png'
+            });
+
+            // twoCell anchor - obraz będzie "przyklejony" do komórki
+            // tl: top-left komórki,
+            // br: bottom-right ustawia granice tak, by obraz wypełnił dokładnie tę komórkę.
+            worksheet.addImage(imageId, {
+                editAs: 'twoCell',
+                // @ts-ignore
+                tl: { col: imageColIndex - 1, row: rowNumber - 1 },
+                // @ts-ignore
+                br: { col: imageColIndex, row: rowNumber }
+            });
+        });
+    }
+
+    // Eksport pliku
     const buffer = await workbook.xlsx.writeBuffer();
     const excelBlob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(excelBlob);
