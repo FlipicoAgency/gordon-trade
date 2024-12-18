@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import type {Order} from "../types/orders-b2b";
 import {generateOrderItem} from "./dashboard/orders";
 import type {OrderProduct, ProductInCart, Product} from "../types/cart";
@@ -221,35 +222,84 @@ export async function addNewOrderToExcel(
     }
 }
 
-const generateExcelFile = (products: ProductInCart[]): void => {
+const generateExcelFile = async (products: ProductInCart[]): Promise<void> => {
     // Przygotuj dane do Excela
     const data = products.map(product => ({
-        Nazwa: product.fieldData.name,
-        Kategoria: categoryMap[product.fieldData.category] || 'Nieznana kategoria',
-        Wariant: product.variant || '',
-        Cena: `${product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo.toFixed(2) : product.fieldData.priceNormal.toFixed(2)} zł`,
-        SKU: product.fieldData.sku,
-        Dostępność: product.fieldData.productUnavailable ? 'Brak na stanie' : 'W magazynie',
+        "Nazwa": product.fieldData.name,
+        "Kategoria": categoryMap[product.fieldData.category],
+        "Wariant": product.variant || '',
+        "Cena": `${product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo.toFixed(2) : product.fieldData.priceNormal.toFixed(2)} zł`,
+        "SKU": product.fieldData.sku,
+        "Dostępność": product.fieldData.productUnavailable ? "Brak na stanie" : "W magazynie",
+        "Zdjęcie": product.fieldData.thumbnail.url,
+        "Ilość w kartonie": product.fieldData.quantityInBox
     }));
 
-    // Utwórz arkusz Excela
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Oferta');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Oferta');
 
-    // Wygeneruj dane w formacie array
-    const excelData = XLSX.write(workbook, {bookType: 'xlsx', type: 'array'});
+    // Dodaj nagłówki na podstawie kluczy z obiektu data[0]
+    const headers = Object.keys(data[0]);
+    worksheet.columns = headers.map(header => ({
+        header,
+        key: header,
+        // Początkowa szerokość - później dostosujemy
+        width: header.length + 10
+    }));
 
-    // Konwersja na Blob
-    const excelBlob = new Blob([excelData], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    // Dodaj dane do arkusza
+    data.forEach(row => {
+        worksheet.addRow(row);
+    });
 
-    // Utwórz link do pobrania pliku
-    const url = window.URL.createObjectURL(excelBlob);
+    // Ustaw wysokość wierszy i styl komórek
+    worksheet.eachRow((row, rowNumber) => {
+        row.height = 66;
+        row.eachCell(cell => {
+            // Wyśrodkowanie pionowe i poziome
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+            // Obramowanie komórki (cienka linia wokół)
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+
+            // Styl dla nagłówków (pierwszy wiersz)
+            if (rowNumber === 1) {
+                cell.font = { bold: true };
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'C0C0C0' }
+                };
+            }
+        });
+    });
+
+    // Dostosowanie szerokości kolumn do najdłuższej wartości
+    (worksheet.columns as ExcelJS.Column[]).forEach((column) => {
+        let maxLength = 10;
+        column.eachCell({ includeEmpty: true }, cell => {
+            const val = cell.value;
+            if (val && val.toString().length > maxLength) {
+                maxLength = val.toString().length;
+            }
+        });
+        column.width = maxLength + 2;
+    });
+
+    // Zapis do bufora i wygenerowanie pliku do pobrania
+    const buffer = await workbook.xlsx.writeBuffer();
+    const excelBlob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(excelBlob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'oferta.xlsx';
     a.click();
-    window.URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
 };
 
 export const initializeGenerateOffer = async (productsToOffer: string[]): Promise<void> => {
