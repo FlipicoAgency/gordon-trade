@@ -21,10 +21,17 @@ export interface Member {
     };
     metaData: Record<string, any>;
     customFields: {
-        nip: string;
-        name: string;
-        "last-name": string;
-        "first-name": string;
+        "nip": string,
+        "name": string,
+        "phone": string,
+        "rabat": string,
+        "saldo": string,
+        "last-name": string,
+        "first-name": string,
+        "company-zip": string,
+        "company-city": string,
+        "company-name": string,
+        "company-address": string
     };
     permissions: string[];
     stripeCustomerId: string | null;

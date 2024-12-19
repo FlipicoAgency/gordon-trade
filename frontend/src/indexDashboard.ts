@@ -6,6 +6,16 @@ import {initializeOrders} from "./dashboard/orders";
 import {initializeUppy} from "./dashboard/product-pricing";
 
 document.addEventListener("DOMContentLoaded", async () => {
+    const memberData: Member | null = await getMemberData();
+
+    if (!memberData) {
+        console.error("Brak danych użytkownika z Memberstack.");
+        return;
+    }
+
+    const userBalance = document.getElementById('user-balance') as HTMLElement;
+    userBalance.textContent = memberData.customFields.saldo;
+
     const mapWrapper = document.getElementById('container-map-wrapper') as HTMLElement;
     const listWrapper = document.getElementById('container-list-wrapper') as HTMLElement;
     const mapButton = document.getElementById('container-map') as HTMLElement;
@@ -26,13 +36,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Inicjalizacja - pokazujemy tylko mapę na starcie
     showMap();
-
-    const memberData: Member | null = await getMemberData();
-
-    if (!memberData) {
-        console.error("Brak danych użytkownika z Memberstack.");
-        return;
-    }
 
     await fetchContainers(memberData);
     await initializeFavorites();

@@ -2,6 +2,7 @@ import type {Member} from '../memberstack';
 import {cleanAndFormatData} from "../excel";
 import type {Container, Status} from "../../types/containers";
 import type {OrderProduct} from "../../types/cart";
+import {getIconPath} from "./orders";
 
 // SVG ikony
 const icons: Record<string, string> = {
@@ -110,6 +111,7 @@ function formatToContainers(data: any): Container[] {
             "Order ID": order["Order ID"],
             "Container No": order["Container No"],
             "Products": products,
+            "FV PDF": order["FV PDF"] || "Brak",
             "FV amount (netto)": order["FV amount (netto)"].trim(),
             "FV No": order["FV No"],
             "Loading port": order["Loading port"],
@@ -374,6 +376,14 @@ function generateShipListItem(container: Container): void {
         <div class="stacked-list4_content-button">
             <a href="${container["Quality control photos"]}" class="button">Zdjęcia kontroli jakości</a>
         </div>` : ''}
+        ${container["FV PDF"] !== 'Brak' ? `
+            <div class="stacked-list4_content-button">
+                <a href="${container["FV PDF"]}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
+                    <div class="order_download_faktura">Pobierz fakturę</div>
+                    <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
+                </a>
+            </div>
+        ` : ''}
     `;
 
     // Dodajemy nowo utworzony element do kontenera

@@ -11,6 +11,7 @@ export interface Container {
     "Order ID": string;
     "Container No": string;
     "Products": OrderProduct[];
+    "FV PDF": string;
     "FV amount (netto)": string;
     "FV No": string;
     "Loading port": string;
