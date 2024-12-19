@@ -1,4 +1,5 @@
-import {getMemberData} from "./memberstack";
+import type {Member} from './memberstack';
+import {getMemberData} from './memberstack';
 import type {Product, ProductInCart} from "../types/cart";
 import {addNewOrderToExcel} from "./excel";
 import type {Category} from "../types/cart";
@@ -31,20 +32,76 @@ async function updateCartUI() {
 
     try {
         const cartItems: ProductInCart[] = await fetchCartData();
+        //console.log('Cart items:', cartItems);
 
-        const totalAmount = cartItems.reduce((sum, item) => {
-            const price = item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal;
-            return sum + price * item.quantity;
-        }, 0);
+        const memberData: Member | null = await getMemberData();
+        const memberDiscount = memberData?.customFields.rabat
+            ? Number(memberData.customFields.rabat.replace('%', ''))
+            : 0;
+        //console.log('Member discount:', memberDiscount);
 
+        let totalAmount = 0;
+
+        // Przelicz cenę dla każdego itemu uwzględniając ilości kartonowe i resztę
+        for (const item of cartItems) {
+            const quantity = item.quantity;
+            const qInBox = item.fieldData.quantityInBox;
+            const priceNormalOrPromo = item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal;
+            const priceCarton = item.fieldData.priceCarton > 0 ? item.fieldData.priceCarton : priceNormalOrPromo;
+
+            let lineCost = 0;
+
+            if (qInBox > 0 && quantity >= qInBox) {
+                // Ile pełnych kartonów?
+                const fullBoxes = Math.floor(quantity / qInBox);
+                const fullBoxItems = fullBoxes * qInBox;
+                const leftover = quantity % qInBox;
+
+                const fullBoxCost = fullBoxItems * priceCarton;
+                const leftoverCost = leftover * priceNormalOrPromo;
+
+                lineCost = fullBoxCost + leftoverCost;
+            } else {
+                // Brak pełnego kartonu, wszystko po cenie normalnej/promo
+                lineCost = quantity * priceNormalOrPromo;
+            }
+
+            totalAmount += lineCost;
+        }
+
+        // Elementy do wyświetlenia cen
+        const discountElement = document.getElementById('cart-discount');
         const totalAmountElement = document.getElementById('cart-total');
         const cartQuantityElement = document.getElementById('cart-quantity');
 
-        if (totalAmountElement) totalAmountElement.textContent = `${totalAmount.toFixed(2)} zł`;
-        if (cartQuantityElement)
-            cartQuantityElement.textContent = cartItems
-                .reduce((sum, item) => sum + item.quantity, 0)
-                .toString();
+        if (cartQuantityElement) {
+            cartQuantityElement.textContent = cartItems.reduce((sum, item) => sum + item.quantity, 0).toString();
+        }
+
+        let finalAmount = totalAmount;
+        let discountAmount = 0;
+
+        if (memberDiscount > 0) {
+            // Oblicz kwotę rabatu i finalną kwotę
+            discountAmount = totalAmount * (memberDiscount / 100);
+            finalAmount = totalAmount - discountAmount;
+        }
+
+        // Aktualizacja wyświetlania kwot
+        if (totalAmountElement) {
+            totalAmountElement.style.display = 'block';
+            totalAmountElement.textContent = `${finalAmount.toFixed(2)} zł`;
+        }
+
+        if (discountElement && totalAmountElement) {
+            if (memberDiscount > 0) {
+                discountElement.style.display = 'block';
+                discountElement.textContent = `${discountAmount.toFixed(2)} zł`;
+            } else {
+                // @ts-ignore
+                discountElement.parentElement.style.display = 'none';
+            }
+        }
 
         // Obsługa stanów koszyka
         if (stateDefault && stateEmpty && stateSuccess && stateError) {
@@ -64,6 +121,10 @@ async function updateCartUI() {
         renderCartItems(cartItems);
     } catch (error) {
         console.error('Failed to update cart UI:', error);
+        const stateDefault = document.querySelector<HTMLElement>('.state-default');
+        const stateEmpty = document.querySelector<HTMLElement>('.state-empty');
+        const stateSuccess = document.querySelector<HTMLElement>('.state-success');
+        const stateError = document.querySelector<HTMLElement>('.state-error');
         if (stateDefault && stateEmpty && stateSuccess && stateError) {
             stateEmpty.style.display = 'none';
             stateDefault.style.display = 'none';
@@ -97,7 +158,7 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
     const optionPillGroup = productElement.querySelector('div[data-input="pill-group"]') as HTMLDivElement;
     let selectedVariant: string | null = null;
 
-    // Obsługa selectElement (jeśli istnieje)
+    // Walidacja wariantów
     if (selectElement && selectElement.getAttribute('validate') === 'true') {
         if (selectElement.value === '') {
             alert('Proszę wybrać opcję przed dodaniem produktu do koszyka.');
@@ -117,7 +178,6 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
         }
     }
 
-    // Pobierz ilość z inputa (jeśli nie kupujemy pełnego kartonu)
     let quantity = 1;
     const quantityInput = productElement.querySelector<HTMLInputElement>('input[data-input="quantity"]');
     if (!isCartonPurchase) {
@@ -135,9 +195,11 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
             quantity = quantityInBox;
         }
 
-        // Ustalanie ceny w zależności od ilości i dostępności ceny kartonowej
+        // Ustal cenę na poziomie dodawania do koszyka:
+        // Jeśli ilość jest równa ilości w kartonie, to cena = priceCarton (jeśli >0),
+        // w innym wypadku cena = promo lub normalna.
         let finalPrice = product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo : product.fieldData.priceNormal;
-        if (product.fieldData.priceCarton > 0 && quantity >= quantityInBox) {
+        if (product.fieldData.priceCarton > 0 && quantity === quantityInBox) {
             finalPrice = product.fieldData.priceCarton;
         }
 
@@ -373,10 +435,9 @@ function renderCartItems(cartItems: ProductInCart[]) {
 
     cartItems.forEach((item) => {
         //console.log(item);
-        let displayPrice = (item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal);
-        if (item.fieldData.priceCarton > 0 && item.quantity >= item.fieldData.quantityInBox) {
-            displayPrice = item.fieldData.priceCarton;
-        }
+        const priceNormalOrPromo = item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal;
+        const priceCarton = (item.fieldData.priceCarton && item.fieldData.priceCarton > 0) ? item.fieldData.priceCarton : 0;
+
 
         const itemElement = document.createElement('div');
         itemElement.className = 'cart-item';
@@ -391,8 +452,12 @@ function renderCartItems(cartItems: ProductInCart[]) {
                     <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${item.variant}</div>
                 </div>
                 <div class="cart-product-parameter">
-                    <div class="display-inline">Cena za szt.:</div>
-                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${displayPrice.toFixed(2)} zł</div>
+                    <div class="display-inline">Cena za szt. (regular):</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceNormalOrPromo.toFixed(2)} zł</div>
+                </div>
+                <div class="cart-product-parameter" style="display: ${priceCarton > 0 ? 'flex' : 'none'}">
+                    <div class="display-inline">Cena za szt. (karton):</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceCarton > 0 ? priceCarton.toFixed(2) : ''} zł</div>
                 </div>
                 <div class="cart-product-parameter">
                     <div class="display-inline">Ilość:</div>
