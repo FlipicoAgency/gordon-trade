@@ -297,52 +297,55 @@ router.get('/sheets/containers', async (req, res) => {
 
         // Procesowanie danych
         data.forEach((row, rowIndex) => {
-            // Aktualizuj ostatnie wartości dla scalonych kolumn
-            if (row[indices.customerNip]) lastValues.customerNip = normalizeNip(row[indices.customerNip]);
-            if (row[indices.orderId]) lastValues.orderId = row[indices.orderId];
-            if (row[indices.containerNo1]) lastValues.containerNo1 = row[indices.containerNo1];
-            if (row[indices.containerNo2]) lastValues.containerNo2 = row[indices.containerNo2];
-            if (row[indices.estimatedDeparture]) lastValues.estimatedDeparture = row[indices.estimatedDeparture];
-            if (row[indices.fastestShipping]) lastValues.fastestShipping = row[indices.fastestShipping];
-            if (row[indices.estimatedArrival]) lastValues.estimatedArrival = row[indices.estimatedArrival];
-            if (row[indices.extendedDelivery]) lastValues.extendedDelivery = row[indices.extendedDelivery];
+            // Pobierz bieżącą wartość NIP z wiersza, znormalizowaną
+            const currentCustomerNip = row[indices.customerNip] ? normalizeNip(row[indices.customerNip]) : null;
 
-            // Filtruj zamówienia na podstawie NIP
-            if (lastValues.customerNip === normalizedQueryNip) {
-                // Znajdź istniejące zamówienie
-                let existingOrder = orders.find((order) => order.orderId === lastValues.orderId);
+            // Sprawdź, czy aktualny NIP pasuje do podanego w zapytaniu
+            if (currentCustomerNip !== normalizedQueryNip) {
+                // Opcjonalnie: logowanie, gdy NIP jest pusty lub nie pasuje
+                console.log(`Wiersz ${rowIndex + 2} - NIP nie pasuje lub jest pusty: ${currentCustomerNip} !== ${normalizedQueryNip}`);
+                return; // Pomijamy wiersz, jeśli NIP jest pusty lub nie pasuje
+            }
 
-                if (!existingOrder) {
-                    // Twórz nowe zamówienie, jeśli nie istnieje
-                    existingOrder = {
-                        customerNip: lastValues.customerNip,
-                        orderId: lastValues.orderId,
-                        containerNo1: lastValues.containerNo1,
-                        containerNo2: lastValues.containerNo2,
-                        estimatedDeparture: lastValues.estimatedDeparture,
-                        fastestShipping: lastValues.fastestShipping,
-                        estimatedArrival: lastValues.estimatedArrival,
-                        extendedDelivery: lastValues.extendedDelivery,
-                        products: [], // Pusta tablica na produkty
-                    };
+            // Aktualizuj wartości dla scalonych kolumn
+            const orderId = row[indices.orderId] || lastValues.orderId;
+            const containerNo1 = row[indices.containerNo1] || lastValues.containerNo1;
+            const containerNo2 = row[indices.containerNo2] || lastValues.containerNo2;
+            const estimatedDeparture = row[indices.estimatedDeparture] || lastValues.estimatedDeparture;
+            const fastestShipping = row[indices.fastestShipping] || lastValues.fastestShipping;
+            const estimatedArrival = row[indices.estimatedArrival] || lastValues.estimatedArrival;
+            const extendedDelivery = row[indices.extendedDelivery] || lastValues.extendedDelivery;
 
-                    orders.push(existingOrder);
-                }
+            // Znajdź istniejące zamówienie
+            let existingOrder = orders.find((order) => order.orderId === orderId);
 
-                // Dodaj produkt do zamówienia
-                const product = {
-                    name: row[indices.productName] || '',               // Kolumna Product Name
-                    variant: row[indices.productVariant] || '',         // Kolumna Product Variant
-                    quantity: row[indices.quantity] || '0',             // Kolumna Quantity
-                    estimatedFreight: row[indices.estimatedFreight] || '', // Kolumna Estimated Freight
-                    capacity: row[indices.capacity] || '',               // Kolumna Capacity
+            if (!existingOrder) {
+                // Twórz nowe zamówienie, jeśli nie istnieje
+                existingOrder = {
+                    customerNip: currentCustomerNip,
+                    orderId: orderId,
+                    containerNo1: containerNo1,
+                    containerNo2: containerNo2,
+                    estimatedDeparture: estimatedDeparture,
+                    fastestShipping: fastestShipping,
+                    estimatedArrival: estimatedArrival,
+                    extendedDelivery: extendedDelivery,
+                    products: [], // Pusta tablica na produkty
                 };
 
-                existingOrder.products.push(product);
-            } else {
-                // Opcjonalnie: Logowanie, gdy NIP nie pasuje
-                // console.log(`Wiersz ${rowIndex + 2} - NIP nie pasuje: ${lastValues.customerNip} !== ${normalizedQueryNip}`);
+                orders.push(existingOrder);
             }
+
+            // Dodaj produkt do zamówienia
+            const product = {
+                name: row[indices.productName] || '',               // Kolumna Product Name
+                variant: row[indices.productVariant] || '',         // Kolumna Product Variant
+                quantity: row[indices.quantity] || '0',             // Kolumna Quantity
+                estimatedFreight: row[indices.estimatedFreight] || '', // Kolumna Estimated Freight
+                capacity: row[indices.capacity] || '',               // Kolumna Capacity
+            };
+
+            existingOrder.products.push(product);
         });
 
         res.status(200).json(orders);
