@@ -222,10 +222,25 @@ router.post('/sheets/orders', async (req, res) => {
 });
 
 // Pobierz zamówienia kontenerowe
+/**
+ * Funkcja do normalizacji NIP-u poprzez usunięcie wszelkich znaków niebędących cyframi.
+ * @param nip NIP do znormalizowania.
+ * @returns Znormalizowany NIP.
+ */
+function normalizeNip(nip: string): string {
+    return nip.replace(/\D/g, ''); // Usuwa wszystkie znaki niebędące cyframi
+}
+
 router.get('/sheets/containers', async (req, res) => {
     const { nip } = req.query; // NIP przekazany jako query parameter
-    if (!nip) {
-        return res.status(400).json({ error: 'Parametr "nip" jest wymagany.' });
+
+    if (!nip || typeof nip !== 'string') {
+        return res.status(400).json({ error: 'Parametr "nip" jest wymagany i musi być ciągiem znaków.' });
+    }
+
+    const normalizedQueryNip = normalizeNip(nip);
+    if (normalizedQueryNip.length !== 10) { // Standardowy format NIP to 10 cyfr
+        return res.status(400).json({ error: 'Podany NIP ma nieprawidłowy format.' });
     }
 
     try {
@@ -253,7 +268,18 @@ router.get('/sheets/containers', async (req, res) => {
             fastestShipping: headers.indexOf('Fastest possible shipping date'),
             estimatedArrival: headers.indexOf('Estimated time of arrival'),
             extendedDelivery: headers.indexOf('Extended delivery date'),
+            productName: headers.indexOf('Product Name'), // Przykładowe kolumny produktów
+            productVariant: headers.indexOf('Product Variant'),
+            quantity: headers.indexOf('Quantity'),
+            estimatedFreight: headers.indexOf('Estimated Freight'),
+            capacity: headers.indexOf('Capacity'),
         };
+
+        // Sprawdź, czy wszystkie wymagane kolumny zostały znalezione
+        const requiredColumns = Object.values(indices).every(index => index !== -1);
+        if (!requiredColumns) {
+            return res.status(500).json({ error: 'Niektóre wymagane kolumny nie zostały znalezione w arkuszu.' });
+        }
 
         // Zmienna do śledzenia ostatnich wartości dla scalonych komórek
         let lastValues = {
@@ -267,12 +293,12 @@ router.get('/sheets/containers', async (req, res) => {
             extendedDelivery: null,
         };
 
-        const orders = [];
+        const orders: Order[] = [];
 
         // Procesowanie danych
-        data.forEach((row) => {
+        data.forEach((row, rowIndex) => {
             // Aktualizuj ostatnie wartości dla scalonych kolumn
-            if (row[indices.customerNip]) lastValues.customerNip = row[indices.customerNip];
+            if (row[indices.customerNip]) lastValues.customerNip = normalizeNip(row[indices.customerNip]);
             if (row[indices.orderId]) lastValues.orderId = row[indices.orderId];
             if (row[indices.containerNo1]) lastValues.containerNo1 = row[indices.containerNo1];
             if (row[indices.containerNo2]) lastValues.containerNo2 = row[indices.containerNo2];
@@ -282,38 +308,40 @@ router.get('/sheets/containers', async (req, res) => {
             if (row[indices.extendedDelivery]) lastValues.extendedDelivery = row[indices.extendedDelivery];
 
             // Filtruj zamówienia na podstawie NIP
-            if (lastValues.customerNip === nip) {
+            if (lastValues.customerNip === normalizedQueryNip) {
                 // Znajdź istniejące zamówienie
                 let existingOrder = orders.find((order) => order.orderId === lastValues.orderId);
 
                 if (!existingOrder) {
                     // Twórz nowe zamówienie, jeśli nie istnieje
-                    existingOrder = headers.reduce((acc, header, index) => {
-                        acc[header] = row[index] || '';
-                        return acc;
-                    }, { products: [] }); // Dodaj pole products
-
-                    // Przypisz ostatnie wartości scalonych kolumn
-                    existingOrder['Customer NIP'] = lastValues.customerNip;
-                    existingOrder['Order ID'] = lastValues.orderId;
-                    existingOrder['Container No1'] = lastValues.containerNo1;
-                    existingOrder['Container No2'] = lastValues.containerNo2;
-                    existingOrder['Estimated time of departure'] = lastValues.estimatedDeparture;
-                    existingOrder['Fastest possible shipping date'] = lastValues.fastestShipping;
-                    existingOrder['Estimated time of arrival'] = lastValues.estimatedArrival;
-                    existingOrder['Extended delivery date'] = lastValues.extendedDelivery;
+                    existingOrder = {
+                        customerNip: lastValues.customerNip,
+                        orderId: lastValues.orderId,
+                        containerNo1: lastValues.containerNo1,
+                        containerNo2: lastValues.containerNo2,
+                        estimatedDeparture: lastValues.estimatedDeparture,
+                        fastestShipping: lastValues.fastestShipping,
+                        estimatedArrival: lastValues.estimatedArrival,
+                        extendedDelivery: lastValues.extendedDelivery,
+                        products: [], // Pusta tablica na produkty
+                    };
 
                     orders.push(existingOrder);
                 }
 
                 // Dodaj produkt do zamówienia
-                existingOrder.products.push({
-                    name: row[5] || '',               // Kolumna Product name
-                    variant: row[6] || '',            // Kolumna Product variant
-                    quantity: row[7] || '',           // Kolumna Quantity
-                    estimatedFreight: row[8] || '',   // Kolumna Estimated freight
-                    capacity: row[9] || '',           // Kolumna Capacity
-                });
+                const product: OrderProduct = {
+                    name: row[indices.productName] || '',               // Kolumna Product Name
+                    variant: row[indices.productVariant] || '',         // Kolumna Product Variant
+                    quantity: row[indices.quantity] || '0',             // Kolumna Quantity
+                    estimatedFreight: row[indices.estimatedFreight] || '', // Kolumna Estimated Freight
+                    capacity: row[indices.capacity] || '',               // Kolumna Capacity
+                };
+
+                existingOrder.products.push(product);
+            } else {
+                // Opcjonalnie: Logowanie, gdy NIP nie pasuje
+                // console.log(`Wiersz ${rowIndex + 2} - NIP nie pasuje: ${lastValues.customerNip} !== ${normalizedQueryNip}`);
             }
         });
 
