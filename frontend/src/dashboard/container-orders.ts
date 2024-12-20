@@ -86,44 +86,47 @@ const locations: Status[] = [
 ];
 
 function formatToContainers(data: any): Container[] {
-    return Object.values(data).map((order: any, index: number) => {
+    console.log(data);
+
+    return Object.values(data).map((order: any) => {
         // Mapowanie produktów
         const products: OrderProduct[] = order.products.map((product: any) => ({
             name: product.name,
             variant: product.variant,
-            quantity: parseInt(product.quantity, 10),
-            orderValue: parseFloat(product.orderValue as string),
-            estimatedFreight: parseFloat(product.estimatedFreight as string),
-            capacity: parseFloat(product.capacity as string),
+            quantity: product.quantity,
+            orderValue: product.orderValue,
+            estimatedFreight: product.estimatedFreight,
+            capacity: product.capacity,
         }));
 
-        // Sprawdzenie, czy `Order ID` istnieje
-        if (order["Container No"] === '') {
-            console.error(`Błąd! Kontener nie posiada ID. Index: ${index}`);
+        // Walidacja kontenera
+        if (!order.containerNo1) {
+            console.error(`Błąd! Kontener nie posiada ID: ${order}`);
         }
 
-        // Wybór statusu na podstawie daty wypłynięcia
-        const deliveryStatus = chooseStatus(order["Estimated time of departure"], order["Loading port"]);
-
         // Budowanie struktury kontenera
+        const deliveryStatus = chooseStatus(order.estimatedDeparture, order.loadingPort);
+
         return {
-            "Customer NIP": order["Customer NIP"],
-            "Order ID": order["Order ID"],
-            "Container No": order["Container No"],
+            "Customer NIP": order.customerNip,
+            "Order ID": order.orderId,
+            "Container No1": order.containerNo1,
+            "Container No2": order.containerNo2,
+            "Container type": order.containerType,
             "Products": products,
-            "FV PDF": order["FV PDF"] || "Brak",
-            "FV amount (netto)": order["FV amount (netto)"].trim(),
-            "FV No": order["FV No"],
-            "Loading port": order["Loading port"],
+            "FV PDF": order.fvPdf || "Brak",
+            "FV amount (netto)": order.fvAmountNetto || 0,
+            "FV No": order.fvNo || "Brak",
+            "Loading port": order.loadingPort || "Brak",
             "Delivery status": deliveryStatus,
-            "Estimated time of departure": order["Estimated time of departure"],
-            "Fastest possible shipping date": order["Fastest possible shipping date"],
-            "Estimated time of arrival": order["Estimated time of arrival"],
-            "Extended delivery date": order["Extended delivery date"],
-            "Personalization": order["Personalization"] || "Brak",
-            "Quality control photos": order["Quality control photos"] || "Brak",
-            "Change in transportation cost": order["Change in transportation cost"] || "Brak",
-            "Periodicity": order["Periodicity"] || "Brak",
+            "Estimated time of departure": order.estimatedDeparture || "Brak",
+            "Fastest possible shipping date": order.fastestShipping || "Brak",
+            "Estimated time of arrival": order.estimatedArrival || "Brak",
+            "Extended delivery date": order.extendedDelivery || "Brak",
+            "Personalization": order.personalization || "Brak",
+            "Quality control photos": order.qualityControlPhotos || "Brak",
+            "Change in transportation cost": order.changeInTransportationCost || "Brak",
+            "Periodicity": order.periodicity || "Brak",
         };
     });
 }
@@ -211,7 +214,7 @@ function showOrderInfo(container: Container, containers: Container[]): void {
         return `
             <div class="shipping-details-item">
                 <div class="text-style-muted">Numer kontenera:</div>
-                <div class="text-weight-semibold">${sameStatusContainer["Container No"]}</div>
+                <div class="text-weight-semibold">${sameStatusContainer["Container No1"]}</div>
                 <div class="shipping-collection-list">
                     ${productListHTML}
                 </div>
@@ -283,7 +286,7 @@ function generateShipItem(container: Container, containers: Container[]): void {
 
     // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
     if (statusName === "Zrealizowano") {
-        console.log(`Zrealizowany! Pomijanie generowania ship item dla kontenera ${container["Container No"]} o statusie: ${statusName}`);
+        console.log(`Zrealizowany! Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
         return;
     }
 
@@ -352,7 +355,7 @@ function generateShipListItem(container: Container): void {
 
     htmlElement.innerHTML = `
         <div class="stacked-list4_content-top">
-            <div class="text-size-small">Numer kontenera: <span class="text-weight-semibold text-color-brand">${container["Container No"]}</span></div>
+            <div class="text-size-small">Numer kontenera: <span class="text-weight-semibold text-color-brand">${container["Container No1"]}</span></div>
             <div class="stacked-list4_info">
                 <div class="text-size-small">Planowana dostawa: <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
                 ${delayInfoHTML} <!-- Dodawanie informacji o opóźnieniu tylko jeśli istnieje -->

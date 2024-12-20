@@ -9,7 +9,9 @@ export interface Status {
 export interface Container {
     "Customer NIP": string;
     "Order ID": string;
-    "Container No": string;
+    "Container No1": string;
+    "Container No2": string;
+    "Container type": string;
     "Products": OrderProduct[];
     "FV PDF": string;
     "FV amount (netto)": string;
