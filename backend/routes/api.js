@@ -293,7 +293,7 @@ router.get('/sheets/containers', async (req, res) => {
             extendedDelivery: null,
         };
 
-        const orders: Order[] = [];
+        const orders = [];
 
         // Procesowanie danych
         data.forEach((row, rowIndex) => {
