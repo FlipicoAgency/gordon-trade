@@ -232,14 +232,14 @@ function normalizeNip(nip) {
 }
 
 router.get('/sheets/containers', async (req, res) => {
-    const { nip } = req.query; // NIP przekazany jako query parameter
+    const { nip } = req.query;
 
     if (!nip || typeof nip !== 'string') {
         return res.status(400).json({ error: 'Parametr "nip" jest wymagany i musi być ciągiem znaków.' });
     }
 
     const normalizedQueryNip = normalizeNip(nip);
-    if (normalizedQueryNip.length !== 10) { // Standardowy format NIP to 10 cyfr
+    if (normalizedQueryNip.length !== 10) {
         return res.status(400).json({ error: 'Podany NIP ma nieprawidłowy format.' });
     }
 
@@ -247,7 +247,7 @@ router.get('/sheets/containers', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Containers!A1:X', // Zakres danych
+            range: 'Containers!A1:X',
         });
 
         const rows = response.data.values;
@@ -255,100 +255,90 @@ router.get('/sheets/containers', async (req, res) => {
             return res.status(404).json({ error: 'Brak danych w arkuszu.' });
         }
 
-        // Pobierz nagłówki i dane
         const [headers, ...data] = rows;
 
-        // Znajdź indeksy interesujących kolumn
+        // Indeksy interesujących kolumn
         const indices = {
             customerNip: headers.indexOf('Customer NIP'),
             orderId: headers.indexOf('Order ID'),
             containerNo1: headers.indexOf('Container No1'),
             containerNo2: headers.indexOf('Container No2'),
+            containerType: headers.indexOf('Container type'),
+            fvPdf: headers.indexOf('FV PDF'),
+            fvAmountNetto: headers.indexOf('FV amount (netto)'),
+            fvNo: headers.indexOf('FV No'),
+            loadingPort: headers.indexOf('Loading port'),
+            personalization: headers.indexOf('Personalization'),
+            qualityControlPhotos: headers.indexOf('Quality control photos'),
+            changeInTransportationCost: headers.indexOf('Change in transportation cost'),
+            periodicity: headers.indexOf('Periodicity'),
             estimatedDeparture: headers.indexOf('Estimated time of departure'),
             fastestShipping: headers.indexOf('Fastest possible shipping date'),
             estimatedArrival: headers.indexOf('Estimated time of arrival'),
             extendedDelivery: headers.indexOf('Extended delivery date'),
-            productName: headers.indexOf('Product Name'), // Przykładowe kolumny produktów
+            productName: headers.indexOf('Product Name'),
             productVariant: headers.indexOf('Product Variant'),
             quantity: headers.indexOf('Quantity'),
             estimatedFreight: headers.indexOf('Estimated Freight'),
             capacity: headers.indexOf('Capacity'),
         };
 
-        // Sprawdź, czy wszystkie wymagane kolumny zostały znalezione
-        const requiredColumns = Object.values(indices).every(index => index !== -1);
-        if (!requiredColumns) {
+        // Sprawdzenie, czy wszystkie kolumny istnieją
+        if (Object.values(indices).some(index => index === -1)) {
             return res.status(500).json({ error: 'Niektóre wymagane kolumny nie zostały znalezione w arkuszu.' });
         }
 
-        // Zmienna do śledzenia ostatnich wartości dla scalonych komórek
-        let lastValues = {
-            customerNip: null,
-            orderId: null,
-            containerNo1: null,
-            containerNo2: null,
-            estimatedDeparture: null,
-            fastestShipping: null,
-            estimatedArrival: null,
-            extendedDelivery: null,
-        };
+        const orders = {};
 
-        const orders = [];
-
-        // Procesowanie danych
         data.forEach((row, rowIndex) => {
-            // Pobierz bieżącą wartość NIP z wiersza, znormalizowaną
             const currentCustomerNip = row[indices.customerNip] ? normalizeNip(row[indices.customerNip]) : null;
 
-            // Sprawdź, czy aktualny NIP pasuje do podanego w zapytaniu
             if (currentCustomerNip !== normalizedQueryNip) {
-                // Opcjonalnie: logowanie, gdy NIP jest pusty lub nie pasuje
-                console.log(`Wiersz ${rowIndex + 2} - NIP nie pasuje lub jest pusty: ${currentCustomerNip} !== ${normalizedQueryNip}`);
-                return; // Pomijamy wiersz, jeśli NIP jest pusty lub nie pasuje
+                console.log(`Wiersz ${rowIndex + 2} - NIP nie pasuje lub jest pusty: ${currentCustomerNip}`);
+                return;
             }
 
-            // Aktualizuj wartości dla scalonych kolumn
-            const orderId = row[indices.orderId] || lastValues.orderId;
-            const containerNo1 = row[indices.containerNo1] || lastValues.containerNo1;
-            const containerNo2 = row[indices.containerNo2] || lastValues.containerNo2;
-            const estimatedDeparture = row[indices.estimatedDeparture] || lastValues.estimatedDeparture;
-            const fastestShipping = row[indices.fastestShipping] || lastValues.fastestShipping;
-            const estimatedArrival = row[indices.estimatedArrival] || lastValues.estimatedArrival;
-            const extendedDelivery = row[indices.extendedDelivery] || lastValues.extendedDelivery;
+            const orderId = row[indices.orderId];
+            if (!orderId) {
+                console.log(`Wiersz ${rowIndex + 2} - Pominięto z powodu braku Order ID`);
+                return;
+            }
 
-            // Znajdź istniejące zamówienie
-            let existingOrder = orders.find((order) => order.orderId === orderId);
-
-            if (!existingOrder) {
-                // Twórz nowe zamówienie, jeśli nie istnieje
-                existingOrder = {
+            if (!orders[orderId]) {
+                orders[orderId] = {
                     customerNip: currentCustomerNip,
-                    orderId: orderId,
-                    containerNo1: containerNo1,
-                    containerNo2: containerNo2,
-                    estimatedDeparture: estimatedDeparture,
-                    fastestShipping: fastestShipping,
-                    estimatedArrival: estimatedArrival,
-                    extendedDelivery: extendedDelivery,
-                    products: [], // Pusta tablica na produkty
+                    orderId,
+                    containerNo1: row[indices.containerNo1] || '',
+                    containerNo2: row[indices.containerNo2] || '',
+                    containerType: row[indices.containerType] || 'Brak',
+                    fvPdf: row[indices.fvPdf] || 'Brak',
+                    fvAmountNetto: row[indices.fvAmountNetto] || 0,
+                    fvNo: row[indices.fvNo] || 'Brak',
+                    loadingPort: row[indices.loadingPort] || 'Brak',
+                    personalization: row[indices.personalization] || 'Brak',
+                    qualityControlPhotos: row[indices.qualityControlPhotos] || 'Brak',
+                    changeInTransportationCost: row[indices.changeInTransportationCost] || 'Brak',
+                    periodicity: row[indices.periodicity] || 'Brak',
+                    estimatedDeparture: row[indices.estimatedDeparture] || 'Brak',
+                    fastestShipping: row[indices.fastestShipping] || 'Brak',
+                    estimatedArrival: row[indices.estimatedArrival] || 'Brak',
+                    extendedDelivery: row[indices.extendedDelivery] || 'Brak',
+                    products: [],
                 };
-
-                orders.push(existingOrder);
             }
 
-            // Dodaj produkt do zamówienia
             const product = {
-                name: row[indices.productName] || '',               // Kolumna Product Name
-                variant: row[indices.productVariant] || '',         // Kolumna Product Variant
-                quantity: row[indices.quantity] || '0',             // Kolumna Quantity
-                estimatedFreight: row[indices.estimatedFreight] || '', // Kolumna Estimated Freight
-                capacity: row[indices.capacity] || '',               // Kolumna Capacity
+                name: row[indices.productName] || 'Nieznany produkt',
+                variant: row[indices.productVariant] || 'Brak wariantu',
+                quantity: parseInt(row[indices.quantity], 10) || 0,
+                estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
+                capacity: parseFloat(row[indices.capacity]) || 0,
             };
 
-            existingOrder.products.push(product);
+            orders[orderId].products.push(product);
         });
 
-        res.status(200).json(orders);
+        res.status(200).json(Object.values(orders));
     } catch (error) {
         console.error('Błąd pobierania danych z arkusza:', error);
         res.status(500).json({ error: 'Internal Server Error' });
