@@ -227,7 +227,7 @@ router.post('/sheets/orders', async (req, res) => {
  * @param nip NIP do znormalizowania.
  * @returns Znormalizowany NIP.
  */
-function normalizeNip(nip: string): string {
+function normalizeNip(nip) {
     return nip.replace(/\D/g, ''); // Usuwa wszystkie znaki niebędące cyframi
 }
 
