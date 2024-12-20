@@ -232,7 +232,7 @@ router.get('/sheets/containers', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Containers!A1:T', // Zakres danych
+            range: 'Containers!A1:X', // Zakres danych
         });
 
         const rows = response.data.values;
@@ -247,7 +247,8 @@ router.get('/sheets/containers', async (req, res) => {
         const indices = {
             customerNip: headers.indexOf('Customer NIP'),
             orderId: headers.indexOf('Order ID'),
-            containerNo: headers.indexOf('Container No'),
+            containerNo1: headers.indexOf('Container No1'),
+            containerNo2: headers.indexOf('Container No2'),
             estimatedDeparture: headers.indexOf('Estimated time of departure'),
             fastestShipping: headers.indexOf('Fastest possible shipping date'),
             estimatedArrival: headers.indexOf('Estimated time of arrival'),
@@ -258,7 +259,8 @@ router.get('/sheets/containers', async (req, res) => {
         let lastValues = {
             customerNip: null,
             orderId: null,
-            containerNo: null,
+            containerNo1: null,
+            containerNo2: null,
             estimatedDeparture: null,
             fastestShipping: null,
             estimatedArrival: null,
@@ -272,7 +274,8 @@ router.get('/sheets/containers', async (req, res) => {
             // Aktualizuj ostatnie wartości dla scalonych kolumn
             if (row[indices.customerNip]) lastValues.customerNip = row[indices.customerNip];
             if (row[indices.orderId]) lastValues.orderId = row[indices.orderId];
-            if (row[indices.containerNo]) lastValues.containerNo = row[indices.containerNo];
+            if (row[indices.containerNo1]) lastValues.containerNo1 = row[indices.containerNo1];
+            if (row[indices.containerNo2]) lastValues.containerNo2 = row[indices.containerNo2];
             if (row[indices.estimatedDeparture]) lastValues.estimatedDeparture = row[indices.estimatedDeparture];
             if (row[indices.fastestShipping]) lastValues.fastestShipping = row[indices.fastestShipping];
             if (row[indices.estimatedArrival]) lastValues.estimatedArrival = row[indices.estimatedArrival];
@@ -293,7 +296,8 @@ router.get('/sheets/containers', async (req, res) => {
                     // Przypisz ostatnie wartości scalonych kolumn
                     existingOrder['Customer NIP'] = lastValues.customerNip;
                     existingOrder['Order ID'] = lastValues.orderId;
-                    existingOrder['Container No'] = lastValues.containerNo;
+                    existingOrder['Container No1'] = lastValues.containerNo1;
+                    existingOrder['Container No2'] = lastValues.containerNo2;
                     existingOrder['Estimated time of departure'] = lastValues.estimatedDeparture;
                     existingOrder['Fastest possible shipping date'] = lastValues.fastestShipping;
                     existingOrder['Estimated time of arrival'] = lastValues.estimatedArrival;
@@ -304,12 +308,11 @@ router.get('/sheets/containers', async (req, res) => {
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    name: row[3] || '',               // Kolumna Product name
-                    variant: row[4] || '',            // Kolumna Product variant
-                    quantity: row[5] || '',           // Kolumna Quantity
-                    orderValue: row[6] || '',         // Kolumna Order value
-                    estimatedFreight: row[7] || '',   // Kolumna Estimated freight
-                    capacity: row[8] || '',           // Kolumna Capacity
+                    name: row[5] || '',               // Kolumna Product name
+                    variant: row[6] || '',            // Kolumna Product variant
+                    quantity: row[7] || '',           // Kolumna Quantity
+                    estimatedFreight: row[8] || '',   // Kolumna Estimated freight
+                    capacity: row[9] || '',           // Kolumna Capacity
                 });
             }
         });
@@ -334,7 +337,7 @@ router.post('/sheets/containers', async (req, res) => {
         // Dodaj nowe wiersze
         const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:T',
+            range: 'Orders!A1:X',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
