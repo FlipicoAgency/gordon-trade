@@ -288,6 +288,16 @@ router.get('/sheets/containers', async (req, res) => {
             return res.status(500).json({ error: 'Niektóre wymagane kolumny nie zostały znalezione w arkuszu.' });
         }
 
+        const lastRow = {
+            containerNo1: null,
+            containerNo2: null,
+            containerType: null,
+            estimatedDeparture: null,
+            fastestShipping: null,
+            estimatedArrival: null,
+            extendedDelivery: null,
+        };
+
         const orders = {};
 
         data.forEach((row, rowIndex) => {
@@ -304,13 +314,22 @@ router.get('/sheets/containers', async (req, res) => {
                 return;
             }
 
+            // Uzupełnij scalone komórki, jeśli są puste
+            lastRow.containerNo1 = row[indices.containerNo1] || lastRow.containerNo1;
+            lastRow.containerNo2 = row[indices.containerNo2] || lastRow.containerNo2;
+            lastRow.containerType = row[indices.containerType] || lastRow.containerType;
+            lastRow.estimatedDeparture = row[indices.estimatedDeparture] || lastRow.estimatedDeparture;
+            lastRow.fastestShipping = row[indices.fastestShipping] || lastRow.fastestShipping;
+            lastRow.estimatedArrival = row[indices.estimatedArrival] || lastRow.estimatedArrival;
+            lastRow.extendedDelivery = row[indices.extendedDelivery] || lastRow.extendedDelivery;
+
             if (!orders[orderId]) {
                 orders[orderId] = {
                     customerNip: currentCustomerNip,
                     orderId,
-                    containerNo1: row[indices.containerNo1] || '',
-                    containerNo2: row[indices.containerNo2] || '',
-                    containerType: row[indices.containerType] || 'Brak',
+                    containerNo1: lastRow.containerNo1,
+                    containerNo2: lastRow.containerNo2,
+                    containerType: lastRow.containerType || 'Brak',
                     fvPdf: row[indices.fvPdf] || 'Brak',
                     fvAmountNetto: row[indices.fvAmountNetto] || 0,
                     fvNo: row[indices.fvNo] || 'Brak',
@@ -319,20 +338,20 @@ router.get('/sheets/containers', async (req, res) => {
                     qualityControlPhotos: row[indices.qualityControlPhotos] || 'Brak',
                     changeInTransportationCost: row[indices.changeInTransportationCost] || 'Brak',
                     periodicity: row[indices.periodicity] || 'Brak',
-                    estimatedDeparture: row[indices.estimatedDeparture] || 'Brak',
-                    fastestShipping: row[indices.fastestShipping] || 'Brak',
-                    estimatedArrival: row[indices.estimatedArrival] || 'Brak',
-                    extendedDelivery: row[indices.extendedDelivery] || 'Brak',
+                    estimatedDeparture: lastRow.estimatedDeparture,
+                    fastestShipping: lastRow.fastestShipping,
+                    estimatedArrival: lastRow.estimatedArrival,
+                    extendedDelivery: lastRow.extendedDelivery,
                     products: [],
                 };
             }
 
             const product = {
-                name: row[indices.productName] || 'Nieznany produkt',
-                variant: row[indices.productVariant] || 'Brak wariantu',
-                quantity: parseInt(row[indices.quantity], 10) || 0,
-                estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
-                capacity: parseFloat(row[indices.capacity]) || 0,
+                name: row[indices.productName],
+                variant: row[indices.productVariant],
+                quantity: parseInt(row[indices.quantity], 10),
+                estimatedFreight: parseFloat(row[indices.estimatedFreight]),
+                capacity: parseFloat(row[indices.capacity]),
             };
 
             orders[orderId].products.push(product);
