@@ -330,7 +330,7 @@ router.get('/sheets/containers', async (req, res) => {
                 }
 
                 // Dodaj produkt do zamówienia
-                const product: OrderProduct = {
+                const product = {
                     name: row[indices.productName] || '',               // Kolumna Product Name
                     variant: row[indices.productVariant] || '',         // Kolumna Product Variant
                     quantity: row[indices.quantity] || '0',             // Kolumna Quantity
