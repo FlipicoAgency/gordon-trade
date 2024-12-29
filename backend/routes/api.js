@@ -38,8 +38,9 @@ router.get('/sheets/orders', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders B2B!A1:N', // Zakres danych
-            valueRenderOption: 'UNFORMATTED_VALUE' // <- kluczowe!
+            range: 'Orders B2B!A1:N',  // Zakres danych
+            valueRenderOption: 'UNFORMATTED_VALUE', // Ważne: zwraca surowe, niesformatowane wartości
+            majorDimension: 'ROWS',    // (opcjonalne) Upewnia się, że dane są wierszami
         });
 
         const rows = response.data.values;
@@ -47,40 +48,50 @@ router.get('/sheets/orders', async (req, res) => {
             return res.status(404).json({ error: 'Brak danych w arkuszu.' });
         }
 
-        // Pobierz nagłówki i dane
+        // Pobierz nagłówki (pierwszy wiersz) i dane (reszta wierszy)
         const [headers, ...data] = rows;
 
         let lastNIP = null;
         let lastOrderId = null;
         const orders = [];
 
-        // Procesowanie danych
+        // Procesowanie danych wiersz po wierszu
         data.forEach((row) => {
-            if (row[0]) lastNIP = row[0]; // Aktualizacja NIP, jeśli komórka nie jest pusta
-            if (row[1]) lastOrderId = row[1]; // Aktualizacja ID zamówienia, jeśli komórka nie jest pusta
+            // Rzutuj NIP i Order ID na string — nawet jeśli są liczbami
+            let cellNip = row[0] !== undefined && row[0] !== null ? String(row[0]) : null;
+            let cellOrderId = row[1] !== undefined && row[1] !== null ? String(row[1]) : null;
+
+            // Jeśli w komórce jest coś, uaktualniamy lastNIP / lastOrderId
+            if (cellNip) lastNIP = cellNip;
+            if (cellOrderId) lastOrderId = cellOrderId;
 
             // Filtruj zamówienia na podstawie NIP
             if (lastNIP === nip) {
-                // Znajdź istniejące zamówienie
-                let existingOrder = orders.find((order) => order.orderId === lastOrderId);
+                // Szukamy istniejącego zamówienia w tablicy orders
+                let existingOrder = orders.find(order => order.orderId === lastOrderId);
 
                 if (!existingOrder) {
-                    // Twórz nowe zamówienie, jeśli nie istnieje
+                    // Tworzymy nowe zamówienie na podstawie aktualnego wiersza
                     existingOrder = headers.reduce((acc, header, index) => {
-                        acc[header] = row[index] || '';
+                        // Jeśli row[index] jest undefined, wpisujemy pusty string
+                        acc[header] = row[index] !== undefined ? row[index] : '';
                         return acc;
-                    }, { products: [] }); // Dodaj pole products
-                    existingOrder.orderId = lastOrderId; // Ustaw ID zamówienia
+                    }, { products: [] });
+
+                    // Ustawiamy orderId explicite
+                    existingOrder.orderId = lastOrderId;
                     orders.push(existingOrder);
                 }
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    name: row[2],       // Kolumna Product name
-                    id: row[3],         // Kolumna Product ID
-                    variant: row[4],    // Kolumna Product variant
-                    quantity: row[5],   // Kolumna Quantity
-                    price: row[6],      // Kolumna Quantity
+                    // Przykładowo:
+                    name: row[2] !== undefined ? row[2] : '',       // Product name (kolumna 3)
+                    id: row[3] !== undefined ? String(row[3]) : '', // Product ID (kolumna 4)
+                    variant: row[4] !== undefined ? String(row[4]) : '',
+                    quantity: row[5] !== undefined ? String(row[5]) : '',
+                    price: row[6] !== undefined ? String(row[6]) : '',
+                    // Możesz dostosować indeksy lub ilość kolumn do swojego arkusza
                 });
             }
         });
