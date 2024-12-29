@@ -1,83 +1,142 @@
 import {fetchProductDetails} from "../cartItems";
 import type {Member} from "../memberstack";
-import type {Product, ProductInCart} from "../../types/cart";
-import {getMemberData} from "../memberstack";
+import type {OrderProduct, Product, ProductInCart} from "../../types/cart";
 import type {Order} from "../../types/orders-b2b";
 import {addNewOrderToExcel, fetchOrdersByNip} from "../excel";
 
 const noResultElement = document.querySelector('[orders="none"]') as HTMLElement;
 const orderList = document.querySelector('.order_list') as HTMLElement;
 
-async function handleOrderAgain(button: HTMLElement) {
+/**
+ * Funkcja obsługująca ponowne złożenie zamówienia.
+ * @param button Element przycisku, który został kliknięty.
+ * @param memberData
+ */
+async function handleOrderAgain(button: HTMLElement, memberData: Member) {
     const orderId = button.getAttribute('data-order-id');
     if (!orderId) {
         console.error('Brak ID zamówienia dla tego przycisku.');
         return;
     }
 
-    // Wyszukaj zamówienie w już pobranych danych
-    const orders = JSON.parse(localStorage.getItem('orders') || '{}'); // Wczytaj dane z localStorage
-    const orderArray = Object.values(orders) as Order[]; // Rzutowanie na tablicę typu Order[]
-
-    // Znajdź zamówienie w tablicy
-    const foundOrder = orderArray.find((order: Order) => order["Order ID"] === orderId);
-
-    // Sprawdź, czy znaleziono zamówienie
-    if (!foundOrder) {
-        console.error(`Nie znaleziono zamówienia o ID: ${orderId}`);
-        return; // Przerwij dalsze przetwarzanie, jeśli zamówienie nie istnieje
-    }
-
-    // Teraz wiemy, że foundOrder istnieje, więc możemy go przypisać do zmiennej typu Order
-    const order: Order = foundOrder;
-
-    async function sendNewOrderViaMake(order: Order) {
-        const items: ProductInCart[] = [];
-
-        for (const product of order.products) {
-            const productDetails: Product = await fetchProductDetails(product.id);
-
-            // Dodaj szczegóły produktu z ilością
-            items.push({
-                ...productDetails,
-                variant: product.variant,
-                quantity: Number(product.quantity),
-                price: Number(product.price),
-            });
+    try {
+        // 1. Pobierz dane zamówień z localStorage
+        const ordersData = localStorage.getItem('orders');
+        if (!ordersData) {
+            console.error('Brak danych zamówień w localStorage.');
+            return;
         }
-        console.log('Items to process:', items);
 
-        const makeUrl = 'https://hook.eu2.make.com/ey0oofllpglvwpgbjm0pw6t0yvx37cnd';
+        const orders: Record<string, Order> = JSON.parse(ordersData);
+        const foundOrder = Object.values(orders).find((order: Order) => order["Order ID"] === orderId);
 
-        try {
-            const memberData = await getMemberData();
+        if (!foundOrder) {
+            console.error(`Nie znaleziono zamówienia o ID: ${orderId}`);
+            return;
+        }
 
-            const payload = {
-                items: items,
-                member: memberData,
-            };
+        // Przetwórz zamówienie
+        const order: Order = foundOrder;
 
-            const response = await fetch(makeUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
+        // Sprawdź, czy zamówienie zawiera produkty
+        if (!order.products || !Array.isArray(order.products) || order.products.length === 0) {
+            console.error(`Zamówienie o ID: ${orderId} nie zawiera produktów.`);
+            return;
+        }
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+        // Przygotuj produkty do przetworzenia
+        const items: Awaited<null | ProductInCart>[] = await Promise.all(order.products.map(async (product: OrderProduct) => {
+            const productDetails: Product | null = await fetchProductDetails(product.id);
+            if (!productDetails) {
+                console.error(`Nie udało się pobrać szczegółów produktu o ID: ${product.id}`);
+                return null;
             }
-        } catch (error) {
-            console.error('Błąd podczas wysyłania maila zamówienia:', error);
-        }
-    }
 
-    await addNewOrderToExcel(order, order);
-    await sendNewOrderViaMake(order);
+            // parseInt(...) dla ilości
+            const parsedQuantity = parseInt(product.quantity, 10) || 1;
+
+            // parseFloat(...) dla ceny (usuwając " zł" i ewentualnie przecinek)
+            let parsedPrice = 0;
+            if (product.price && product.price.trim() !== '') {
+                const cleaned = product.price.replace(' zł', '').replace(',', '.');
+                const tmp = parseFloat(cleaned);
+                if (!isNaN(tmp)) {
+                    parsedPrice = tmp;
+                }
+            }
+
+            return {
+                ...productDetails,
+                variant: product.variant || null,
+                quantity: parsedQuantity,
+                price: parsedPrice,
+            } as ProductInCart;
+        }));
+
+        // Filtruj produkty, które zostały poprawnie załadowane
+        const validItems: ProductInCart[] = items.filter(item => item !== null) as ProductInCart[];
+
+        if (validItems.length === 0) {
+            console.error('Brak poprawnych produktów do przetworzenia.');
+            return;
+        }
+
+        console.log('Items to process:', validItems);
+
+        // Dodaj zamówienie do Excela
+        await addNewOrderToExcel(validItems, memberData, order);
+
+        // Wyślij nowe zamówienie za pomocą Make
+        await sendNewOrderViaMake(validItems, memberData);
+
+        console.log('Zamówienie zostało pomyślnie ponownie złożone.');
+    } catch (error) {
+        console.error('Błąd podczas obsługi ponownego składania zamówienia:', error);
+    }
 }
 
-async function initializeOrderAgain() {
+/**
+ * Funkcja wysyłająca zamówienie do Make.
+ * @param items Produkty w zamówieniu.
+ * @param memberData Dane członka (rabaty, itp.).
+ */
+async function sendNewOrderViaMake(items: ProductInCart[], memberData: Member) {
+    const makeUrl = 'https://hook.eu2.make.com/ey0oofllpglvwpgbjm0pw6t0yvx37cnd';
+
+    try {
+        const payload = {
+            items: items.map(item => ({
+                id: item.id,
+                name: item.fieldData.name,
+                sku: item.fieldData.sku,
+                quantity: item.quantity,
+                pricePerUnit: item.price.toFixed(2),
+                totalPrice: (item.price * item.quantity).toFixed(2),
+                variant: item.variant,
+                url: item.fieldData.thumbnail,
+            })),
+            member: memberData,
+        };
+
+        const response = await fetch(makeUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        console.log('Zamówienie zostało wysłane do Make.');
+    } catch (error) {
+        console.error('Błąd podczas wysyłania zamówienia do Make:', error);
+    }
+}
+
+async function initializeOrderAgain(memberData: Member) {
     const orderAgainButtons = document.querySelectorAll<HTMLElement>('[orders="again"]');
 
     orderAgainButtons.forEach((button) => {
@@ -85,7 +144,7 @@ async function initializeOrderAgain() {
             event.preventDefault();
 
             try {
-                await handleOrderAgain(button);
+                await handleOrderAgain(button, memberData);
             } catch (error) {
                 console.error('Error ordering again:', error);
             }
@@ -257,14 +316,14 @@ export async function generateOrderItem(order: Order) {
         throw new Error('Nie znaleziono elementu .order_top-wrapper w li!');
     }
 
-    const orderValue = parseFloat(order["Order value"].replace(' zł', '').replace(',', ''));
+    const orderValue = order["Order value"];
 
-    console.log('order value:', orderValue);
+    //console.log('order value:', orderValue);
     // Sprawdź, czy orderValue jest prawidłowe
-    if (orderValue <= 0) {
-        console.error('Nieprawidłowa wartość zamówienia:', order["Order value"]);
-        return; // Zakończ, jeśli wartość zamówienia jest nieprawidłowa
-    }
+    // if (orderValue <= 0) {
+    //     console.error('Nieprawidłowa wartość zamówienia:', order["Order value"]);
+    //     return; // Zakończ, jeśli wartość zamówienia jest nieprawidłowa
+    // }
 
     // Dodaj produkty do zamówienia
     for (const product of order.products) {
@@ -346,7 +405,7 @@ export async function generateOrderItem(order: Order) {
         <div class="order_row is-reverse">
             <div class="order_total">
                 <div class="text-size-small">Razem:</div>
-                <div class="heading-style-h5">${orderValue.toFixed(2)} zł</div>
+                <div class="heading-style-h5">${orderValue}</div>
             </div>
             ${order['FV PDF'] ? `
                 <div class="button-group">
@@ -364,7 +423,7 @@ export async function generateOrderItem(order: Order) {
     return li;
 }
 
-const renderOrders = async (orders: Record<string, Order>): Promise<void> => {
+const renderOrders = async (orders: Record<string, Order>, memberData: Member): Promise<void> => {
     orderList.innerHTML = ''; // Wyczyść istniejącą listę
 
     // Konwersja obiektu na tablicę
@@ -387,7 +446,7 @@ const renderOrders = async (orders: Record<string, Order>): Promise<void> => {
         }
 
         // Inicjalizuj przyciski "Zamów ponownie" po renderowaniu elementów
-        await initializeOrderAgain();
+        await initializeOrderAgain(memberData);
     }
 };
 
@@ -398,5 +457,5 @@ export const initializeOrders = async (memberData: Member): Promise<any> => {
     // Zapisz zamówienia w localStorage
     localStorage.setItem('orders', JSON.stringify(orders));
 
-    await renderOrders(orders);
+    await renderOrders(orders, memberData);
 }

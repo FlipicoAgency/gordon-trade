@@ -86,7 +86,7 @@ const locations: Status[] = [
 ];
 
 function formatToContainers(data: any): Container[] {
-    console.log(data);
+    //console.log(data);
 
     return Object.values(data).map((order: any) => {
         // Mapowanie produktów
@@ -286,7 +286,7 @@ function generateShipItem(container: Container, containers: Container[]): void {
 
     // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
     if (statusName === "Zrealizowano") {
-        console.log(`Zrealizowany! Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
+        //console.log(`Zrealizowany! Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
         return;
     }
 
@@ -418,11 +418,11 @@ export async function fetchContainers(memberData: Member) {
         //console.log('Zamówienia:', cleanData);
 
         const containers: Container[] = formatToContainers(cleanData);
-        console.log('Kontenery:', containers);
+        //console.log('Kontenery:', containers);
 
         // Iteracja przez kontenery
         containers.forEach((container: Container) => {
-            console.log('Status name:', container["Delivery status"].name);
+            //console.log('Status name:', container["Delivery status"].name);
 
             // Utwórz znacznik na mapie
             generateShipItem(container, containers);
@@ -431,7 +431,7 @@ export async function fetchContainers(memberData: Member) {
             generateShipListItem(container);
         });
 
-        console.log("Webhook sent and response processed successfully");
+        //console.log("Webhook sent and response processed successfully");
     } catch (error) {
         console.error("Error in fetching or processing webhook response:", error);
     }
@@ -439,5 +439,5 @@ export async function fetchContainers(memberData: Member) {
     // Zakończ pomiar czasu
     const endTime = performance.now();
     const executionTime = endTime - startTime;
-    console.log(`Czas wykonania skryptu: ${executionTime.toFixed(2)} ms`);
+    //console.log(`Czas wykonania skryptu: ${executionTime.toFixed(2)} ms`);
 }

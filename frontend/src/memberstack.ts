@@ -57,7 +57,7 @@ export interface Member {
 export async function getMemberData(): Promise<Member | null> {
     try {
         const memberResponse = await window.$memberstackDom.getCurrentMember();
-        return memberResponse?.data || null;
+        return memberResponse?.data;
     } catch (error) {
         console.error("Failed to fetch Memberstack data:", error);
         return null;

@@ -1,11 +1,9 @@
-import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import type {Order} from "../types/orders-b2b";
 import {generateOrderItem} from "./dashboard/orders";
-import type {OrderProduct, ProductInCart, Product} from "../types/cart";
+import type {ProductInCart} from "../types/cart";
 import type {Member} from "./memberstack";
-import {fetchCategories, fetchProductDetails} from "./cartItems";
-import {categoryMap} from "./cartItems";
+import {categoryMap, fetchCategories, fetchProductDetails} from "./cartItems";
 
 const orderedAgainModal = document.querySelector('#re-ordered') as HTMLElement;
 const orderList = document.querySelector('.order_list') as HTMLElement;
@@ -58,12 +56,12 @@ export const fetchOrdersByNip = async (customerNip: string): Promise<any> => {
         }
 
         const rawData = await response.json();
+        //console.log('raw data:', rawData);
 
         // Oczyszczanie i formatowanie danych
-        const cleanData = cleanAndFormatData(rawData);
-        console.log('Zamówienia:', cleanData);
+        //console.log('Zamówienia:', cleanData);
 
-        return cleanData;
+        return cleanAndFormatData(rawData);
     } catch (error) {
         console.error('Błąd podczas pobierania zamówień:', error);
         return null;
@@ -92,7 +90,7 @@ async function fetchNewOrder(customerNip: string) {
         );
 
         if (newOrders.length === 0) {
-            console.log('Brak nowych zamówień do dodania.');
+            console.error('Brak nowych zamówień do dodania.');
             return;
         }
 
@@ -120,8 +118,8 @@ async function fetchNewOrder(customerNip: string) {
 
 export async function addNewOrderToExcel(
     items: ProductInCart[] | Order,
-    order?: Order,
-    memberData?: Member
+    memberData: Member | null,
+    order?: Order
 ) {
     try {
         // Przygotuj dane do wysłania do arkusza
@@ -137,11 +135,7 @@ export async function addNewOrderToExcel(
                 index === 0
                     ? items
                         .reduce(
-                            (sum, item) =>
-                                sum +
-                                (item.fieldData.pricePromo > 0
-                                    ? item.fieldData.pricePromo * item.quantity
-                                    : item.fieldData.priceNormal * item.quantity),
+                                (sum, item) => sum + (item.price * item.quantity),
                             0
                         )
                         .toFixed(2)
@@ -215,7 +209,7 @@ export async function addNewOrderToExcel(
         }
 
         if (order) {
-            await fetchNewOrder(order["Customer NIP"]);
+            await fetchNewOrder(order['Customer NIP']);
         }
     } catch (error) {
         console.error('Błąd podczas dodawania zamówienia do arkusza:', error);
@@ -355,7 +349,7 @@ export const initializeGenerateOffer = async (productsToOffer: string[]): Promis
             // Filtruj tylko poprawne produkty
             const validProducts = products.filter(product => product !== null) as ProductInCart[];
             await fetchCategories();
-            generateExcelFile(validProducts);
+            await generateExcelFile(validProducts);
         });
     }
 };

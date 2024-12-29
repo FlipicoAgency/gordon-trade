@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     showMap();
 
     await fetchContainers(memberData);
-    await initializeFavorites();
     await initializeOrders(memberData);
+    await initializeFavorites();
     await initializeUppy(memberData);
 });

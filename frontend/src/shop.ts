@@ -1,6 +1,64 @@
 import {initializeAddToCartButtons} from "./cartItems";
+import type {Member} from './memberstack';
 import {getMemberData, getMemberJSON, updateMemberJSON} from './memberstack';
 import {initializeGenerateOffer} from "./excel";
+
+export async function calculatePromoPercentage(productItems: Array<HTMLElement>): Promise<void> {
+    const member: Member | null = await getMemberData();
+    let specialPrices: Record<string, string> = {};
+
+    if (member) {
+        const memberMetadata = member?.metaData;
+        //console.log('Metadata:', memberMetadata);
+
+        // Extract special prices from metadata if available
+        specialPrices = memberMetadata || {};
+    } else {
+        console.warn("User not logged in or metadata not available. Special prices won't be applied.");
+    }
+
+    // Select all product items
+    //const productItems = document.querySelectorAll<HTMLDivElement>('.product_item-wrapper');
+
+    productItems.forEach((productItem) => {
+        const id = productItem.querySelector<HTMLElement>('[data-commerce-product-id]')?.getAttribute('data-commerce-product-id');
+        const promo = productItem.querySelector<HTMLElement>('[data-price="promo"]');
+        const normal = productItem.querySelector<HTMLElement>('[data-price="normal"]');
+        const tagline = productItem.querySelector<HTMLElement>('.promo-tagline');
+        const span = productItem.querySelector<HTMLSpanElement>('.promo-percentage');
+        const carton = productItem.querySelector<HTMLElement>('[data-price="carton"]');
+
+        if (!id || !promo || !normal || !tagline || !span) {
+            console.warn(`Skipping product item due to missing elements or ID.`);
+            return;
+        }
+
+        // Extract and parse prices
+        const normalPrice = parseFloat(normal.textContent?.trim() || '');
+        let promoPrice = parseFloat(promo.textContent?.trim() || '');
+
+        // Check if there's a special price for this product
+        if (specialPrices[id]) {
+            promoPrice = parseFloat(specialPrices[id]);
+            promo.textContent = String(promoPrice);
+            promo.classList.remove('w-dyn-bind-empty');
+            normal.style.display = 'none';
+            if (carton) carton.style.display = 'none';
+            //console.log(`Special price applied for product ${id}: ${promoPrice}`);
+        }
+
+        if (!isNaN(promoPrice) && !isNaN(normalPrice) && normalPrice > 0 && !promo.classList.contains('w-dyn-bind-empty')) {
+            // Calculate percentage
+            const percentage = Math.round(((promoPrice - normalPrice) / normalPrice) * 100);
+
+            // Update UI elements
+            span.textContent = Math.abs(percentage) + '%' + (specialPrices[id] ? ' (cena specjalnie dla Ciebie)' : '');
+            tagline.style.display = 'block';
+        } else {
+            //console.warn(`Invalid prices for product ${id}: normal (${normalPrice}), promo (${promoPrice}).`);
+        }
+    });
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
     // Array to hold selected CMS IDs
@@ -59,7 +117,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     // Initialize favorite button states
-    const initializeFavoritesState = async (): Promise<void> => {
+    const initializeFavoriteState = async (): Promise<void> => {
         try {
             const member = await getMemberData();
             if (!member) {
@@ -211,35 +269,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     };
 
-    function calculatePromoPercentage(): void {
-        // Select all product items
-        const productItems = document.querySelectorAll<HTMLDivElement>('.product_item-wrapper');
-
-        productItems.forEach((productItem) => {
-            // Query elements with proper type assertions
-            const promo = productItem.querySelector<HTMLElement>('[data-price="promo"]');
-            const normal = productItem.querySelector<HTMLElement>('[data-price="normal"]');
-            const tagline = productItem.querySelector<HTMLElement>('.promo-tagline');
-            const span = productItem.querySelector<HTMLSpanElement>('.promo-percentage');
-
-            // Ensure all required elements are present
-            if (promo && normal && tagline && span) {
-                // Extract and parse text content to numbers
-                const promoPrice = parseFloat(promo.textContent?.trim() || '');
-                const normalPrice = parseFloat(normal.textContent?.trim() || '');
-
-                if (!isNaN(promoPrice) && !isNaN(normalPrice) && normalPrice > 0 && !promo.classList.contains('w-dyn-bind-empty')) {
-                    // Calculate percentage
-                    const percentage = Math.round(((promoPrice - normalPrice) / normalPrice) * 100);
-
-                    // Update span content and display tagline
-                    span.textContent = Math.abs(percentage) + '%';
-                    tagline.style.display = 'block';
-                }
-            }
-        });
-    }
-
     await initializeGenerateOffer(selectedItems)
 
     // @ts-ignore
@@ -253,16 +282,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const [listInstance] = listInstances;
 
-            await calculatePromoPercentage();
+            const productItems = document.querySelectorAll<HTMLDivElement>('.product_item-wrapper');
+            // zamiana NodeList na tablicę
+            const productItemsArray = Array.from(productItems);
+
+            await calculatePromoPercentage(productItemsArray);
             await initializeAddToCartButtons();
-            await initializeFavoritesState();
+            await initializeFavoriteState();
             await initializeCheckboxes();
 
             // @ts-ignore
             listInstance.on('renderitems', async (renderedItems) => {
-                await calculatePromoPercentage();
+                // 1. Wyciągnij elementy DOM z tablicy
+                // @ts-ignore
+                const itemElements = renderedItems.map((item) => item.element);
+
+                // 2. Przekaż tablicę elementów do calculatePromoPercentage
+                await calculatePromoPercentage(itemElements);
+
                 await initializeAddToCartButtons();
-                await initializeFavoritesState();
+                await initializeFavoriteState();
                 await initializeCheckboxes();
             });
 
@@ -353,6 +392,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                         span.textContent = value;
                         span.setAttribute('fs-cmsfilter-field', filterField);
 
+                        // Dodaj styl CSS dynamicznie
+                        span.style.display = 'inline-block';
+                        span.style.whiteSpace = 'nowrap'; // Zapobiega zawijaniu tekstu
+                        span.style.overflow = 'hidden'; // Ukrywa nadmiar tekstu
+                        span.style.textOverflow = 'ellipsis'; // Dodaje wielokropek na końcu tekstu
+
                         // Element to display the count of results
                         const resultsCount = document.createElement('span');
                         resultsCount.className = 'filter-results-count';
@@ -408,7 +453,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                             const filtersData = filterInstance.filtersData;
 
                             function updateItemCount() {
-                                console.log('filtersData:', filtersData);  // Debugowanie
+                                //console.log('filtersData:', filtersData);  // Debugowanie
 
                                 // @ts-ignore
                                 filtersData.forEach(function (element) {
@@ -454,7 +499,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
             }
 
-            onCmsLoad();
+            await onCmsLoad();
         },
     ]);
 });

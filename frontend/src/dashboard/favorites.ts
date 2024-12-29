@@ -1,35 +1,83 @@
-import {getMemberJSON, updateMemberJSON} from "../memberstack";
-import {categoryMap, fetchCategories, fetchProductDetails, initializeAddToCartButtons} from "../cartItems";
+import {getMemberData, getMemberJSON, updateMemberJSON} from "../memberstack";
+import {categoryMap, fetchCategories, fetchProductDetails, getFinalSinglePrice} from "../cartItems";
 import type {Product} from "../../types/cart";
 
 const noResultElement = document.querySelector('[favorites="none"]') as HTMLElement;
 const favoriteList = document.querySelector('.favorite_list') as HTMLElement;
 
-const generateFavoriteItem = (product: Product): HTMLElement => {
+function generateFavoriteItem(
+    product: Product,
+    finalPrice: number,
+    hasSpecialPrice: boolean
+): HTMLElement {
+    // Wyciągamy dane kartonowe
+    const priceCarton = product.fieldData.priceCarton || 0;
+    const quantityInBox = product.fieldData.quantityInBox || 0;
+
     const categoryName = categoryMap[product.fieldData.category] || 'Unknown Category';
 
+    // Tworzymy <li>
     const li = document.createElement('li');
     li.className = 'favorite_list_item';
+
+    // Wyliczamy procent promo, jeśli jest
+    let promoPercentageHTML = '';
+    if (product.fieldData.pricePromo > 0 && product.fieldData.priceNormal > 0) {
+        const discountPercent = Math.round(
+            ((product.fieldData.priceNormal - product.fieldData.pricePromo) / product.fieldData.priceNormal) * 100
+        );
+        promoPercentageHTML = `
+      <div class="promo-tagline w-embed" style="display: block">
+        <span style="position: relative; top:-0.05rem">–</span>
+        <span class="promo-percentage">${discountPercent}</span>%
+      </div>
+    `;
+    }
+
+    // Czy pokazać cenę kartonu (jeśli >0 i nie ma ceny specjalnej)
+    const showCarton = (priceCarton > 0 && !hasSpecialPrice);
+
     li.innerHTML = `
-    <div class="favorite_wrapper">
-        <img loading="lazy" src="${product.fieldData.thumbnail?.url}" alt="${product.fieldData.thumbnail?.alt || product.fieldData.name}" class="favorite_image">
-        <div class="favorite_product">
+        <div class="favorite_wrapper">
+          <img loading="lazy" src="${product.fieldData.thumbnail?.url}" 
+               alt="${product.fieldData.thumbnail?.alt || product.fieldData.name}" 
+               class="favorite_image">
+          <div class="favorite_product">
             <div class="product_name">
-                <a href="${window.location.origin}/produkty/${product.fieldData.slug}" class="text-size-medium text-weight-semibold text-style-2lines">${product.fieldData.name}</a>
-                <div class="text-size-small">${categoryName}</div>
+              <a href="${window.location.origin}/produkty/${product.fieldData.slug}" 
+                 class="text-size-medium text-weight-semibold text-style-2lines">
+                ${product.fieldData.name}
+              </a>
+              <div class="text-size-small">${categoryName}</div>
             </div>
+    
+            <!-- Cena wyliczona (finalPrice) -->
             <div class="product_price is-favourite">
-                <div class="product_price_group">
-                    <div class="price-wrapper">
-                        <div class="heading-style-h6 text-color-brand">${product.fieldData.pricePromo ? product.fieldData.pricePromo.toFixed(2) : product.fieldData.priceNormal.toFixed(2)}</div>
-                        <div class="heading-style-h6 text-color-brand">&nbsp;zł</div>
-                    </div>
-                    ${product.fieldData.pricePromo ? `
-                    <div class="promo-tagline w-embed" style="display: block">
-                        <span style="position: relative; top:-0.05rem">–</span><span class="promo-percentage">${Math.round(((product.fieldData.priceNormal - product.fieldData.pricePromo) / product.fieldData.priceNormal) * 100)}</span>% 
-                    </div>` : ''}
+              <div class="product_price_group">
+                <div class="price-wrapper">
+                  <div class="heading-style-h6 text-color-brand">${finalPrice.toFixed(2)}</div>
+                  <div class="heading-style-h6 text-color-brand">&nbsp;zł</div>
                 </div>
+                ${promoPercentageHTML}
+              </div>
             </div>
+    
+            <!-- Cena przy zakupie całego kartonu -->
+            <div data-price="carton" class="product_header2_price-box" 
+                 style="display: ${showCarton ? 'block' : 'none'};">
+              <div class="display-inline text-size-small">
+                Cena przy zakupie całego kartonu: 
+              </div>
+              <div class="display-inline text-style-nowrap">
+                <div class="display-inline text-size-small text-weight-semibold text-color-brand">
+                  ${priceCarton.toFixed(2)} zł
+                </div>
+              </div>
+              <div aria-hidden="true" class="box-quantity">
+                ${quantityInBox}
+              </div>
+            </div>
+            
             <div class="product_details is-favourite">
                 <div class="product_details_stock ${product.fieldData.productUnavailable ? 'hide' : ''}">
                     <div class="icon-1x1-xxsmall is-yes">
@@ -59,7 +107,7 @@ const generateFavoriteItem = (product: Product): HTMLElement => {
         </div>
     </div>
     <div class="favorite_buttons">
-        <button blocks-name="button" data-ms-content="members" class="button is-secondary is-small deletefromfavourites">
+        <button data-ms-content="members" class="button is-secondary is-small deletefromfavourites">
             <div class="text-visual-fix">Usuń z ulubionych</div>
         </button>
     </div>
@@ -92,19 +140,48 @@ const removeFromFavorites = async (productId: string, listItem: HTMLElement): Pr
 };
 
 const renderFavorites = async (favorites: string[]): Promise<void> => {
-    favoriteList.innerHTML = ''; // Wyczyść istniejącą listę
+    favoriteList.innerHTML = '';
     if (favorites.length === 0) {
         noResultElement.style.display = 'flex';
     } else {
         noResultElement.style.display = 'none';
 
+        // 1. Pobierz dane usera i ewentualnie metaData
+        const memberData = await getMemberData();
+        const specialPrices = memberData?.metaData || {};
+
         for (const productId of favorites) {
             const productDetails = await fetchProductDetails(productId);
             if (productDetails) {
-                const favoriteItem = generateFavoriteItem(productDetails);
+                // 2. Cena specjalna?
+                let sp = 0;
+                if (specialPrices[productId]) {
+                    const spVal = parseFloat(specialPrices[productId]);
+                    if (!isNaN(spVal)) sp = spVal;
+                }
+
+                // 3. finalPrice = getFinalSinglePrice(..., 1, sp)
+                const finalPrice = getFinalSinglePrice(productDetails, 1, sp);
+                const hasSpecial = (sp > 0);
+
+                // ---- KONSOLE LOG: Wyświetlamy pełne info ----
+                // console.log('[FAVORITES] Product loaded:', {
+                //     productId,
+                //     productName: productDetails.fieldData.name,
+                //     priceNormal: productDetails.fieldData.priceNormal,
+                //     pricePromo: productDetails.fieldData.pricePromo,
+                //     priceCarton: productDetails.fieldData.priceCarton,
+                //     quantityInBox: productDetails.fieldData.quantityInBox,
+                //     hasSpecialPrice: hasSpecial,
+                //     specialPrice: sp,
+                //     finalPrice
+                // });
+
+                // 4. Wygeneruj element
+                const favoriteItem = generateFavoriteItem(productDetails, finalPrice, hasSpecial);
                 favoriteList.appendChild(favoriteItem);
 
-                // Dodaj nasłuchiwanie kliknięcia do przycisku "Usuń z ulubionych"
+                // 5. Usuń z ulubionych
                 const removeButton = favoriteItem.querySelector('.deletefromfavourites') as HTMLElement;
                 if (removeButton) {
                     removeButton.addEventListener('click', async () => {
@@ -113,9 +190,7 @@ const renderFavorites = async (favorites: string[]): Promise<void> => {
                 }
             }
         }
-
-        // Inicjalizuj przyciski "Dodaj do koszyka" po renderowaniu elementów
-        // await initializeAddToCartButtons();
+        // (Opcjonalnie) initializeAddToCartButtons() itp.
     }
 };
 

@@ -1,14 +1,10 @@
 import type {OrderProduct} from "./cart";
 
 export interface Order {
-    products: OrderProduct[];
     "Customer NIP": string;
     "Order ID": string;
-    "Product name": string;
-    "Product ID": string;
-    Quantity: string;
-    "Product price": string;
-    "Order value": string;
+    products: OrderProduct[];
+    "Order value": string
     "Order date": string;
     "FV amount (netto)": string;
     "FV number": string;

@@ -1,5 +1,5 @@
-// Import funkcji z modułu `cartItems`
 import {initializeAddToCartButtons, initializeCart} from './cartItems';
+import {calculatePromoPercentage} from "./shop";
 
 window.Webflow ||= [];
 window.Webflow.push(async () => {
@@ -32,35 +32,6 @@ window.Webflow.push(async () => {
         const promoListNav = document.querySelector('[promo-list="nav"]');
         const promoListProductPage = document.querySelector('[promo-list="product"]');
 
-        const updatePromoPrices = (promoList: Element | null) => {
-            if (promoList) {
-                // Convert HTMLCollection to an array and iterate over elements
-                Array.from(promoList.children).forEach((productItem) => {
-                    // Query elements with proper type assertions
-                    const promo = productItem.querySelector<HTMLElement>('[data-price="promo"]');
-                    const normal = productItem.querySelector<HTMLElement>('[data-price="normal"]');
-                    const tagline = productItem.querySelector<HTMLElement>('.promo-tagline');
-                    const span = productItem.querySelector<HTMLSpanElement>('.promo-percentage');
-
-                    // Ensure all required elements are present
-                    if (promo && normal && tagline && span) {
-                        // Extract and parse text content to numbers
-                        const promoPrice = parseFloat(promo.textContent?.trim() || '');
-                        const normalPrice = parseFloat(normal.textContent?.trim() || '');
-
-                        if (!isNaN(promoPrice) && !isNaN(normalPrice) && normalPrice > 0 && !promo.classList.contains('w-dyn-bind-empty')) {
-                            // Calculate percentage
-                            const percentage = Math.round(((promoPrice - normalPrice) / normalPrice) * 100);
-
-                            // Update span content and display tagline
-                            span.textContent = Math.abs(percentage) + '%';
-                            tagline.style.display = 'block';
-                        }
-                    }
-                });
-            }
-        };
-
         const updateCategoryLinks = (categoryList: Element | null, baseUrl: string) => {
             if (categoryList) {
                 // Convert HTMLCollection to an array and iterate over elements
@@ -79,9 +50,21 @@ window.Webflow.push(async () => {
             }
         };
 
-        // Update promo prices
-        updatePromoPrices(promoListNav);
-        updatePromoPrices(promoListProductPage);
+        if (promoListNav) {
+            // Konwertujemy `promoListNav.children` na tablicę elementów (HTMLElement[])
+            const navItems = Array.from(promoListNav.children) as HTMLElement[];
+            await calculatePromoPercentage(navItems);
+        }
+
+        if (promoListProductPage) {
+            const productItems = Array.from(promoListProductPage.children) as HTMLElement[];
+
+            // Tworzymy tablicę z jedynym elementem
+            const singleElementArray = [ productItems[0] ];
+
+            // Wywołujemy funkcję z tablicą (zawierającą wyłącznie ten pierwszy element)
+            await calculatePromoPercentage(singleElementArray);
+        }
 
         // Update links for lists
         updateCategoryLinks(categoryListHome, baseUrl);

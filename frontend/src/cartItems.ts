@@ -32,75 +32,32 @@ async function updateCartUI() {
 
     try {
         const cartItems: ProductInCart[] = await fetchCartData();
-        //console.log('Cart items:', cartItems);
 
-        const memberData: Member | null = await getMemberData();
-        const memberDiscount = memberData?.customFields.rabat
-            ? Number(memberData.customFields.rabat.replace('%', ''))
-            : 0;
-        //console.log('Member discount:', memberDiscount);
+        // Wyliczamy sumę brutto (price * quantity) dla całego koszyka
+        const totalAmount = cartItems.reduce(
+            (sum, item) => sum + (item.price * item.quantity),
+            0
+        );
 
-        let totalAmount = 0;
-
-        // Przelicz cenę dla każdego itemu uwzględniając ilości kartonowe i resztę
-        for (const item of cartItems) {
-            const quantity = item.quantity;
-            const qInBox = item.fieldData.quantityInBox;
-            const priceNormalOrPromo = item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal;
-            const priceCarton = item.fieldData.priceCarton > 0 ? item.fieldData.priceCarton : priceNormalOrPromo;
-
-            let lineCost = 0;
-
-            if (qInBox > 0 && quantity >= qInBox) {
-                // Ile pełnych kartonów?
-                const fullBoxes = Math.floor(quantity / qInBox);
-                const fullBoxItems = fullBoxes * qInBox;
-                const leftover = quantity % qInBox;
-
-                const fullBoxCost = fullBoxItems * priceCarton;
-                const leftoverCost = leftover * priceNormalOrPromo;
-
-                lineCost = fullBoxCost + leftoverCost;
-            } else {
-                // Brak pełnego kartonu, wszystko po cenie normalnej/promo
-                lineCost = quantity * priceNormalOrPromo;
-            }
-
-            totalAmount += lineCost;
-        }
-
-        // Elementy do wyświetlenia cen
-        const discountElement = document.getElementById('cart-discount');
+        // Uaktualnij sumę w UI
         const totalAmountElement = document.getElementById('cart-total');
-        const cartQuantityElement = document.getElementById('cart-quantity');
-
-        if (cartQuantityElement) {
-            cartQuantityElement.textContent = cartItems.reduce((sum, item) => sum + item.quantity, 0).toString();
-        }
-
-        let finalAmount = totalAmount;
-        let discountAmount = 0;
-
-        if (memberDiscount > 0) {
-            // Oblicz kwotę rabatu i finalną kwotę
-            discountAmount = totalAmount * (memberDiscount / 100);
-            finalAmount = totalAmount - discountAmount;
-        }
-
-        // Aktualizacja wyświetlania kwot
         if (totalAmountElement) {
             totalAmountElement.style.display = 'block';
-            totalAmountElement.textContent = `${finalAmount.toFixed(2)} zł`;
+            totalAmountElement.textContent = `${totalAmount.toFixed(2)} zł`;
         }
 
-        if (discountElement && totalAmountElement) {
-            if (memberDiscount > 0) {
-                discountElement.style.display = 'block';
-                discountElement.textContent = `${discountAmount.toFixed(2)} zł`;
-            } else {
-                // @ts-ignore
-                discountElement.parentElement.style.display = 'none';
-            }
+        // Ukryj elementy rabatów itd., bo już nie używamy
+        const discountElement = document.getElementById('cart-discount');
+        if (discountElement?.parentElement) {
+            discountElement.parentElement.style.display = 'none';
+        }
+
+        // Update cart quantity w UI
+        const cartQuantityElement = document.getElementById('cart-quantity');
+        if (cartQuantityElement) {
+            const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+            cartQuantityElement.textContent = totalQuantity.toString();
+            //console.log('Total Quantity in Cart:', totalQuantity);
         }
 
         // Obsługa stanów koszyka
@@ -118,13 +75,9 @@ async function updateCartUI() {
             }
         }
 
-        renderCartItems(cartItems);
+        await renderCartItems(cartItems);
     } catch (error) {
         console.error('Failed to update cart UI:', error);
-        const stateDefault = document.querySelector<HTMLElement>('.state-default');
-        const stateEmpty = document.querySelector<HTMLElement>('.state-empty');
-        const stateSuccess = document.querySelector<HTMLElement>('.state-success');
-        const stateError = document.querySelector<HTMLElement>('.state-error');
         if (stateDefault && stateEmpty && stateSuccess && stateError) {
             stateEmpty.style.display = 'none';
             stateDefault.style.display = 'none';
@@ -134,6 +87,78 @@ async function updateCartUI() {
     }
 }
 
+export function getFinalSinglePrice(
+    product: Product,
+    quantity: number,
+    specialPrice?: number
+): number {
+    // Liczymy łączny koszt advanced
+    const totalCost = calculateLineCostAdvanced(product, quantity, specialPrice);
+
+    // Dzielimy przez quantity, żeby uzyskać "średnią" cenę za 1 sztukę
+    if (quantity > 0) {
+        return totalCost / quantity;
+    } else {
+        return 0;
+    }
+}
+
+/**
+ * Oblicza łączny koszt pozycji z mieszanym rozbiciem:
+ * - jeśli user ma specialPrice – bierzemy to na sztukę * quantity (bez kartonów),
+ * - w przeciwnym razie, rozbijamy na pełne kartony i resztę.
+ *
+ * Przykład:
+ *  quantity=11, qInBox=10 =>
+ *    1 karton (10 szt) * priceCarton + 1 szt leftover * (pricePromo lub priceNormal)
+ */
+export function calculateLineCostAdvanced(
+    product: Product,
+    quantity: number,
+    specialPrice?: number
+): number {
+    const qInBox = product.fieldData.quantityInBox;
+    const priceCarton = product.fieldData.priceCarton || 0;
+    const pricePromo = product.fieldData.pricePromo || 0;
+    const priceNormal = product.fieldData.priceNormal || 0;
+
+    // (1) Cena specjalna (highest priority):
+    if (specialPrice && specialPrice > 0) {
+        return specialPrice * quantity;
+    }
+
+    // (2) Jeżeli nie mamy specialPrice => rozbijamy na pełne kartony i resztę:
+    // Ile pełnych kartonów?
+    const fullBoxes = qInBox > 1 ? Math.floor(quantity / qInBox) : 0;
+    // Ile sztuk "ponad" pełne kartony
+    const leftover = qInBox > 1 ? (quantity % qInBox) : quantity;
+
+    // Koszt pełnych kartonów:
+    let costFullBoxes = 0;
+    if (fullBoxes > 0 && priceCarton > 0) {
+        costFullBoxes = fullBoxes * qInBox * priceCarton;
+    } else {
+        // brak pełnych kartonów – costFullBoxes=0
+    }
+
+    // Koszt leftover:
+    // - jeśli pricePromo>0 => leftover * pricePromo
+    // - w przeciwnym wypadku leftover * priceNormal
+    let leftoverPrice = priceNormal;
+    if (pricePromo > 0) {
+        leftoverPrice = pricePromo;
+    }
+    const costLeftover = leftover * leftoverPrice;
+
+    // Suma:
+    return costFullBoxes + costLeftover;
+}
+
+/**
+ * Funkcja obsługująca dodawanie do koszyka (kliknięcie w przycisk 'Dodaj do koszyka')
+ * @param button - element HTML przycisku
+ * @param isCartonPurchase - czy kliknięto w 'Kup cały karton'
+ */
 export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boolean = false) {
     const productElement =
         button.closest('.additional-product-item') ||
@@ -188,26 +213,36 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
 
     try {
         const product: Product = await fetchProductDetails(productId);
-        const quantityInBox = product.fieldData.quantityInBox;
+        const qInBox = product.fieldData.quantityInBox;
 
-        // Jeśli kupujemy pełny karton i jest określony quantityInBox
-        if (isCartonPurchase && quantityInBox > 0) {
-            quantity = quantityInBox;
+        // Jeśli kliknięto 'Kup karton' i product ma quantityInBox > 0
+        if (isCartonPurchase && qInBox > 0) {
+            quantity = qInBox;
         }
 
-        // Ustal cenę na poziomie dodawania do koszyka:
-        // Jeśli ilość jest równa ilości w kartonie, to cena = priceCarton (jeśli >0),
-        // w innym wypadku cena = promo lub normalna.
-        let finalPrice = product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo : product.fieldData.priceNormal;
-        if (product.fieldData.priceCarton > 0 && quantity === quantityInBox) {
-            finalPrice = product.fieldData.priceCarton;
+        // 1. Pobierz ewentualną cenę specjalną z metaData (lub 0 jeśli brak)
+        const memberData: Member | null = await getMemberData();
+        let specialPrice = 0;
+        if (memberData && memberData.metaData) {
+            const userPrices = memberData.metaData; // np. { "someProductId": "99.99", ... }
+            if (userPrices[productId]) {
+                const sp = parseFloat(userPrices[productId]);
+                if (!isNaN(sp)) {
+                    specialPrice = sp;
+                }
+            }
         }
 
+        // 2. Oblicz finalną cenę poj. sztuki
+        const finalSinglePrice = getFinalSinglePrice(product, quantity, specialPrice);
+
+        // 3. Przygotuj obiekt do wysłania do koszyka
         const selectedItem: ProductInCart = {
             ...product,
             variant: selectedVariant || null,
             quantity,
-            price: finalPrice,
+            // Zapisujemy ustaloną finalną cenę za sztukę
+            price: finalSinglePrice,
         };
 
         await addItemToCart(selectedItem);
@@ -220,7 +255,7 @@ async function addItemToCart(item: ProductInCart) {
     try {
         const response = await fetch('https://gordon-trade.onrender.com/api/cart', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(item),
             credentials: 'include',
         });
@@ -229,29 +264,25 @@ async function addItemToCart(item: ProductInCart) {
             throw new Error(`Failed to add item to cart: ${response.statusText}`);
         }
 
+        // Po udanym dodaniu odśwież UI
         await updateCartUI();
-        //addedToCartButton?.click();
 
+        // Małe powiadomienie "dodano do koszyka"
         if (addedToCartModal) {
-            // Ustawienie początkowego stylu dla animacji
             addedToCartModal.style.display = 'flex';
             addedToCartModal.style.opacity = '0';
-            addedToCartModal.style.transition = 'opacity 0.5s ease'; // Animacja płynnego przejścia
+            addedToCartModal.style.transition = 'opacity 0.5s ease';
 
-            // Ustawienie opacity na 1 po krótkim czasie, aby uruchomić animację
             setTimeout(() => {
                 addedToCartModal.style.opacity = '1';
-            }, 10); // 10 ms, aby zapewnić płynne przejście
+            }, 10);
 
-            // Po 1.5 sekundy zaczynamy ukrywanie
             setTimeout(() => {
-                addedToCartModal.style.opacity = '0'; // Zmiana opacity na 0, co uruchomi animację zanikania
-
-                // Po zakończeniu animacji (500 ms), ustawiamy display: none
+                addedToCartModal.style.opacity = '0';
                 setTimeout(() => {
                     addedToCartModal.style.display = 'none';
-                }, 500); // Czas trwania animacji (zgodny z transition: 500 ms)
-            }, 1500); // Ukrywanie elementu po 1.5 sekundy
+                }, 500);
+            }, 1500);
         }
     } catch (error) {
         console.error('Failed to add item to cart:', error);
@@ -392,12 +423,40 @@ async function removeItemFromCart(itemId: string, variant: string | null = null)
 
 async function updateItemQuantity(itemId: string, quantity: number, variant: string | null = null) {
     try {
-        const cleanVariant = variant === "null" ? null : variant; // Zamiana "null" na null
+        const cleanVariant = variant === "null" ? null : variant;
+
+        // Pobierz szczegóły produktu (priceCarton, pricePromo, itp.)
+        const product = await fetchProductDetails(itemId);
+        if (!product) {
+            throw new Error(`Product not found for id: ${itemId}`);
+        }
+
+        // Sprawdź, czy user ma cenę specjalną
+        const memberData: Member | null = await getMemberData();
+        let specialPrice = 0;
+        if (memberData && memberData.metaData) {
+            const spRaw = memberData.metaData[itemId];
+            if (spRaw) {
+                const spVal = parseFloat(spRaw);
+                if (!isNaN(spVal)) {
+                    specialPrice = spVal;
+                }
+            }
+        }
+
+        // Wylicz finalną cenę za sztukę (special > carton > promo > normal)
+        const finalSinglePrice = getFinalSinglePrice(product, quantity, specialPrice);
+
+        // Zaktualizuj dany item w koszyku (PUT)
         const response = await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quantity, variant: cleanVariant }), // Przekaż ilość i wariant
             credentials: 'include',
+            body: JSON.stringify({
+                variant: cleanVariant,
+                quantity,
+                price: finalSinglePrice
+            }),
         });
 
         if (!response.ok) {
@@ -427,20 +486,37 @@ function addQuantityChangeListener() {
     });
 }
 
-function renderCartItems(cartItems: ProductInCart[]) {
+/**
+ * Renderuje listę produktów w koszyku (w .cart-list).
+ */
+async function renderCartItems(cartItems: ProductInCart[]) {
+    const member: Member | null = await getMemberData();
+    let specialPrices: Record<string, string> = {};
+
+    if (member) {
+        const memberMetadata = member?.metaData;
+        //console.log('Metadata:', memberMetadata);
+
+        // Extract special prices from metadata if available
+        specialPrices = memberMetadata || {};
+    } else {
+        console.warn("User not logged in or metadata not available. Special prices won't be applied.");
+    }
+
     const cartListElement = document.querySelector<HTMLElement>('.cart-list');
     if (!cartListElement) return;
 
     cartListElement.innerHTML = ''; // Wyczyść listę przed dodaniem nowych elementów
 
-    cartItems.forEach((item) => {
-        //console.log(item);
-        const priceNormalOrPromo = item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal;
-        const priceCarton = (item.fieldData.priceCarton && item.fieldData.priceCarton > 0) ? item.fieldData.priceCarton : 0;
+    cartItems.forEach((item, index) => {
+        const priceCarton = item.fieldData.priceCarton || 0;
+        const hasSpecialPrice = !!specialPrices[item.id];
+        const priceSpecialOrPromoOrNormal = hasSpecialPrice ? specialPrices[item.id] : item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal;
 
-
+        // Tworzymy DIV w koszyku
         const itemElement = document.createElement('div');
         itemElement.className = 'cart-item';
+
         itemElement.innerHTML = `
             <img sizes="100vw" alt="" src="${item.fieldData.thumbnail.url}" loading="lazy" class="cart-product-image">
             <div class="cart-product-info">
@@ -451,14 +527,19 @@ function renderCartItems(cartItems: ProductInCart[]) {
                     <div class="display-inline">Wariant:</div>
                     <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${item.variant}</div>
                 </div>
+                
+                <!-- Cena za sztukę (regular) -->
                 <div class="cart-product-parameter">
-                    <div class="display-inline">Cena za szt. (regular):</div>
-                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceNormalOrPromo.toFixed(2)} zł</div>
+                    <div class="display-inline">Cena za sztukę:</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceSpecialOrPromoOrNormal} zł</div>
                 </div>
-                <div class="cart-product-parameter" style="display: ${priceCarton > 0 ? 'flex' : 'none'}">
-                    <div class="display-inline">Cena za szt. (karton):</div>
-                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceCarton > 0 ? priceCarton.toFixed(2) : ''} zł</div>
+                
+                <!-- Cena za sztukę (karton) -->
+                <div class="cart-product-parameter" style="display: ${(priceCarton > 0 && !hasSpecialPrice) ? 'flex' : 'none'}; align-items: center; justify-content: space-between; white-space: nowrap; margin-bottom: 5px;">
+                    <div class="display-inline" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Cena za szt. (karton):</div>
+                    <div class="display-inline text-weight-semibold text-color-brand" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;">&nbsp;${priceCarton > 0 ? priceCarton.toFixed(2) : ''} zł</div>
                 </div>
+
                 <div class="cart-product-parameter">
                     <div class="display-inline">Ilość:</div>
                     <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${item.quantity}</div>
@@ -477,7 +558,7 @@ function renderCartItems(cartItems: ProductInCart[]) {
                 </div>
             </button>
         `;
-    
+
         cartListElement.appendChild(itemElement);
     });
 
@@ -524,13 +605,42 @@ export async function processOrder(cartItems: ProductInCart[]) {
     const stateError = document.querySelector<HTMLElement>('.state-error');
 
     try {
-        const memberData = await getMemberData();
+        // (Opcjonalnie) Pobierz dane użytkownika
+        const memberData: Member | null = await getMemberData();
+
+        // Wyliczamy łączną wartość zamówienia
+        const totalAmount = cartItems.reduce(
+            (sum, item) => sum + (item.price * item.quantity),
+            0
+        );
+
+        // Przygotowujemy dane do wysłania do Make
+        const itemsForMake = cartItems.map((item) => {
+            // Obliczamy całkowitą cenę danej pozycji
+            const totalPrice = (item.price * item.quantity).toFixed(2);
+
+            return {
+                id: item.id,
+                name: item.fieldData.name,
+                sku: item.fieldData.sku,
+                url: item.fieldData.thumbnail.url,
+                quantity: item.quantity,
+                pricePerUnit: item.price.toFixed(2),
+                totalPrice,
+                variant: item.variant,
+            };
+        });
 
         const payload = {
-            items: cartItems,
-            member: memberData,
+            orderNumber: String(Math.floor(100000000 + Math.random() * 900000000)), // Losowe ID
+            orderDate: getTodayDate(), // np. "DD.MM.YYYY"
+            totalAmount: totalAmount.toFixed(2),
+            status: 'Złożono zapytanie',
+            items: itemsForMake,
+            member: memberData, // ewentualnie dane użytkownika, jeśli potrzebne
         };
 
+        // Wysyłamy request do Make
         const response = await fetch(makeUrl, {
             method: 'POST',
             headers: {
@@ -543,8 +653,10 @@ export async function processOrder(cartItems: ProductInCart[]) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
 
-        await addNewOrderToExcel(cartItems, undefined, memberData || undefined);
+        // Zapis do Excela (o ile używacie tej funkcji)
+        await addNewOrderToExcel(cartItems, memberData, undefined);
 
+        // Obsługa UI (pokazywanie "sukces" i czyszczenie koszyka)
         if (stateSuccess && stateDefault) {
             stateDefault.style.display = 'none';
             stateSuccess.style.display = 'flex';
@@ -563,6 +675,17 @@ export async function processOrder(cartItems: ProductInCart[]) {
             }, 3000);
         }
     }
+}
+
+/**
+ * Funkcja zwraca aktualną datę w formacie DD.MM.YYYY
+ */
+function getTodayDate(): string {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Miesiące są indeksowane od 0
+    const year = today.getFullYear();
+    return `${day}.${month}.${year}`;
 }
 
 // Function to map API response to Product Interface

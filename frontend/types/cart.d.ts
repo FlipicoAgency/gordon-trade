@@ -48,12 +48,9 @@ export interface ProductInCart extends Product {
 export interface OrderProduct {
     name: string;
     id: string;
+    variant?: string | null;
     quantity: string;
     price: string;
-    variant?: string | null;
-    orderValue?: string;
-    estimatedFreight?: string;
-    capacity?: string;
 }
 
 export interface Category {
