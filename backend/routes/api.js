@@ -39,6 +39,7 @@ router.get('/sheets/orders', async (req, res) => {
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
             range: 'Orders B2B!A1:N', // Zakres danych
+            valueRenderOption: 'UNFORMATTED_VALUE' // <- kluczowe!
         });
 
         const rows = response.data.values;
