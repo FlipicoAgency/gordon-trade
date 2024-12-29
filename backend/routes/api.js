@@ -85,6 +85,7 @@ router.get('/sheets/orders', async (req, res) => {
             }
         });
 
+        console.log('Orders:', orders);
         res.status(200).json(orders);
     } catch (error) {
         console.error('Błąd pobierania danych z arkusza:', error);
@@ -305,13 +306,13 @@ router.get('/sheets/containers', async (req, res) => {
             const currentCustomerNip = row[indices.customerNip] ? normalizeNip(row[indices.customerNip]) : null;
 
             if (currentCustomerNip !== normalizedQueryNip) {
-                console.log(`Wiersz ${rowIndex + 2} - NIP nie pasuje lub jest pusty: ${currentCustomerNip}`);
+                //console.log(`Wiersz ${rowIndex + 2} - NIP nie pasuje lub jest pusty: ${currentCustomerNip}`);
                 return;
             }
 
             const orderId = row[indices.orderId];
             if (!orderId) {
-                console.log(`Wiersz ${rowIndex + 2} - Pominięto z powodu braku Order ID`);
+                //console.log(`Wiersz ${rowIndex + 2} - Pominięto z powodu braku Order ID`);
                 return;
             }
 
