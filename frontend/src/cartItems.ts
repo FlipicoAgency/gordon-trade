@@ -513,6 +513,9 @@ async function renderCartItems(cartItems: ProductInCart[]) {
         const hasSpecialPrice = !!specialPrices[item.id];
         const priceSpecialOrPromoOrNormal = hasSpecialPrice ? specialPrices[item.id] : item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal;
 
+        // Upewnij się, że cena ma dwa miejsca po przecinku
+        const formattedPrice = parseFloat(priceSpecialOrPromoOrNormal).toFixed(2);
+
         // Tworzymy DIV w koszyku
         const itemElement = document.createElement('div');
         itemElement.className = 'cart-item';
@@ -531,7 +534,7 @@ async function renderCartItems(cartItems: ProductInCart[]) {
                 <!-- Cena za sztukę (regular) -->
                 <div class="cart-product-parameter">
                     <div class="display-inline">Cena za sztukę:</div>
-                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceSpecialOrPromoOrNormal} zł</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${formattedPrice} zł</div>
                 </div>
                 
                 <!-- Cena za sztukę (karton) -->
