@@ -28,7 +28,7 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member) {
         }
 
         const orders: Record<string, Order> = JSON.parse(ordersData);
-        const foundOrder = Object.values(orders).find((order: Order) => order["Order ID"] === orderId);
+        const foundOrder = Object.values(orders).find(order => order["Order ID"] === parseInt(orderId));
 
         if (!foundOrder) {
             console.error(`Nie znaleziono zamówienia o ID: ${orderId}`);
@@ -212,7 +212,7 @@ export async function generateOrderItem(order: Order) {
                                 <div class="text-size-small">Kwota zamówienia:</div>
                             </div>
                             <div class="order_details_grid_item">
-                                <div class="text-size-small">${order['Order value']}</div>
+                                <div class="text-size-small">${order['Order value'].toFixed(2)} zł</div>
                             </div>
                             <!--
                             <div class="spacer-xxsmall is-grid-2"></div>
@@ -339,7 +339,7 @@ export async function generateOrderItem(order: Order) {
             <img loading="lazy" src="${productDetails.fieldData.thumbnail?.url}" alt="${productDetails.fieldData.thumbnail?.alt || productDetails.fieldData.name}" class="order_product_image">
             <div class="order_product_group">
                 <div class="order_product_details">
-                    <div class="text-weight-semibold text-style-2lines">${productDetails.fieldData.name}</div>
+                    <a href="/produkty/${productDetails.fieldData.slug}" class="text-weight-semibold text-style-2lines">${productDetails.fieldData.name}</a>
                     <div class="order_product_details_grid">
                         <div class="order_details_grid_item">
                             <div class="text-size-small">Ilość produktów:</div>
@@ -405,7 +405,7 @@ export async function generateOrderItem(order: Order) {
         <div class="order_row is-reverse">
             <div class="order_total">
                 <div class="text-size-small">Razem:</div>
-                <div class="heading-style-h5">${orderValue}</div>
+                <div class="heading-style-h5">${orderValue.toFixed(2)} zł</div>
             </div>
             ${order['FV PDF'] ? `
                 <div class="button-group">
