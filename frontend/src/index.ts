@@ -1,5 +1,6 @@
 import {initializeAddToCartButtons, initializeCart} from './cartItems';
 import {calculatePromoPercentage} from "./shop";
+import {initializeFavoriteState} from "./memberstack";
 
 window.Webflow ||= [];
 window.Webflow.push(async () => {
@@ -23,7 +24,10 @@ window.Webflow.push(async () => {
                 break;
         }
 
-        if (currentUrl.includes("/produkty")) { await initializeAddToCartButtons(); }
+        if (currentUrl.includes("/produkty")) {
+            await initializeAddToCartButtons();
+            await initializeFavoriteState();
+        }
 
         const categoryListHome = document.querySelector('[category-list="home"]');
         const categoryListNav = document.querySelector('[category-list="nav"]');
