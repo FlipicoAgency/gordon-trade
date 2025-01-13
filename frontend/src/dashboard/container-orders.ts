@@ -349,9 +349,9 @@ function generateShipListItem(container: Container): void {
 
     // Sprawdzenie, czy pole "Extended delivery date" nie jest puste
     const extendedDeliveryDate = container["Extended delivery date"];
-    const delayInfoHTML = extendedDeliveryDate
-        ? `<div class="text-size-small">Zamówienie opóźnione: <span class="text-weight-semibold">${formatDate(extendedDeliveryDate)}</span></div>`
-        : ""; // Jeśli puste, ustawiamy pusty string
+    const delayInfoHTML = extendedDeliveryDate !== "Brak"
+    ? `<div class="text-size-small">Zamówienie opóźnione: <span class="text-weight-semibold">${formatDate(extendedDeliveryDate)}</span></div>`
+    : "";
 
     htmlElement.innerHTML = `
         <div class="stacked-list4_content-top">
@@ -371,22 +371,36 @@ function generateShipListItem(container: Container): void {
                 </div>
             </div>
         </div>
-        <div class="stacked-list4_content-bottom">
+        <div class="stacked-list4_content-middle">
             <div class="text-size-small">Chiny</div>
             <div class="text-size-small">${container["Delivery status"].name === 'Zrealizowano' ? 'Zrealizowano' : 'Polska'}</div>
         </div>
-        ${container["Quality control photos"] !== 'Brak' ? `
+        <div class="stacked-list4_content-bottom">
+            <div class="shipping-collection-list is-list">
+                ${container.Products.map((item: any) => {
+                    return `
+                        <div class="shipping-collection-item">
+                            <div class="text-style-ellipsis">${item.name}</div>
+                            ${item.variant ? `<div class="text-weight-normal text-style-muted">Wariant: <span>${item.variant}</span></div>` : ''}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
         <div class="stacked-list4_content-button">
-            <a href="${container["Quality control photos"]}" class="button">Zdjęcia kontroli jakości</a>
-        </div>` : ''}
-        ${container["FV PDF"] !== 'Brak' ? `
-            <div class="stacked-list4_content-button">
+            ${container["Quality control photos"] !== 'Brak' ? `
+                <a href="${container["Quality control photos"]}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
+                    <div>Zdjęcia kontroli jakości</div>
+                    <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
+                </a>
+            ` : ''}
+            ${container["FV PDF"] !== 'Brak' ? `
                 <a href="${container["FV PDF"]}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
                     <div class="order_download_faktura">Pobierz fakturę</div>
                     <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
                 </a>
-            </div>
-        ` : ''}
+            ` : ''}
+        </div>
     `;
 
     // Dodajemy nowo utworzony element do kontenera

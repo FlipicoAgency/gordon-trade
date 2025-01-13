@@ -14,7 +14,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const userBalance = document.getElementById('user-balance') as HTMLElement;
-    userBalance.textContent = memberData.customFields.saldo;
+    userBalance.textContent = (memberData.customFields.saldo ? memberData.customFields.saldo : "0") + " zł";
+
 
     const mapWrapper = document.getElementById('container-map-wrapper') as HTMLElement;
     const listWrapper = document.getElementById('container-list-wrapper') as HTMLElement;
