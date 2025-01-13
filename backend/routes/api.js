@@ -260,7 +260,7 @@ router.get('/sheets/containers', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Containers!A1:X',
+            range: 'Containers!A1:Y',
         });
 
         const rows = response.data.values;
@@ -273,6 +273,7 @@ router.get('/sheets/containers', async (req, res) => {
         // Indeksy interesujących kolumn
         const indices = {
             customerNip: headers.indexOf('Customer NIP'),
+            customerName: headers.indexOf('Customer Name'),
             orderId: headers.indexOf('Order ID'),
             containerNo1: headers.indexOf('Container No1'),
             containerNo2: headers.indexOf('Container No2'),
@@ -339,6 +340,7 @@ router.get('/sheets/containers', async (req, res) => {
             if (!orders[orderId]) {
                 orders[orderId] = {
                     customerNip: currentCustomerNip,
+                    customerName: row[indices.customerName],
                     orderId,
                     containerNo1: lastRow.containerNo1,
                     containerNo2: lastRow.containerNo2,
