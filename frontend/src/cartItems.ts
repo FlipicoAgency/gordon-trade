@@ -538,11 +538,11 @@ async function renderCartItems(cartItems: ProductInCart[]) {
                 </div>
                 
                 <!-- Cena za sztukę (karton) -->
-                <div class="cart-product-parameter" style="display: ${(priceCarton > 0 && !hasSpecialPrice) ? 'flex' : 'none'}; align-items: center; justify-content: space-between; white-space: nowrap; margin-bottom: 5px;">
-                    <div class="display-inline" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Cena za szt. (karton):</div>
-                    <div class="display-inline text-weight-semibold text-color-brand" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;">&nbsp;${priceCarton > 0 ? priceCarton.toFixed(2) : ''} zł</div>
+                <div class="cart-product-parameter" style="display: ${(priceCarton > 0 && !hasSpecialPrice) ? 'flex' : 'none'};">
+                    <div class="display-inline">W kartonie:</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceCarton > 0 ? priceCarton.toFixed(2) : ''} zł</div>
                 </div>
-
+                
                 <div class="cart-product-parameter">
                     <div class="display-inline">Ilość:</div>
                     <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${item.quantity}</div>

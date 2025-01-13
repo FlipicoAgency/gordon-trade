@@ -161,7 +161,11 @@ export const initializeFavoriteState = async (): Promise<void> => {
 
         const buttons = document.querySelectorAll<HTMLElement>(".favoritebutton");
         buttons.forEach((button) => {
+            if (button.dataset.listenerAdded === "true") return;
+
             button.addEventListener("click", () => handleFavoriteButtonClick(button));
+
+            button.dataset.listenerAdded = "true";
         });
     } catch (error) {
         console.error("Error initializing:", error);

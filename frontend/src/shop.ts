@@ -61,6 +61,11 @@ export async function calculatePromoPercentage(productItems: Array<HTMLElement>)
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+    // @ts-ignore
+    if (window.isShopInitialized) return; // Sprawdź, czy shop.js został już zainicjalizowany
+    // @ts-ignore
+    window.isShopInitialized = true; // Ustaw flagę po inicjalizacji
+
     // Array to hold selected CMS IDs
     let selectedItems: string[] = [];
 

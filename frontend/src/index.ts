@@ -4,6 +4,11 @@ import {initializeFavoriteState} from "./memberstack";
 
 window.Webflow ||= [];
 window.Webflow.push(async () => {
+    // @ts-ignore
+    if (window.isWebflowInitialized) return;
+    // @ts-ignore
+    window.isWebflowInitialized = true; // Ustaw flagę, aby zapobiec wielokrotnemu uruchamianiu
+
     try {
         await initializeCart();
 
