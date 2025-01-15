@@ -323,7 +323,7 @@ router.get('/sheets/containers', async (req, res) => {
         // Uzupełnij scalone komórki dla Container No1 i Container No2
         const filledData = fillMergedCells(data, [indices.containerNo1, indices.containerNo2]);
 
-        const orders = {};
+        const containers = [];
 
         // Przetwarzanie danych
         filledData.forEach((row) => {
@@ -338,44 +338,41 @@ router.get('/sheets/containers', async (req, res) => {
                 return;
             }
 
-            // Jeśli zamówienie nie istnieje, inicjalizuj je
-            if (!orders[orderId]) {
-                orders[orderId] = {
-                    customerNip: currentCustomerNip,
-                    customerName: row[indices.customerName],
-                    orderId,
-                    containerNo1: row[indices.containerNo1],
-                    containerNo2: row[indices.containerNo2],
-                    containerType: row[indices.containerType] || 'Brak',
-                    fvPdf: row[indices.fvPdf] || 'Brak',
-                    fvAmountNetto: row[indices.fvAmountNetto] || 0,
-                    fvNo: row[indices.fvNo] || 'Brak',
-                    loadingPort: row[indices.loadingPort] || 'Brak',
-                    personalization: row[indices.personalization] || 'Brak',
-                    qualityControlPhotos: row[indices.qualityControlPhotos] || 'Brak',
-                    changeInTransportationCost: row[indices.changeInTransportationCost] || 'Brak',
-                    periodicity: row[indices.periodicity] || 'Brak',
-                    estimatedDeparture: row[indices.estimatedDeparture],
-                    fastestShipping: row[indices.fastestShipping],
-                    estimatedArrival: row[indices.estimatedArrival],
-                    extendedDelivery: row[indices.extendedDelivery],
-                    products: [],
-                };
-            }
-
-            // Dodaj produkt do zamówienia
-            const product = {
-                name: row[indices.productName] || 'Nieznany produkt',
-                variant: row[indices.productVariant] || 'Brak',
-                quantity: parseInt(row[indices.quantity], 10) || 0,
-                estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
-                capacity: parseFloat(row[indices.capacity]) || 0,
+            // Każdy wiersz to oddzielny rekord
+            const container = {
+                customerNip: currentCustomerNip,
+                customerName: row[indices.customerName],
+                orderId,
+                containerNo1: row[indices.containerNo1],
+                containerNo2: row[indices.containerNo2],
+                containerType: row[indices.containerType] || 'Brak',
+                fvPdf: row[indices.fvPdf] || 'Brak',
+                fvAmountNetto: row[indices.fvAmountNetto] || 0,
+                fvNo: row[indices.fvNo] || 'Brak',
+                loadingPort: row[indices.loadingPort] || 'Brak',
+                personalization: row[indices.personalization] || 'Brak',
+                qualityControlPhotos: row[indices.qualityControlPhotos] || 'Brak',
+                changeInTransportationCost: row[indices.changeInTransportationCost] || 'Brak',
+                periodicity: row[indices.periodicity] || 'Brak',
+                estimatedDeparture: row[indices.estimatedDeparture],
+                fastestShipping: row[indices.fastestShipping],
+                estimatedArrival: row[indices.estimatedArrival],
+                extendedDelivery: row[indices.extendedDelivery],
+                products: [
+                    {
+                        name: row[indices.productName] || 'Nieznany produkt',
+                        variant: row[indices.productVariant] || 'Brak',
+                        quantity: parseInt(row[indices.quantity], 10) || 0,
+                        estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
+                        capacity: parseFloat(row[indices.capacity]) || 0,
+                    },
+                ],
             };
 
-            orders[orderId].products.push(product);
+            containers.push(container);
         });
 
-        res.status(200).json(Object.values(orders));
+        res.status(200).json(containers);
     } catch (error) {
         console.error('Błąd pobierania danych z arkusza:', error);
         res.status(500).json({ error: 'Internal Server Error' });
