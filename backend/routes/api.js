@@ -270,29 +270,9 @@ router.get('/sheets/containers', async (req, res) => {
 
         const [headers, ...data] = rows;
 
-        // Nazwy wymaganych kolumn
-        const requiredColumns = [
-            'Customer NIP', 'Customer Name', 'Order ID', 'Container No1', 'Container No2',
-            'Container type', 'Product Name', 'Product Variant', 'Quantity',
-            'Estimated Freight', 'Capacity', 'FV PDF', 'FV amount (netto)', 'FV No',
-            'Loading port', 'Estimated time of departure', 'Fastest possible shipping date',
-            'Estimated time of arrival', 'Extended delivery date', 'Personalization',
-            'Quality control photos', 'Change in transportation cost', 'Periodicity'
-        ];
-
-        // Sprawdzenie brakujących kolumn
-        const missingColumns = requiredColumns.filter(column => !headers.includes(column));
-
-        if (missingColumns.length > 0) {
-            return res.status(500).json({
-                error: `Brakuje następujących kolumn w arkuszu: ${missingColumns.join(', ')}.`
-            });
-        }
-
-        // Indeksy interesujących kolumn
+        // Indeksy wymaganych kolumn
         const indices = {
             customerNip: headers.indexOf('Customer NIP'),
-            customerName: headers.indexOf('Customer Name'),
             orderId: headers.indexOf('Order ID'),
             containerNo1: headers.indexOf('Container No1'),
             containerNo2: headers.indexOf('Container No2'),
@@ -316,49 +296,57 @@ router.get('/sheets/containers', async (req, res) => {
             capacity: headers.indexOf('Capacity'),
         };
 
-        const lastRow = {
-            containerNo1: null,
-            containerNo2: null,
-            containerType: null,
-            estimatedDeparture: null,
-            fastestShipping: null,
-            estimatedArrival: null,
-            extendedDelivery: null,
-        };
+        // Sprawdzenie brakujących kolumn
+        const missingColumns = Object.keys(indices).filter(key => indices[key] === -1);
+        if (missingColumns.length > 0) {
+            return res.status(500).json({
+                error: `Brakuje następujących kolumn w arkuszu: ${missingColumns.join(', ')}.`
+            });
+        }
+
+        // Funkcja do uzupełniania scalonych komórek
+        function fillMergedCells(data, columns) {
+            const filledData = [...data];
+            columns.forEach(columnIndex => {
+                let lastValue = null;
+                filledData.forEach(row => {
+                    if (row[columnIndex]) {
+                        lastValue = row[columnIndex];
+                    } else {
+                        row[columnIndex] = lastValue;
+                    }
+                });
+            });
+            return filledData;
+        }
+
+        // Uzupełnij scalone komórki dla Container No1 i Container No2
+        const filledData = fillMergedCells(data, [indices.containerNo1, indices.containerNo2]);
 
         const orders = {};
 
-        data.forEach((row, rowIndex) => {
+        // Przetwarzanie danych
+        filledData.forEach((row) => {
             const currentCustomerNip = row[indices.customerNip] ? normalizeNip(row[indices.customerNip]) : null;
 
             if (currentCustomerNip !== normalizedQueryNip) {
-                //console.log(`Wiersz ${rowIndex + 2} - NIP nie pasuje lub jest pusty: ${currentCustomerNip}`);
                 return;
             }
 
             const orderId = row[indices.orderId];
             if (!orderId) {
-                //console.log(`Wiersz ${rowIndex + 2} - Pominięto z powodu braku Order ID`);
                 return;
             }
 
-            // Uzupełnij scalone komórki, jeśli są puste
-            lastRow.containerNo1 = row[indices.containerNo1] || lastRow.containerNo1;
-            lastRow.containerNo2 = row[indices.containerNo2] || lastRow.containerNo2;
-            lastRow.containerType = row[indices.containerType] || lastRow.containerType;
-            lastRow.estimatedDeparture = row[indices.estimatedDeparture] || lastRow.estimatedDeparture;
-            lastRow.fastestShipping = row[indices.fastestShipping] || lastRow.fastestShipping;
-            lastRow.estimatedArrival = row[indices.estimatedArrival] || lastRow.estimatedArrival;
-            lastRow.extendedDelivery = row[indices.extendedDelivery] || lastRow.extendedDelivery;
-
+            // Jeśli zamówienie nie istnieje, inicjalizuj je
             if (!orders[orderId]) {
                 orders[orderId] = {
                     customerNip: currentCustomerNip,
                     customerName: row[indices.customerName],
                     orderId,
-                    containerNo1: lastRow.containerNo1,
-                    containerNo2: lastRow.containerNo2,
-                    containerType: lastRow.containerType || 'Brak',
+                    containerNo1: row[indices.containerNo1],
+                    containerNo2: row[indices.containerNo2],
+                    containerType: row[indices.containerType] || 'Brak',
                     fvPdf: row[indices.fvPdf] || 'Brak',
                     fvAmountNetto: row[indices.fvAmountNetto] || 0,
                     fvNo: row[indices.fvNo] || 'Brak',
@@ -367,20 +355,21 @@ router.get('/sheets/containers', async (req, res) => {
                     qualityControlPhotos: row[indices.qualityControlPhotos] || 'Brak',
                     changeInTransportationCost: row[indices.changeInTransportationCost] || 'Brak',
                     periodicity: row[indices.periodicity] || 'Brak',
-                    estimatedDeparture: lastRow.estimatedDeparture,
-                    fastestShipping: lastRow.fastestShipping,
-                    estimatedArrival: lastRow.estimatedArrival,
-                    extendedDelivery: lastRow.extendedDelivery,
+                    estimatedDeparture: row[indices.estimatedDeparture],
+                    fastestShipping: row[indices.fastestShipping],
+                    estimatedArrival: row[indices.estimatedArrival],
+                    extendedDelivery: row[indices.extendedDelivery],
                     products: [],
                 };
             }
 
+            // Dodaj produkt do zamówienia
             const product = {
-                name: row[indices.productName],
-                variant: row[indices.productVariant],
-                quantity: parseInt(row[indices.quantity], 10),
-                estimatedFreight: parseFloat(row[indices.estimatedFreight]),
-                capacity: parseFloat(row[indices.capacity]),
+                name: row[indices.productName] || 'Nieznany produkt',
+                variant: row[indices.productVariant] || 'Brak',
+                quantity: parseInt(row[indices.quantity], 10) || 0,
+                estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
+                capacity: parseFloat(row[indices.capacity]) || 0,
             };
 
             orders[orderId].products.push(product);
