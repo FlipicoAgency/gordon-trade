@@ -270,37 +270,30 @@ router.get('/sheets/containers', async (req, res) => {
 
         const [headers, ...data] = rows;
 
-        // Indeksy interesujących kolumn
-        const indices = {
-            customerNip: headers.indexOf('Customer NIP'),
-            customerName: headers.indexOf('Customer Name'),
-            orderId: headers.indexOf('Order ID'),
-            containerNo1: headers.indexOf('Container No1'),
-            containerNo2: headers.indexOf('Container No2'),
-            containerType: headers.indexOf('Container type'),
-            fvPdf: headers.indexOf('FV PDF'),
-            fvAmountNetto: headers.indexOf('FV amount (netto)'),
-            fvNo: headers.indexOf('FV No'),
-            loadingPort: headers.indexOf('Loading port'),
-            personalization: headers.indexOf('Personalization'),
-            qualityControlPhotos: headers.indexOf('Quality control photos'),
-            changeInTransportationCost: headers.indexOf('Change in transportation cost'),
-            periodicity: headers.indexOf('Periodicity'),
-            estimatedDeparture: headers.indexOf('Estimated time of departure'),
-            fastestShipping: headers.indexOf('Fastest possible shipping date'),
-            estimatedArrival: headers.indexOf('Estimated time of arrival'),
-            extendedDelivery: headers.indexOf('Extended delivery date'),
-            productName: headers.indexOf('Product Name'),
-            productVariant: headers.indexOf('Product Variant'),
-            quantity: headers.indexOf('Quantity'),
-            estimatedFreight: headers.indexOf('Estimated Freight'),
-            capacity: headers.indexOf('Capacity'),
-        };
+        // Nazwy wymaganych kolumn
+        const requiredColumns = [
+            'Customer NIP', 'Customer Name', 'Order ID', 'Container No1', 'Container No2',
+            'Container type', 'Product Name', 'Product Variant', 'Quantity',
+            'Estimated Freight', 'Capacity', 'FV PDF', 'FV amount (netto)', 'FV No',
+            'Loading port', 'Estimated time of departure', 'Fastest possible shipping date',
+            'Estimated time of arrival', 'Extended delivery date', 'Personalization',
+            'Quality control photos', 'Change in transportation cost', 'Periodicity'
+        ];
 
-        // Sprawdzenie, czy wszystkie kolumny istnieją
-        if (Object.values(indices).some(index => index === -1)) {
-            return res.status(500).json({ error: 'Niektóre wymagane kolumny nie zostały znalezione w arkuszu.' });
+        // Sprawdzenie brakujących kolumn
+        const missingColumns = requiredColumns.filter(column => !headers.includes(column));
+
+        if (missingColumns.length > 0) {
+            return res.status(500).json({
+                error: `Brakuje następujących kolumn w arkuszu: ${missingColumns.join(', ')}.`
+            });
         }
+
+        // Mapa indeksów kolumn
+        const indices = requiredColumns.reduce((acc, column) => {
+            acc[column] = headers.indexOf(column);
+            return acc;
+        }, {});
 
         const lastRow = {
             containerNo1: null,
