@@ -192,22 +192,47 @@ function showOrderInfo(container: Container, containers: Container[]): void {
 
     // Oblicz listę kontenerów o tym samym statusie
     const containerListHTML = containersInSameStatus.map(sameStatusContainer => {
-        const delayInfoHTML = sameStatusContainer["Extended delivery date"]
-            ? ` <div class="text-style-muted">Opóźnienie:</div>
-                <div>${
-                Math.ceil(
-                    (new Date(sameStatusContainer["Extended delivery date"]).getTime() -
-                        new Date(sameStatusContainer["Estimated time of arrival"]).getTime()) /
+        // Pobierz daty i sprawdź, czy są poprawne
+        const extendedDeliveryDate =
+            sameStatusContainer["Extended delivery date"] !== "Brak"
+                ? sameStatusContainer["Extended delivery date"]
+                : null;
+        const estimatedArrivalDate =
+            sameStatusContainer["Estimated time of arrival"] !== "Brak"
+                ? sameStatusContainer["Estimated time of arrival"]
+                : null;
+
+
+        // Oblicz liczbę dni opóźnienia
+        const delayDays =
+            extendedDeliveryDate && estimatedArrivalDate
+                ? Math.ceil(
+                    (new Date(extendedDeliveryDate).getTime() - new Date(estimatedArrivalDate).getTime()) /
                     (1000 * 60 * 60 * 24)
                 )
-            } dni</div>`
-            : "";
+                : null;
+
+        // Przygotuj HTML opóźnienia, jeśli istnieje
+        const delayInfoHTML =
+            delayDays !== null
+                ? `<div class="text-style-muted">Opóźnienie:</div>
+                   <div>${delayDays} dni</div>`
+                : "";
+
+        // Walidacja i renderowanie `Change in transportation cost`
+        const transportationCostChange =
+            sameStatusContainer["Change in transportation cost"] !== "Brak"
+                ? `<div class="text-style-muted">Zmiana kosztu transportu:</div>
+                   <div>${sameStatusContainer["Change in transportation cost"]}</div>`
+                : ``;
 
         const productListHTML = sameStatusContainer.Products.map(
             item => `
                 <div class="shipping-collection-item">
-                    <div class="text-style-ellipsis">${item.name}</div>
-                    ${item.variant ? `<div class="text-weight-normal text-style-muted">Wariant: <span>${item.variant}</span></div>` : ''}
+                    <div class="text-style-ellipsis">
+                        ${item.name}${Number(item.quantity) > 1 ? ` (${item.quantity} pcs)` : ""}
+                    </div>
+                    ${item.variant !== 'Brak' ? `<div class="text-weight-normal text-style-muted">Wariant: <span>${item.variant}</span></div>` : ''}
                 </div>`
         ).join("");
 
@@ -221,9 +246,8 @@ function showOrderInfo(container: Container, containers: Container[]): void {
                 <div class="text-style-muted">Personalizacja:</div>
                 <div>${sameStatusContainer.Personalization}</div>
                 <div class="text-style-muted">Cykliczność:</div>
-                <div>${sameStatusContainer.Periodicity === 'Yes' ? 'Tak' : 'Nie'}</div>
-                <div class="text-style-muted">Zmiana kosztu transportu:</div>
-                <div>${sameStatusContainer["Change in transportation cost"]}</div>
+                <div>${sameStatusContainer.Periodicity}</div>
+                ${transportationCostChange}
                 <div class="text-style-muted">Planowana dostawa:</div>
                 <div>${formatDate(sameStatusContainer["Estimated time of arrival"])}</div>
                 ${delayInfoHTML}
@@ -285,8 +309,8 @@ function generateShipItem(container: Container, containers: Container[]): void {
     const statusName: string = container["Delivery status"].name || "";
 
     // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
-    if (statusName === "Zrealizowano") {
-        //console.log(`Zrealizowany! Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
+    if (statusName === "Zrealizowano" || statusName === "Nieznany status") {
+        console.log(`Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
         return;
     }
 
@@ -332,6 +356,14 @@ function generateShipItem(container: Container, containers: Container[]): void {
 }
 
 function generateShipListItem(container: Container): void {
+    const statusName: string = container["Delivery status"].name || "";
+
+    // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
+    if (statusName === "Zrealizowano" || statusName === "Nieznany status") {
+        console.log(`Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
+        return;
+    }
+
     // Kontenery do dodawania elementów
     const listWrapper = document.getElementById('container-list-stacked') as HTMLElement;
 
@@ -358,7 +390,7 @@ function generateShipListItem(container: Container): void {
             <div class="text-size-small">Numer kontenera: <span class="text-weight-semibold text-color-brand">${container["Container No1"]}</span></div>
             <div class="stacked-list4_info">
                 <div class="text-size-small">Planowana dostawa: <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
-                ${delayInfoHTML} <!-- Dodawanie informacji o opóźnieniu tylko jeśli istnieje -->
+                ${delayInfoHTML}
             </div>
          </div>
         <div class="stacked-list4_progress ${isError ? 'is-error' : ''}">
@@ -380,8 +412,10 @@ function generateShipListItem(container: Container): void {
                 ${container.Products.map((item: any) => {
                     return `
                         <div class="shipping-collection-item">
-                            <div class="text-style-ellipsis">${item.name}</div>
-                            ${item.variant ? `<div class="text-weight-normal text-style-muted">Wariant: <span>${item.variant}</span></div>` : ''}
+                            <div class="text-style-ellipsis">
+                                ${item.name}${Number(item.quantity) > 1 ? ` (${item.quantity} pcs)` : ""}
+                            </div>
+                            ${item.variant !== 'Brak' ? `<div class="text-weight-normal text-style-muted">Wariant: <span>${item.variant}</span></div>` : ''}
                         </div>
                     `;
                 }).join('')}
@@ -408,9 +442,6 @@ function generateShipListItem(container: Container): void {
 }
 
 export async function fetchContainers(memberData: Member) {
-    // Rozpocznij pomiar czasu wykonywania skryptu
-    const startTime: number = performance.now();
-
     try {
         // Wysłanie webhooka na Make
         const response = await fetch(
@@ -432,7 +463,7 @@ export async function fetchContainers(memberData: Member) {
         //console.log('Zamówienia:', cleanData);
 
         const containers: Container[] = formatToContainers(cleanData);
-        //console.log('Kontenery:', containers);
+        console.log('Kontenery:', containers);
 
         // Iteracja przez kontenery
         containers.forEach((container: Container) => {
@@ -449,9 +480,4 @@ export async function fetchContainers(memberData: Member) {
     } catch (error) {
         console.error("Error in fetching or processing webhook response:", error);
     }
-
-    // Zakończ pomiar czasu
-    const endTime = performance.now();
-    const executionTime = endTime - startTime;
-    //console.log(`Czas wykonania skryptu: ${executionTime.toFixed(2)} ms`);
 }
