@@ -693,41 +693,45 @@ function getTodayDate(): string {
 
 // Function to map API response to Product Interface
 export function mapApiResponseToProduct(apiResponse: any): Product {
+    const isEmptyString = (value: any) => value === '' || value === null || value === undefined;
+
     return {
         id: apiResponse.id,
         cmsLocaleId: apiResponse.cmsLocaleId,
-        lastPublished: apiResponse.lastPublished ?? null,
-        lastUpdated: apiResponse.lastUpdated,
-        createdOn: apiResponse.createdOn,
-        isArchived: apiResponse.isArchived,
-        isDraft: apiResponse.isDraft,
+        lastPublished: isEmptyString(apiResponse.lastPublished) ? null : apiResponse.lastPublished,
+        lastUpdated: isEmptyString(apiResponse.lastUpdated) ? null : apiResponse.lastUpdated,
+        createdOn: isEmptyString(apiResponse.createdOn) ? null : apiResponse.createdOn,
+        isArchived: apiResponse.isArchived ?? false,
+        isDraft: apiResponse.isDraft ?? false,
         fieldData: {
-            priceNormal: apiResponse.fieldData["cena"] ?? 0,
-            pricePromo: apiResponse.fieldData["procent-znizki"] ?? 0, // assuming there might be a promo price key
+            priceNormal: isEmptyString(apiResponse.fieldData["cena"]) ? 0 : apiResponse.fieldData["cena"],
+            pricePromo: isEmptyString(apiResponse.fieldData["procent-znizki"]) ? 0 : apiResponse.fieldData["procent-znizki"],
             promo: apiResponse.fieldData["promocja"] ?? false,
-            quantityInBox: apiResponse.fieldData["ilosc-w-kartonie"] ?? 0,
-            stockNumber: apiResponse.fieldData["stan-magazynowy"] ?? 0,
+            quantityInBox: isEmptyString(apiResponse.fieldData["ilosc-w-kartonie"]) ? 0 : apiResponse.fieldData["ilosc-w-kartonie"],
+            stockNumber: isEmptyString(apiResponse.fieldData["stan-magazynowy"]) ? 0 : apiResponse.fieldData["stan-magazynowy"],
             inStock: apiResponse.fieldData["w-magazynie"] ?? false,
-            weightCarton: apiResponse.fieldData["1-karton---waga"] ?? 0,
-            dimensionsCarton: apiResponse.fieldData["1-karton---wymiary-2"] ?? '',
-            priceCarton: apiResponse.fieldData["cena-za-karton"],
-            name: apiResponse.fieldData["name"] ?? '',
-            description: apiResponse.fieldData["opis"] ?? '',
-            tags: apiResponse.fieldData["tagi"] ?? '',
-            ean: apiResponse.fieldData["ean-2"] ?? undefined,
-            sku: apiResponse.fieldData["sku"] ?? '',
+            weightCarton: isEmptyString(apiResponse.fieldData["1-karton---waga"]) ? 0 : apiResponse.fieldData["1-karton---waga"],
+            dimensionsCarton: isEmptyString(apiResponse.fieldData["1-karton---wymiary-2"]) ? '' : apiResponse.fieldData["1-karton---wymiary-2"],
+            priceCarton: isEmptyString(apiResponse.fieldData["cena-za-karton"]) ? 0 : apiResponse.fieldData["cena-za-karton"],
+            name: isEmptyString(apiResponse.fieldData["name"]) ? '' : apiResponse.fieldData["name"],
+            description: isEmptyString(apiResponse.fieldData["opis"]) ? '' : apiResponse.fieldData["opis"],
+            tags: isEmptyString(apiResponse.fieldData["tagi"]) ? '' : apiResponse.fieldData["tagi"],
+            ean: isEmptyString(apiResponse.fieldData["ean-2"]) ? undefined : apiResponse.fieldData["ean-2"],
+            sku: isEmptyString(apiResponse.fieldData["sku"]) ? '' : apiResponse.fieldData["sku"],
             thumbnail: {
-                fileId: apiResponse.fieldData["miniatura"]?.fileId ?? '',
-                url: apiResponse.fieldData["miniatura"]?.url ?? '',
-                alt: apiResponse.fieldData["miniatura"]?.alt ?? null,
+                fileId: isEmptyString(apiResponse.fieldData["miniatura"]?.fileId) ? '' : apiResponse.fieldData["miniatura"]?.fileId,
+                url: isEmptyString(apiResponse.fieldData["miniatura"]?.url) ? '' : apiResponse.fieldData["miniatura"]?.url,
+                alt: isEmptyString(apiResponse.fieldData["miniatura"]?.alt) ? null : apiResponse.fieldData["miniatura"]?.alt,
             },
-            gallery: apiResponse.fieldData["galeria"]?.map((item: any) => ({
-                fileId: item.fileId,
-                url: item.url,
-                alt: item.alt ?? null,
-            })) ?? [],
-            slug: apiResponse.fieldData["slug"] ?? '',
-            category: apiResponse.fieldData["kategoria"] ?? '',
+            gallery: Array.isArray(apiResponse.fieldData["galeria"])
+                ? apiResponse.fieldData["galeria"].map((item: any) => ({
+                    fileId: isEmptyString(item.fileId) ? '' : item.fileId,
+                    url: isEmptyString(item.url) ? '' : item.url,
+                    alt: isEmptyString(item.alt) ? null : item.alt,
+                }))
+                : [],
+            slug: isEmptyString(apiResponse.fieldData["slug"]) ? '' : apiResponse.fieldData["slug"],
+            category: isEmptyString(apiResponse.fieldData["kategoria"]) ? '' : apiResponse.fieldData["kategoria"],
             productUnavailable: apiResponse.fieldData["produkt-niedostepny"] ?? false,
             productFeatured: apiResponse.fieldData["produkt-wyrozniony"] ?? false,
             productVisibleOnPage: apiResponse.fieldData["produkt-widoczny-na-stronie"] ?? false,
