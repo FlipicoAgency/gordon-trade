@@ -289,11 +289,32 @@ router.get('/sheets/containers', async (req, res) => {
             });
         }
 
-        // Mapa indeksów kolumn
-        const indices = requiredColumns.reduce((acc, column) => {
-            acc[column] = headers.indexOf(column);
-            return acc;
-        }, {});
+        // Indeksy interesujących kolumn
+        const indices = {
+            customerNip: headers.indexOf('Customer NIP'),
+            customerName: headers.indexOf('Customer Name'),
+            orderId: headers.indexOf('Order ID'),
+            containerNo1: headers.indexOf('Container No1'),
+            containerNo2: headers.indexOf('Container No2'),
+            containerType: headers.indexOf('Container type'),
+            fvPdf: headers.indexOf('FV PDF'),
+            fvAmountNetto: headers.indexOf('FV amount (netto)'),
+            fvNo: headers.indexOf('FV No'),
+            loadingPort: headers.indexOf('Loading port'),
+            personalization: headers.indexOf('Personalization'),
+            qualityControlPhotos: headers.indexOf('Quality control photos'),
+            changeInTransportationCost: headers.indexOf('Change in transportation cost'),
+            periodicity: headers.indexOf('Periodicity'),
+            estimatedDeparture: headers.indexOf('Estimated time of departure'),
+            fastestShipping: headers.indexOf('Fastest possible shipping date'),
+            estimatedArrival: headers.indexOf('Estimated time of arrival'),
+            extendedDelivery: headers.indexOf('Extended delivery date'),
+            productName: headers.indexOf('Product Name'),
+            productVariant: headers.indexOf('Product Variant'),
+            quantity: headers.indexOf('Quantity'),
+            estimatedFreight: headers.indexOf('Estimated Freight'),
+            capacity: headers.indexOf('Capacity'),
+        };
 
         const lastRow = {
             containerNo1: null,
