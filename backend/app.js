@@ -1,3 +1,22 @@
+const { spawn } = require('child_process'); // Import child_process
+
+// Uruchamianie LibreTranslate jako proces
+const path = require('path'); // Używamy do podania ścieżki do LibreTranslate
+const libreTranslateProcess = spawn('python3', ['main.py'], {
+  cwd: path.join(__dirname, 'services/LibreTranslate'), // Ścieżka do folderu LibreTranslate
+  stdio: 'inherit', // Przekierowanie logów do konsoli
+});
+
+// Obsługa zdarzeń procesu LibreTranslate
+libreTranslateProcess.on('error', (err) => {
+  console.error('Błąd podczas uruchamiania LibreTranslate:', err);
+});
+
+libreTranslateProcess.on('close', (code) => {
+  console.log(`Proces LibreTranslate zakończył działanie z kodem: ${code}`);
+});
+
+
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');

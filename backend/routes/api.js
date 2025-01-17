@@ -38,10 +38,8 @@ function normalizeNip(nip) {
 }
 
 async function translateText(text, targetLang = 'en') {
-    console.log('TEXT:', text);
-
     try {
-        const response = await fetch('https://libretranslate.com/translate', {
+        const response = await fetch('http://localhost:5000/translate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
