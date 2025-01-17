@@ -12,7 +12,7 @@ const orderList = document.querySelector('.order_list') as HTMLElement;
  * @param button Element przycisku, który został kliknięty.
  * @param memberData
  */
-async function handleOrderAgain(button: HTMLElement, memberData: Member) {
+async function handleOrderAgain(button: HTMLElement, memberData: Member, translations: Record<string, string>) {
     const orderId = button.getAttribute('data-order-id');
     if (!orderId) {
         console.error('Brak ID zamówienia dla tego przycisku.');
@@ -28,7 +28,7 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member) {
         }
 
         const orders: Record<string, Order> = JSON.parse(ordersData);
-        const foundOrder = Object.values(orders).find(order => order["Order ID"] === parseInt(orderId));
+        const foundOrder = Object.values(orders).find(order => order["Order ID"] === orderId);
 
         if (!foundOrder) {
             console.error(`Nie znaleziono zamówienia o ID: ${orderId}`);
@@ -84,7 +84,7 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member) {
         console.log('Items to process:', validItems);
 
         // Dodaj zamówienie do Excela
-        await addNewOrderToExcel(validItems, memberData, order);
+        await addNewOrderToExcel(validItems, memberData, translations, order);
 
         // Wyślij nowe zamówienie za pomocą Make
         await sendNewOrderViaMake(validItems, memberData);
@@ -136,7 +136,7 @@ async function sendNewOrderViaMake(items: ProductInCart[], memberData: Member) {
     }
 }
 
-async function initializeOrderAgain(memberData: Member) {
+async function initializeOrderAgain(memberData: Member, translations: Record<string, string>) {
     const orderAgainButtons = document.querySelectorAll<HTMLElement>('[orders="again"]');
 
     orderAgainButtons.forEach((button) => {
@@ -144,7 +144,7 @@ async function initializeOrderAgain(memberData: Member) {
             event.preventDefault();
 
             try {
-                await handleOrderAgain(button, memberData);
+                await handleOrderAgain(button, memberData, translations);
             } catch (error) {
                 console.error('Error ordering again:', error);
             }
@@ -189,7 +189,17 @@ export function getIconPath(iconType: string): string {
     }
 }
 
-export async function generateOrderItem(order: Order) {
+export async function generateOrderItem(order: Order, translations: Record<string, string>) {
+    const orderValue = order["Order value"];
+    const numericOrderValue = parseFloat(orderValue);
+
+    //console.log('order value:', orderValue);
+    // Sprawdź, czy orderValue jest prawidłowe
+    // if (orderValue <= 0) {
+    //     console.error('Nieprawidłowa wartość zamówienia:', order["Order value"]);
+    //     return; // Zakończ, jeśli wartość zamówienia jest nieprawidłowa
+    // }
+
     // Stwórz element <li> dla zamówienia
     const li = document.createElement('li');
     li.className = 'order_list_item';
@@ -200,19 +210,19 @@ export async function generateOrderItem(order: Order) {
             <div class="order_top-wrapper">
                 <div class="margin-vertical margin-xsmall">
                     <div class="order_details">
-                        <div class="heading-style-h6">Zamówienie nr <span class="order_number text-color-brand">${order['Order ID']}</span></div>
+                        <div class="heading-style-h6">${translations.orderNumberLabel} <span class="order_number text-color-brand">${order['Order ID']}</span></div>
                         <div class="order_details_grid">
                             <div class="order_details_grid_item">
-                                <div class="text-size-small">Data zamówienia:</div>
+                                <div class="text-size-small">${translations.orderDateLabel}</div>
                             </div>
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">${order['Order date']}</div>
                             </div>
                             <div class="order_details_grid_item">
-                                <div class="text-size-small">Kwota zamówienia:</div>
+                                <div class="text-size-small">${translations.orderValueLabel}</div>
                             </div>
                             <div class="order_details_grid_item">
-                                <div class="text-size-small">${order['Order value'].toFixed(2)} zł</div>
+                                <div class="text-size-small">${numericOrderValue.toFixed(2)} zł</div>
                             </div>
                             <!--
                             <div class="spacer-xxsmall is-grid-2"></div>
@@ -247,7 +257,7 @@ export async function generateOrderItem(order: Order) {
                             </div>
                             -->
                             <div class="order_details_grid_item">
-                                <div class="text-size-small">Status przesyłki:</div>
+                                <div class="text-size-small">${translations.paymentStatusLabel}</div>
                             </div>
                             <div class="order_details_grid_item">
                                 <div class="order-details">
@@ -294,7 +304,7 @@ export async function generateOrderItem(order: Order) {
                                 <div class="text-size-small">Przedłużona data dostawy?</div>
                             </div>
                              <div class="order_details_grid_item">
-                                <div class="text-size-small">${order['Extended delivery date'] ? `Tak, ${order['Extended delivery date']}` : 'Nie'}</div>
+                                <div class="text-size-small">${order['Extended delivery date'] ? `${translations.yes}, ${order['Extended delivery date']}` : translations.no}</div>
                             </div>     
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">Zamówienie cykliczne?</div>
@@ -316,15 +326,6 @@ export async function generateOrderItem(order: Order) {
         throw new Error('Nie znaleziono elementu .order_top-wrapper w li!');
     }
 
-    const orderValue = order["Order value"];
-
-    //console.log('order value:', orderValue);
-    // Sprawdź, czy orderValue jest prawidłowe
-    // if (orderValue <= 0) {
-    //     console.error('Nieprawidłowa wartość zamówienia:', order["Order value"]);
-    //     return; // Zakończ, jeśli wartość zamówienia jest nieprawidłowa
-    // }
-
     // Dodaj produkty do zamówienia
     for (const product of order.products) {
         const productDetails: Product = await fetchProductDetails(product.id);
@@ -342,13 +343,13 @@ export async function generateOrderItem(order: Order) {
                     <a href="/produkty/${productDetails.fieldData.slug}" class="text-weight-semibold text-style-2lines">${productDetails.fieldData.name}</a>
                     <div class="order_product_details_grid">
                         <div class="order_details_grid_item">
-                            <div class="text-size-small">Ilość produktów:</div>
+                            <div class="text-size-small">${translations.quantityOfProducts}</div>
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">${productQuantity}</div>
                         </div>
                         <div class="order_details_grid_item">
-                            <div class="text-size-small">Kwota za sztukę:</div>
+                            <div class="text-size-small">${translations.pricePerUnit}</div>
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">${productPrice.toFixed(2)} zł</div>
@@ -361,7 +362,7 @@ export async function generateOrderItem(order: Order) {
                         </div>
                         ${product.variant ? `
                         <div class="order_details_grid_item">
-                            <div class="text-size-small">Wariant:</div>
+                            <div class="text-size-small">${translations.variant}</div>
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">${product.variant}</div>
@@ -387,7 +388,7 @@ export async function generateOrderItem(order: Order) {
     actionDiv.innerHTML = `
         <div class="margin-vertical margin-xsmall">
             <div class="button is-secondary is-small" orders="again" data-order-id="${order["Order ID"]}">
-                <div>Zamów ponownie</div>
+                <div>${translations.reorderButton}</div>
             </div>
         </div>
     `;
@@ -404,13 +405,13 @@ export async function generateOrderItem(order: Order) {
     footerDiv.innerHTML = `
         <div class="order_row is-reverse">
             <div class="order_total">
-                <div class="text-size-small">Razem:</div>
-                <div class="heading-style-h5">${orderValue.toFixed(2)} zł</div>
+                <div class="text-size-small">${translations.togetherLabel}</div>
+                <div class="heading-style-h5">${numericOrderValue.toFixed(2)} zł</div>
             </div>
             ${order['FV PDF'] ? `
                 <div class="button-group">
                     <a href="${order['FV PDF']}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
-                        <div class="order_download_faktura">Pobierz fakturę</div>
+                        <div class="order_download_faktura">${translations.downloadInvoice}</div>
                         <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
                     </a>
                 </div>
@@ -423,7 +424,7 @@ export async function generateOrderItem(order: Order) {
     return li;
 }
 
-const renderOrders = async (orders: Record<string, Order>, memberData: Member): Promise<void> => {
+const renderOrders = async (orders: Record<string, Order>, memberData: Member, translations: Record<string, string>): Promise<void> => {
     orderList.innerHTML = ''; // Wyczyść istniejącą listę
 
     // Konwersja obiektu na tablicę
@@ -436,7 +437,7 @@ const renderOrders = async (orders: Record<string, Order>, memberData: Member): 
 
         for (const order of orderArray) {
             try {
-                const orderItem = await generateOrderItem(order);
+                const orderItem = await generateOrderItem(order, translations);
                 if (orderItem) {
                     orderList.appendChild(orderItem);
                 }
@@ -446,16 +447,16 @@ const renderOrders = async (orders: Record<string, Order>, memberData: Member): 
         }
 
         // Inicjalizuj przyciski "Zamów ponownie" po renderowaniu elementów
-        await initializeOrderAgain(memberData);
+        await initializeOrderAgain(memberData, translations);
     }
 };
 
-export const initializeOrders = async (memberData: Member): Promise<any> => {
+export const initializeOrders = async (memberData: Member, translations: Record<string, string>): Promise<any> => {
     const customerNip = memberData.customFields.nip;
     const orders = await fetchOrdersByNip(customerNip);
 
     // Zapisz zamówienia w localStorage
     localStorage.setItem('orders', JSON.stringify(orders));
 
-    await renderOrders(orders, memberData);
+    await renderOrders(orders, memberData, translations);
 }

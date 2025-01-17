@@ -4,6 +4,16 @@ import type {Container, Status} from "../../types/containers";
 import type {OrderProduct} from "../../types/cart";
 import {getIconPath} from "./orders";
 
+function mapYesNo(value: string, translations: Record<string, string>): string {
+    if (value === "Tak") {
+        return translations.yes;  // w polskim pl.json = "Tak", w angielskim en.json = "Yes"
+    }
+    if (value === "Nie") {
+        return translations.no;   // w polskim pl.json = "Nie", w angielskim en.json = "No"
+    }
+    return value;
+}
+
 // SVG ikony
 const icons: Record<string, string> = {
     default: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Z"></path></svg>`,
@@ -17,75 +27,7 @@ function formatDate(dateString: string): string {
     return date.toLocaleDateString('pl-PL');
 }
 
-const locations: Status[] = [
-    {
-        name: "Ningbo",
-        position: "top: 44%; left: 74%;",
-        procent: "is-0",
-    },
-    {
-        name: "Tianjin",
-        position: "top: 15%; left: 73%;",
-        procent: "is-0",
-    },
-    {
-        name: "Qingdao",
-        position: "top: 27%; left: 77%;",
-        procent: "is-0",
-    },
-    {
-        name: "Shanghai",
-        position: "top: 40%; left: 77%;",
-        procent: "is-0",
-    },
-    {
-        name: "Shenzhen",
-        position: "top: 51%; left: 69%;",
-        procent: "is-0",
-    },
-    {
-        name: "Morze Południowochińskie",
-        position: "top: 68%; left: 69%;",
-        procent: "is-15",
-    },
-    {
-        name: "Morze Lakkadiwskie",
-        position: "top: 68%; left: 56%;",
-        procent: "is-25",
-    },
-    {
-        name: "Morze Arabskie",
-        position: "top: 65%; left: 46%;",
-        procent: "is-35",
-    },
-    {
-        name: "Morze Czerwone",
-        position: "top: 50%; left: 33%;",
-        procent: "is-50",
-    },
-    {
-        name: "Morze Śródziemne",
-        position: "top: 37.5%; left: 23%;",
-        procent: "is-65",
-    },
-    {
-        name: "Ocean Atlantycki",
-        position: "top: 36%; left: 10%;",
-        procent: "is-75",
-    },
-    {
-        name: "Kanał La Manche",
-        position: "top: 22%; left: 15%;",
-        procent: "is-85",
-    },
-    {
-        name: "Port w Gdańsku",
-        position: "top: 18%; left: 23%;",
-        procent: "is-100",
-    },
-];
-
-function formatToContainers(data: any): Container[] {
+function formatToContainers(data: any, locations: Status[], translations: Record<string, string>): Container[] {
     //console.log(data);
 
     return Object.values(data).map((order: any) => {
@@ -105,7 +47,7 @@ function formatToContainers(data: any): Container[] {
         }
 
         // Budowanie struktury kontenera
-        const deliveryStatus = chooseStatus(order.estimatedDeparture, order.loadingPort);
+        const deliveryStatus = chooseStatus(order.estimatedDeparture, order.loadingPort, locations, translations);
 
         return {
             "Customer NIP": order.customerNip,
@@ -123,15 +65,15 @@ function formatToContainers(data: any): Container[] {
             "Fastest possible shipping date": order.fastestShipping || "Brak",
             "Estimated time of arrival": order.estimatedArrival || "Brak",
             "Extended delivery date": order.extendedDelivery || "Brak",
-            "Personalization": order.personalization || "Brak",
             "Quality control photos": order.qualityControlPhotos || "Brak",
             "Change in transportation cost": order.changeInTransportationCost || "Brak",
-            "Periodicity": order.periodicity || "Brak",
+            "Personalization": mapYesNo(order.personalization || translations.none, translations),
+            "Periodicity": mapYesNo(order.periodicity || translations.none, translations),
         };
     });
 }
 
-function chooseStatus(departureDate: string, loadingPort: string): Status {
+function chooseStatus(departureDate: string, loadingPort: string, locations: Status[], translations: Record<string, string>): Status {
     const today = new Date();
     const departure = new Date(departureDate);
 
@@ -146,25 +88,25 @@ function chooseStatus(departureDate: string, loadingPort: string): Status {
         const location = locations.find(location => location.name.includes(loadingPort));
         if (location) return location;
     } else if (diffDays >= 7 && diffDays < 14) {
-        return locations.find(location => location.name.includes("Południowochińskie"))!;
+        return locations.find(location => location.name.includes(translations.southChinaSea))!;
     } else if (diffDays >= 14 && diffDays < 21) {
-        return locations.find(location => location.name.includes("Lakkadiwskie"))!;
+        return locations.find(location => location.name.includes(translations.lakshadweepSea))!;
     } else if (diffDays >= 21 && diffDays < 28) {
-        return locations.find(location => location.name.includes("Arabskie"))!;
+        return locations.find(location => location.name.includes(translations.arabianSea))!;
     } else if (diffDays >= 28 && diffDays < 35) {
-        return locations.find(location => location.name.includes("Czerwone"))!;
+        return locations.find(location => location.name.includes(translations.redSea))!;
     } else if (diffDays >= 35 && diffDays < 42) {
-        return locations.find(location => location.name.includes("Śródziemne"))!;
+        return locations.find(location => location.name.includes(translations.mediterraneanSea))!;
     } else if (diffDays >= 42 && diffDays < 49) {
-        return locations.find(location => location.name.includes("Atlantycki"))!;
+        return locations.find(location => location.name.includes(translations.atlanticOcean))!;
     } else if (diffDays >= 49 && diffDays < 56) {
-        return locations.find(location => location.name.includes("La Manche"))!;
+        return locations.find(location => location.name.includes(translations.englishChannel))!;
     } else if (diffDays >= 56 && diffDays < 63) {
-        return locations.find(location => location.name.includes("Gdańsku"))!;
+        return locations.find(location => location.name.includes(translations.portGdansk))!;
     } else if (diffDays >= 63) {
         // Status "Zrealizowano" dla ponad 56 dni
         return {
-            name: "Zrealizowano",
+            name: translations.statusCompleted,
             position: "top: 0%; left: 0%;",
             procent: "is-100",
         };
@@ -173,13 +115,13 @@ function chooseStatus(departureDate: string, loadingPort: string): Status {
     // Ostrzeżenie o nieznanym statusie
     console.error(`Nieznany status dla departureDate: ${departureDate}, loadingPort: ${loadingPort}, diffDays: ${diffDays}`);
     return {
-        name: "Nieznany status",
+        name: translations.statusUnknown,
         position: "top: 0%; left: 0%;",
         procent: "is-0%",
     };
 }
 
-function showOrderInfo(container: Container, containers: Container[]): void {
+function showOrderInfo(container: Container, containers: Container[], translations: Record<string, string>): void {
     const mapWrapper = document.getElementById("map-wrapper") as HTMLElement;
 
     // Usuń istniejący element modala, jeśli istnieje
@@ -215,14 +157,14 @@ function showOrderInfo(container: Container, containers: Container[]): void {
         // Przygotuj HTML opóźnienia, jeśli istnieje
         const delayInfoHTML =
             delayDays !== null
-                ? `<div class="text-style-muted">Opóźnienie:</div>
-                   <div>${delayDays} dni</div>`
+                ? `<div class="text-style-muted">${translations.delay}</div>
+                   <div>${delayDays} ${translations.days}</div>`
                 : "";
 
         // Walidacja i renderowanie `Change in transportation cost`
         const transportationCostChange =
             sameStatusContainer["Change in transportation cost"] !== "Brak"
-                ? `<div class="text-style-muted">Zmiana kosztu transportu:</div>
+                ? `<div class="text-style-muted">${translations.changeTransportationCost}</div>
                    <div>${sameStatusContainer["Change in transportation cost"]}</div>`
                 : ``;
 
@@ -232,23 +174,23 @@ function showOrderInfo(container: Container, containers: Container[]): void {
                     <div class="text-style-ellipsis">
                         ${item.name}${Number(item.quantity) > 1 ? ` (${item.quantity} pcs)` : ""}
                     </div>
-                    ${item.variant !== 'Brak' ? `<div class="text-weight-normal text-style-muted">Wariant: <span>${item.variant}</span></div>` : ''}
+                    ${item.variant !== 'Brak' ? `<div class="text-weight-normal text-style-muted">${translations.variant} <span>${item.variant}</span></div>` : ''}
                 </div>`
         ).join("");
 
         return `
             <div class="shipping-details-item">
-                <div class="text-style-muted">Numer kontenera:</div>
+                <div class="text-style-muted">${translations.containerNumber}</div>
                 <div class="text-weight-semibold">${sameStatusContainer["Container No1"]}</div>
                 <div class="shipping-collection-list">
                     ${productListHTML}
                 </div>
-                <div class="text-style-muted">Personalizacja:</div>
+                <div class="text-style-muted">${translations.personalization}</div>
                 <div>${sameStatusContainer.Personalization}</div>
-                <div class="text-style-muted">Cykliczność:</div>
+                <div class="text-style-muted">${translations.periodicity}</div>
                 <div>${sameStatusContainer.Periodicity}</div>
                 ${transportationCostChange}
-                <div class="text-style-muted">Planowana dostawa:</div>
+                <div class="text-style-muted">${translations.plannedDelivery}</div>
                 <div>${formatDate(sameStatusContainer["Estimated time of arrival"])}</div>
                 ${delayInfoHTML}
             </div>
@@ -305,11 +247,11 @@ function countContainersWithSameStatus(containers: Container[], statusName: stri
     return containers.filter(container => container["Delivery status"].name === statusName).length;
 }
 
-function generateShipItem(container: Container, containers: Container[]): void {
+function generateShipItem(container: Container, containers: Container[], translations: Record<string, string>): void {
     const statusName: string = container["Delivery status"].name || "";
 
     // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
-    if (statusName === "Zrealizowano" || statusName === "Nieznany status") {
+    if (statusName === translations.statusCompleted || statusName === translations.statusUnknown) {
         console.log(`Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
         return;
     }
@@ -351,15 +293,15 @@ function generateShipItem(container: Container, containers: Container[]): void {
 
     mapShippingButton.addEventListener("click", (event) => {
         //event.stopPropagation();
-        showOrderInfo(container, containers);
+        showOrderInfo(container, containers, translations);
     });
 }
 
-function generateShipListItem(container: Container): void {
+function generateShipListItem(container: Container, translations: Record<string, string>): void {
     const statusName: string = container["Delivery status"].name || "";
 
     // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
-    if (statusName === "Zrealizowano" || statusName === "Nieznany status") {
+    if (statusName === translations.statusCompleted || statusName === translations.statusUnknown) {
         console.log(`Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
         return;
     }
@@ -382,14 +324,14 @@ function generateShipListItem(container: Container): void {
     // Sprawdzenie, czy pole "Extended delivery date" nie jest puste
     const extendedDeliveryDate = container["Extended delivery date"];
     const delayInfoHTML = extendedDeliveryDate !== "Brak"
-    ? `<div class="text-size-small">Zamówienie opóźnione: <span class="text-weight-semibold">${formatDate(extendedDeliveryDate)}</span></div>`
+    ? `<div class="text-size-small">${translations.orderDelayed} <span class="text-weight-semibold">${formatDate(extendedDeliveryDate)}</span></div>`
     : "";
 
     htmlElement.innerHTML = `
         <div class="stacked-list4_content-top">
-            <div class="text-size-small">Numer kontenera: <span class="text-weight-semibold text-color-brand">${container["Container No1"]}</span></div>
+            <div class="text-size-small">${translations.containerNumber} <span class="text-weight-semibold text-color-brand">${container["Container No1"]}</span></div>
             <div class="stacked-list4_info">
-                <div class="text-size-small">Planowana dostawa: <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
+                <div class="text-size-small">${translations.plannedDelivery} <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
                 ${delayInfoHTML}
             </div>
          </div>
@@ -404,8 +346,8 @@ function generateShipListItem(container: Container): void {
             </div>
         </div>
         <div class="stacked-list4_content-middle">
-            <div class="text-size-small">Chiny</div>
-            <div class="text-size-small">${container["Delivery status"].name === 'Zrealizowano' ? 'Zrealizowano' : 'Polska'}</div>
+            <div class="text-size-small">${translations.china}</div>
+            <div class="text-size-small">${container["Delivery status"].name === translations.statusCompleted ? translations.statusCompleted : translations.poland}</div>
         </div>
         <div class="stacked-list4_content-bottom">
             <div class="shipping-collection-list is-list">
@@ -415,7 +357,7 @@ function generateShipListItem(container: Container): void {
                             <div class="text-style-ellipsis">
                                 ${item.name}${Number(item.quantity) > 1 ? ` (${item.quantity} pcs)` : ""}
                             </div>
-                            ${item.variant !== 'Brak' ? `<div class="text-weight-normal text-style-muted">Wariant: <span>${item.variant}</span></div>` : ''}
+                            ${item.variant !== 'Brak' ? `<div class="text-weight-normal text-style-muted">${translations.variant} <span>${item.variant}</span></div>` : ''}
                         </div>
                     `;
                 }).join('')}
@@ -424,13 +366,13 @@ function generateShipListItem(container: Container): void {
         <div class="stacked-list4_content-button">
             ${container["Quality control photos"] !== 'Brak' ? `
                 <a href="${container["Quality control photos"]}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
-                    <div>Zdjęcia kontroli jakości</div>
+                    <div>${translations.qualityControlPhotos}</div>
                     <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
                 </a>
             ` : ''}
             ${container["FV PDF"] !== 'Brak' ? `
                 <a href="${container["FV PDF"]}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
-                    <div class="order_download_faktura">Pobierz fakturę</div>
+                    <div class="order_download_faktura">${translations.downloadInvoice}</div>
                     <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
                 </a>
             ` : ''}
@@ -441,7 +383,75 @@ function generateShipListItem(container: Container): void {
     listWrapper.appendChild(htmlElement);
 }
 
-export async function fetchContainers(memberData: Member) {
+export async function fetchContainers(memberData: Member, translations: Record<string, string>) {
+    const locations: Status[] = [
+        {
+            name: "Ningbo",
+            position: "top: 44%; left: 74%;",
+            procent: "is-0",
+        },
+        {
+            name: "Tianjin",
+            position: "top: 15%; left: 73%;",
+            procent: "is-0",
+        },
+        {
+            name: "Qingdao",
+            position: "top: 27%; left: 77%;",
+            procent: "is-0",
+        },
+        {
+            name: "Shanghai",
+            position: "top: 40%; left: 77%;",
+            procent: "is-0",
+        },
+        {
+            name: "Shenzhen",
+            position: "top: 51%; left: 69%;",
+            procent: "is-0",
+        },
+        {
+            name: translations.southChinaSea,
+            position: "top: 68%; left: 69%;",
+            procent: "is-15",
+        },
+        {
+            name: translations.lakshadweepSea,
+            position: "top: 68%; left: 56%;",
+            procent: "is-25",
+        },
+        {
+            name: translations.arabianSea,
+            position: "top: 65%; left: 46%;",
+            procent: "is-35",
+        },
+        {
+            name: translations.redSea,
+            position: "top: 50%; left: 33%;",
+            procent: "is-50",
+        },
+        {
+            name: translations.mediterraneanSea,
+            position: "top: 37.5%; left: 23%;",
+            procent: "is-65",
+        },
+        {
+            name: translations.atlanticOcean,
+            position: "top: 36%; left: 10%;",
+            procent: "is-75",
+        },
+        {
+            name: translations.englishChannel,
+            position: "top: 22%; left: 15%;",
+            procent: "is-85",
+        },
+        {
+            name: translations.portGdansk,
+            position: "top: 18%; left: 23%;",
+            procent: "is-100",
+        },
+    ];
+
     try {
         // Wysłanie webhooka na Make
         const response = await fetch(
@@ -462,7 +472,7 @@ export async function fetchContainers(memberData: Member) {
         const cleanData = cleanAndFormatData(rawData);
         //console.log('Zamówienia:', cleanData);
 
-        const containers: Container[] = formatToContainers(cleanData);
+        const containers: Container[] = formatToContainers(cleanData, locations, translations);
         console.log('Kontenery:', containers);
 
         // Iteracja przez kontenery
@@ -470,10 +480,10 @@ export async function fetchContainers(memberData: Member) {
             //console.log('Status name:', container["Delivery status"].name);
 
             // Utwórz znacznik na mapie
-            generateShipItem(container, containers);
+            generateShipItem(container, containers, translations);
 
             // Utwórz element w liście
-            generateShipListItem(container);
+            generateShipListItem(container, translations);
         });
 
         //console.log("Webhook sent and response processed successfully");

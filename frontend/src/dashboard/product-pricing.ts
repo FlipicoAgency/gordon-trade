@@ -31,14 +31,14 @@ function injectUppyCSS() {
 }
 
 // Funkcja do formatowania liczby zdjęć
-function formatujLiczbeZdjec(liczba: number): string {
-    if (liczba === 1) return '1 zdjęcie';
-    if ([2, 3, 4].includes(liczba % 10) && ![12, 13, 14].includes(liczba % 100)) return `${liczba} zdjęcia`;
-    return `${liczba} zdjęć`;
+function formatujLiczbeZdjec(liczba: number, translations: Record<string, string>): string {
+    if (liczba === 1) return translations.photosOne;
+    if ([2, 3, 4].includes(liczba % 10) && ![12, 13, 14].includes(liczba % 100)) return `${liczba} ${translations.photosFew}`;
+    return `${liczba} ${translations.photosMany}`;
 }
 
 // Funkcja inicjalizująca Uppy
-export async function initializeUppy(memberData: Member) {
+export async function initializeUppy(memberData: Member, translations: Record<string, string>) {
     try {
         const form = document.getElementById('wf-form-Wycena') as HTMLFormElement;
         if (!form) {
@@ -97,7 +97,7 @@ export async function initializeUppy(memberData: Member) {
 
                             const uploadText = form.querySelector('.upload-quantity') as HTMLElement;
                             if (uploadText) {
-                                uploadText.textContent = formatujLiczbeZdjec(window.encodedImages.length);
+                                uploadText.textContent = formatujLiczbeZdjec(window.encodedImages.length, translations);
                             }
                         }
                     });

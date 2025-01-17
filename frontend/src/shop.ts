@@ -3,6 +3,15 @@ import type {Member} from './memberstack';
 import {getMemberData, getMemberJSON, initializeFavoriteState, updateMemberJSON} from './memberstack';
 import {initializeGenerateOffer} from "./excel";
 
+// Funkcja do wykrywania języka
+function detectLanguage(): string {
+    const path = window.location.pathname; // Pobiera ścieżkę URL
+    const language = path.split('/')[1]; // Pobiera pierwszy segment ścieżki
+    const supportedLanguages = ['pl', 'en', 'cs', 'hu'];
+
+    return supportedLanguages.includes(language) ? language : 'pl'; // Domyślnie 'pl'
+}
+
 export async function calculatePromoPercentage(productItems: Array<HTMLElement>): Promise<void> {
     const member: Member | null = await getMemberData();
     let specialPrices: Record<string, string> = {};
@@ -65,6 +74,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.isShopInitialized) return; // Sprawdź, czy shop.js został już zainicjalizowany
     // @ts-ignore
     window.isShopInitialized = true; // Ustaw flagę po inicjalizacji
+
+    const language = detectLanguage();
+
+    const { default: translations } = await import(`../translations/${language}.json`, {
+        assert: { type: "json" },
+    });
 
     // Array to hold selected CMS IDs
     let selectedItems: string[] = [];
@@ -206,7 +221,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const productItemsArray = Array.from(productItems);
 
             await calculatePromoPercentage(productItemsArray);
-            await initializeAddToCartButtons();
+            await initializeAddToCartButtons(translations);
             await initializeFavoriteState();
             await initializeCheckboxes();
 
@@ -219,7 +234,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 // 2. Przekaż tablicę elementów do calculatePromoPercentage
                 await calculatePromoPercentage(itemElements);
 
-                await initializeAddToCartButtons();
+                await initializeAddToCartButtons(translations);
                 await initializeFavoriteState();
                 await initializeCheckboxes();
             });

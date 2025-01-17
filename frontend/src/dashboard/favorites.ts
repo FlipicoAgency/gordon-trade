@@ -139,7 +139,7 @@ const removeFromFavorites = async (productId: string, listItem: HTMLElement): Pr
     }
 };
 
-const renderFavorites = async (favorites: string[]): Promise<void> => {
+const renderFavorites = async (favorites: string[], translations: Record<string, string>): Promise<void> => {
     favoriteList.innerHTML = '';
     if (favorites.length === 0) {
         noResultElement.style.display = 'flex';
@@ -164,7 +164,7 @@ const renderFavorites = async (favorites: string[]): Promise<void> => {
                 const finalPrice = getFinalSinglePrice(productDetails, 1, sp);
                 const hasSpecial = (sp > 0);
 
-                // ---- KONSOLE LOG: Wyświetlamy pełne info ----
+                // ---- CONSOLE LOG: Wyświetlamy pełne info ----
                 // console.log('[FAVORITES] Product loaded:', {
                 //     productId,
                 //     productName: productDetails.fieldData.name,
@@ -194,7 +194,7 @@ const renderFavorites = async (favorites: string[]): Promise<void> => {
     }
 };
 
-export const initializeFavorites = async (): Promise<void> => {
+export const initializeFavorites = async (translations: Record<string, string>): Promise<void> => {
     // Fetch and map categories
     await fetchCategories();
 
@@ -209,5 +209,5 @@ export const initializeFavorites = async (): Promise<void> => {
     }
 
     const favorites: string[] = memberJson.data.favorites || [];
-    await renderFavorites(favorites);
+    await renderFavorites(favorites, translations);
 };

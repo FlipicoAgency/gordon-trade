@@ -2,6 +2,15 @@ import {initializeAddToCartButtons, initializeCart} from './cartItems';
 import {calculatePromoPercentage} from "./shop";
 import {initializeFavoriteState} from "./memberstack";
 
+// Funkcja do wykrywania języka
+function detectLanguage(): string {
+    const path = window.location.pathname; // Pobiera ścieżkę URL
+    const language = path.split('/')[1]; // Pobiera pierwszy segment ścieżki
+    const supportedLanguages = ['pl', 'en', 'cs', 'hu'];
+
+    return supportedLanguages.includes(language) ? language : 'pl'; // Domyślnie 'pl'
+}
+
 window.Webflow ||= [];
 window.Webflow.push(async () => {
     // @ts-ignore
@@ -10,27 +19,19 @@ window.Webflow.push(async () => {
     window.isWebflowInitialized = true; // Ustaw flagę, aby zapobiec wielokrotnemu uruchamianiu
 
     try {
-        await initializeCart();
+        const language = detectLanguage();
+
+        const { default: translations } = await import(`../translations/${language}.json`, {
+            assert: { type: "json" },
+        });
+
+        await initializeCart(translations);
 
         const currentUrl = window.location.href;
-        let baseUrl = '';
-        switch (true) {
-            case currentUrl.includes("/cz"): // Czech
-                baseUrl = "/panel-b2b?kategoria=";
-                break;
-            case currentUrl.includes("/cn"): // Chinese
-                baseUrl = "/panel-b2b?kategoria=";
-                break;
-            case currentUrl.includes("/en"): // English
-                baseUrl = "/panel-b2b?kategoria=";
-                break;
-            default: // Default language (e.g., Polish)
-                baseUrl = "/panel-b2b?kategoria=";
-                break;
-        }
+        let baseUrl = "/panel-b2b?kategoria=";
 
         if (currentUrl.includes("/produkty")) {
-            await initializeAddToCartButtons();
+            await initializeAddToCartButtons(translations);
             await initializeFavoriteState();
         }
 

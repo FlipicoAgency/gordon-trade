@@ -68,7 +68,7 @@ export const fetchOrdersByNip = async (customerNip: string): Promise<any> => {
     }
 };
 
-async function fetchNewOrder(customerNip: string) {
+async function fetchNewOrder(customerNip: string, translations: Record<string, string>) {
     try {
         // Pobierz zaktualizowane zamówienia
         const orders = await fetchOrdersByNip(customerNip);
@@ -101,7 +101,7 @@ async function fetchNewOrder(customerNip: string) {
         // Dodaj nowe zamówienia do listy
         for (const newOrder of newOrders) {
             try {
-                const orderItem = await generateOrderItem(newOrder);
+                const orderItem = await generateOrderItem(newOrder, translations);
                 if (orderItem) {
                     orderList.appendChild(orderItem);
                 }
@@ -119,7 +119,8 @@ async function fetchNewOrder(customerNip: string) {
 export async function addNewOrderToExcel(
     items: ProductInCart[] | Order,
     memberData: Member | null,
-    order?: Order
+    translations: Record<string, string>,
+    order?: Order,
 ) {
     try {
         // Przygotuj dane do wysłania do arkusza
@@ -209,7 +210,7 @@ export async function addNewOrderToExcel(
         }
 
         if (order) {
-            await fetchNewOrder(order['Customer NIP']);
+            await fetchNewOrder(order['Customer NIP'], translations);
         }
     } catch (error) {
         console.error('Błąd podczas dodawania zamówienia do arkusza:', error);
