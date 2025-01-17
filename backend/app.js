@@ -1,21 +1,27 @@
-const { spawn } = require('child_process'); // Import child_process
-
-// Uruchamianie LibreTranslate jako proces
-const path = require('path'); // Używamy do podania ścieżki do LibreTranslate
-const libreTranslateProcess = spawn('python3', ['main.py'], {
-  cwd: path.join(__dirname, 'services/LibreTranslate'), // Ścieżka do folderu LibreTranslate
-  stdio: 'inherit', // Przekierowanie logów do konsoli
-});
-
-// Obsługa zdarzeń procesu LibreTranslate
-libreTranslateProcess.on('error', (err) => {
-  console.error('Błąd podczas uruchamiania LibreTranslate:', err);
-});
-
-libreTranslateProcess.on('close', (code) => {
-  console.log(`Proces LibreTranslate zakończył działanie z kodem: ${code}`);
-});
-
+// const { spawn } = require('child_process');
+// const path = require('path');
+//
+// // Ścieżka do wirtualnego środowiska i LibreTranslate
+// const venvPath = path.join(__dirname, 'venv', 'Scripts', 'python');
+// const libretranslatePath = path.join(__dirname, 'venv', 'Lib', 'site-packages', 'libretranslate', '__main__.py');
+//
+// try {
+//   const libreTranslate = spawn(venvPath, [libretranslatePath]);
+//
+//   libreTranslate.stdout.on('data', (data) => {
+//     console.log(`LibreTranslate stdout: ${data}`);
+//   });
+//
+//   libreTranslate.stderr.on('data', (data) => {
+//     console.error(`LibreTranslate stderr: ${data}`);
+//   });
+//
+//   libreTranslate.on('close', (code) => {
+//     console.log(`LibreTranslate exited with code ${code}`);
+//   });
+// } catch (error) {
+//   console.error('Error starting LibreTranslate:', error);
+// }
 
 var createError = require('http-errors');
 var express = require('express');

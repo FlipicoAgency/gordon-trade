@@ -39,7 +39,7 @@ function normalizeNip(nip) {
 
 async function translateText(text, targetLang = 'en') {
     try {
-        const response = await fetch('http://localhost:5000/translate', {
+        const response = await fetch('https://gordon-trade.onrender.com/translate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -550,9 +550,9 @@ router.get('/products/:productId', async (req, res) => {
         const product = response.data;
         console.log('PRODUCT:', product);
 
-        // Tłumaczenie nazwy produktu
-        const translatedName = await translateText(product.fieldData.name, targetLang);
-        product.fieldData.name = translatedName;
+        // // Tłumaczenie nazwy produktu
+        // const translatedName = await translateText(product.fieldData.name, targetLang);
+        // product.fieldData.name = translatedName;
 
         res.json(product);
     } catch (error) {
