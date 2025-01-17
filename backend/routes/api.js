@@ -3,6 +3,21 @@ const router = express.Router();
 //const { clients } = require('../websocket');
 const axios = require('axios');
 const { getSheetsInstance } = require('../googleSheetsClient');
+const { Translate } = require('@google-cloud/translate').v2;
+
+// Inicjalizacja klienta z kluczem API
+const translate = new Translate({ key: process.env.GOOGLE_TRANSLATE_API_KEY });
+
+async function translateText(text, targetLanguage) {
+    try {
+        const [translation] = await translate.translate(text, targetLanguage);
+        console.log(`Translation: ${translation}`);
+        return translation;
+    } catch (error) {
+        console.error('Error translating text:', error);
+        throw error;
+    }
+}
 
 const webflowConfig = {
     webflowApiUrl: 'https://api.webflow.com/v2',
@@ -35,33 +50,6 @@ async function getLastRow(sheets) {
  */
 function normalizeNip(nip) {
     return nip.replace(/\D/g, ''); // Usuwa wszystkie znaki niebędące cyframi
-}
-
-async function translateText(text, targetLang = 'en') {
-    try {
-        const response = await fetch('https://gordon-trade.onrender.com/translate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                q: text,
-                source: 'pl', // Język źródłowy (polski)
-                target: targetLang, // Język docelowy
-                format: 'text',
-            }),
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.translatedText;
-    } catch (error) {
-        console.error('Error during translation:', error.message);
-        throw new Error('Translation failed');
-    }
 }
 
 // Pobierz zamówienia B2B
@@ -550,9 +538,9 @@ router.get('/products/:productId', async (req, res) => {
         const product = response.data;
         console.log('PRODUCT:', product);
 
-        // // Tłumaczenie nazwy produktu
-        // const translatedName = await translateText(product.fieldData.name, targetLang);
-        // product.fieldData.name = translatedName;
+        // Tłumaczenie nazwy produktu
+        const translatedName = await translateText(product.fieldData.name, targetLang);
+        product.fieldData.name = translatedName;
 
         res.json(product);
     } catch (error) {
