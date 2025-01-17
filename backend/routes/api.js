@@ -27,6 +27,43 @@ async function getLastRow(sheets) {
     return response.data.values.length; // Liczba istniejących wierszy
 }
 
+// Pobierz zamówienia kontenerowe
+/**
+ * Funkcja do normalizacji NIP-u poprzez usunięcie wszelkich znaków niebędących cyframi.
+ * @param nip NIP do znormalizowania.
+ * @returns Znormalizowany NIP.
+ */
+function normalizeNip(nip) {
+    return nip.replace(/\D/g, ''); // Usuwa wszystkie znaki niebędące cyframi
+}
+
+async function translateText(text, targetLang = 'en') {
+    try {
+        const response = await fetch('https://libretranslate.com/translate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                q: text,
+                source: 'pl', // Język źródłowy (polski)
+                target: targetLang, // Język docelowy
+                format: 'text',
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.translatedText;
+    } catch (error) {
+        console.error('Error during translation:', error.message);
+        throw new Error('Translation failed');
+    }
+}
+
 // Pobierz zamówienia B2B
 router.get('/sheets/orders', async (req, res) => {
     const { nip } = req.query; // NIP przekazany jako query parameter
@@ -233,16 +270,6 @@ router.post('/sheets/orders', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
-// Pobierz zamówienia kontenerowe
-/**
- * Funkcja do normalizacji NIP-u poprzez usunięcie wszelkich znaków niebędących cyframi.
- * @param nip NIP do znormalizowania.
- * @returns Znormalizowany NIP.
- */
-function normalizeNip(nip) {
-    return nip.replace(/\D/g, ''); // Usuwa wszystkie znaki niebędące cyframi
-}
 
 router.get('/sheets/containers', async (req, res) => {
     const { nip } = req.query;
@@ -512,6 +539,7 @@ router.post('/sheets/containers', async (req, res) => {
 // Pobierz określony produkt na podstawie ID
 router.get('/products/:productId', async (req, res) => {
     const productId = req.params.productId; // Pobierz ID produktu z URL
+    const targetLang = req.query.lang || 'en'; // Domyślnie język angielski
     const apiUrl = `${webflowConfig.webflowApiUrl}/collections/${webflowConfig.productsCollectionId}/items/${productId}`;
 
     try {
@@ -519,7 +547,13 @@ router.get('/products/:productId', async (req, res) => {
             headers: { 'Authorization': `Bearer ${webflowConfig.webflowToken}` }
         });
 
-        res.json(response.data);
+        const product = response.data;
+
+        // Tłumaczenie nazwy produktu
+        const translatedName = await translateText(product.fieldData.name, targetLang);
+        product.fieldData.name = translatedName;
+
+        res.json(product);
     } catch (error) {
         console.error('Error fetching product:', error);
         if (error.response) {
