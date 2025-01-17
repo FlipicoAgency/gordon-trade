@@ -25,13 +25,14 @@ window.Webflow.push(async () => {
             assert: { type: "json" },
         });
 
-        await initializeCart(translations);
+        await initializeCart(translations, language);
 
         const currentUrl = window.location.href;
-        let baseUrl = "/panel-b2b?kategoria=";
+        const urlPrefix = language === 'pl' ? '' : `/${language}`;
+        const baseUrl = `${urlPrefix}/panel-b2b?kategoria=`;
 
         if (currentUrl.includes("/produkty")) {
-            await initializeAddToCartButtons(translations);
+            await initializeAddToCartButtons(translations, language);
             await initializeFavoriteState();
         }
 
@@ -63,7 +64,7 @@ window.Webflow.push(async () => {
         if (promoListNav) {
             // Konwertujemy `promoListNav.children` na tablicę elementów (HTMLElement[])
             const navItems = Array.from(promoListNav.children) as HTMLElement[];
-            await calculatePromoPercentage(navItems);
+            await calculatePromoPercentage(navItems, translations, language);
         }
 
         if (promoListProductPage) {
@@ -73,7 +74,7 @@ window.Webflow.push(async () => {
             const singleElementArray = [ productItems[0] ];
 
             // Wywołujemy funkcję z tablicą (zawierającą wyłącznie ten pierwszy element)
-            await calculatePromoPercentage(singleElementArray);
+            await calculatePromoPercentage(singleElementArray, translations, language);
         }
 
         // Update links for lists

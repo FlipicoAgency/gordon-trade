@@ -12,7 +12,7 @@ const orderList = document.querySelector('.order_list') as HTMLElement;
  * @param button Element przycisku, który został kliknięty.
  * @param memberData
  */
-async function handleOrderAgain(button: HTMLElement, memberData: Member, translations: Record<string, string>) {
+async function handleOrderAgain(button: HTMLElement, memberData: Member, translations: Record<string, string>, language: string) {
     const orderId = button.getAttribute('data-order-id');
     if (!orderId) {
         console.error('Brak ID zamówienia dla tego przycisku.');
@@ -46,7 +46,7 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member, transla
 
         // Przygotuj produkty do przetworzenia
         const items: Awaited<null | ProductInCart>[] = await Promise.all(order.products.map(async (product: OrderProduct) => {
-            const productDetails: Product | null = await fetchProductDetails(product.id);
+            const productDetails: Product | null = await fetchProductDetails(product.id, language);
             if (!productDetails) {
                 console.error(`Nie udało się pobrać szczegółów produktu o ID: ${product.id}`);
                 return null;
@@ -84,7 +84,7 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member, transla
         console.log('Items to process:', validItems);
 
         // Dodaj zamówienie do Excela
-        await addNewOrderToExcel(validItems, memberData, translations, order);
+        await addNewOrderToExcel(validItems, memberData, translations, language, order);
 
         // Wyślij nowe zamówienie za pomocą Make
         await sendNewOrderViaMake(validItems, memberData);
@@ -136,7 +136,7 @@ async function sendNewOrderViaMake(items: ProductInCart[], memberData: Member) {
     }
 }
 
-async function initializeOrderAgain(memberData: Member, translations: Record<string, string>) {
+async function initializeOrderAgain(memberData: Member, translations: Record<string, string>, language: string) {
     const orderAgainButtons = document.querySelectorAll<HTMLElement>('[orders="again"]');
 
     orderAgainButtons.forEach((button) => {
@@ -144,7 +144,7 @@ async function initializeOrderAgain(memberData: Member, translations: Record<str
             event.preventDefault();
 
             try {
-                await handleOrderAgain(button, memberData, translations);
+                await handleOrderAgain(button, memberData, translations, language);
             } catch (error) {
                 console.error('Error ordering again:', error);
             }
@@ -189,7 +189,7 @@ export function getIconPath(iconType: string): string {
     }
 }
 
-export async function generateOrderItem(order: Order, translations: Record<string, string>) {
+export async function generateOrderItem(order: Order, translations: Record<string, string>, language: string) {
     const orderValue = order["Order value"];
     const numericOrderValue = parseFloat(orderValue);
 
@@ -328,7 +328,7 @@ export async function generateOrderItem(order: Order, translations: Record<strin
 
     // Dodaj produkty do zamówienia
     for (const product of order.products) {
-        const productDetails: Product = await fetchProductDetails(product.id);
+        const productDetails: Product = await fetchProductDetails(product.id, language);
 
         const productQuantity = Number(product.quantity);
         const productPrice = Number(product.price.replace(' zł', '').replace(',', ''));
@@ -424,7 +424,7 @@ export async function generateOrderItem(order: Order, translations: Record<strin
     return li;
 }
 
-const renderOrders = async (orders: Record<string, Order>, memberData: Member, translations: Record<string, string>): Promise<void> => {
+const renderOrders = async (orders: Record<string, Order>, memberData: Member, translations: Record<string, string>, language: string): Promise<void> => {
     orderList.innerHTML = ''; // Wyczyść istniejącą listę
 
     // Konwersja obiektu na tablicę
@@ -437,7 +437,7 @@ const renderOrders = async (orders: Record<string, Order>, memberData: Member, t
 
         for (const order of orderArray) {
             try {
-                const orderItem = await generateOrderItem(order, translations);
+                const orderItem = await generateOrderItem(order, translations, language);
                 if (orderItem) {
                     orderList.appendChild(orderItem);
                 }
@@ -447,16 +447,16 @@ const renderOrders = async (orders: Record<string, Order>, memberData: Member, t
         }
 
         // Inicjalizuj przyciski "Zamów ponownie" po renderowaniu elementów
-        await initializeOrderAgain(memberData, translations);
+        await initializeOrderAgain(memberData, translations, language);
     }
 };
 
-export const initializeOrders = async (memberData: Member, translations: Record<string, string>): Promise<any> => {
+export const initializeOrders = async (memberData: Member, translations: Record<string, string>, language: string): Promise<any> => {
     const customerNip = memberData.customFields.nip;
     const orders = await fetchOrdersByNip(customerNip);
 
     // Zapisz zamówienia w localStorage
     localStorage.setItem('orders', JSON.stringify(orders));
 
-    await renderOrders(orders, memberData, translations);
+    await renderOrders(orders, memberData, translations, language);
 }

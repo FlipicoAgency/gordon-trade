@@ -68,7 +68,7 @@ export const fetchOrdersByNip = async (customerNip: string): Promise<any> => {
     }
 };
 
-async function fetchNewOrder(customerNip: string, translations: Record<string, string>) {
+async function fetchNewOrder(customerNip: string, translations: Record<string, string>, language: string) {
     try {
         // Pobierz zaktualizowane zamówienia
         const orders = await fetchOrdersByNip(customerNip);
@@ -101,7 +101,7 @@ async function fetchNewOrder(customerNip: string, translations: Record<string, s
         // Dodaj nowe zamówienia do listy
         for (const newOrder of newOrders) {
             try {
-                const orderItem = await generateOrderItem(newOrder, translations);
+                const orderItem = await generateOrderItem(newOrder, translations, language);
                 if (orderItem) {
                     orderList.appendChild(orderItem);
                 }
@@ -120,6 +120,7 @@ export async function addNewOrderToExcel(
     items: ProductInCart[] | Order,
     memberData: Member | null,
     translations: Record<string, string>,
+    language: string,
     order?: Order,
 ) {
     try {
@@ -210,7 +211,7 @@ export async function addNewOrderToExcel(
         }
 
         if (order) {
-            await fetchNewOrder(order['Customer NIP'], translations);
+            await fetchNewOrder(order['Customer NIP'], translations, language);
         }
     } catch (error) {
         console.error('Błąd podczas dodawania zamówienia do arkusza:', error);
@@ -327,7 +328,7 @@ const generateExcelFile = async (products: ProductInCart[]): Promise<void> => {
     URL.revokeObjectURL(url);
 };
 
-export const initializeGenerateOffer = async (productsToOffer: string[]): Promise<void> => {
+export const initializeGenerateOffer = async (productsToOffer: string[], language: string): Promise<void> => {
     // Dodaj obsługę przycisku "Pobierz ofertę"
     const generateOfferButton = document.getElementById('generate-offer') as HTMLButtonElement;
     if (generateOfferButton) {
@@ -336,7 +337,7 @@ export const initializeGenerateOffer = async (productsToOffer: string[]): Promis
             const products = await Promise.all(
                 productsToOffer.map(async (productIdWithVariant) => {
                     const [productId, variant] = productIdWithVariant.split('|');
-                    const product = await fetchProductDetails(productId);
+                    const product = await fetchProductDetails(productId, language);
 
                     // Dodaj wariant, jeśli istnieje
                     if (product && variant) {

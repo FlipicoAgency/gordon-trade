@@ -52,5 +52,10 @@
 
   "photosOne": "1 fotó",
   "photosFew": "fotók",
-  "photosMany": "fotók"
+  "photosMany": "fotók",
+
+  "specialPriceText": "(különleges ár az Ön számára)",
+  "selectColor": "Szín kiválasztása",
+  "selectSize": "Válasszon méretet",
+  "alertSelect": "Kérjük, válasszon egy lehetőséget, mielőtt a terméket kosárba helyezi."
 }

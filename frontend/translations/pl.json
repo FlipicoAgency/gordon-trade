@@ -52,5 +52,10 @@
 
   "photosOne": "1 zdjęcie",
   "photosFew": "zdjęcia",
-  "photosMany": "zdjęć"
+  "photosMany": "zdjęć",
+
+  "specialPriceText": "(cena specjalnie dla Ciebie)",
+  "selectColor": "Wybierz kolor",
+  "selectSize": "Wybierz rozmiar",
+  "alertSelect": "Proszę wybrać opcję przed dodaniem produktu do koszyka."
 }

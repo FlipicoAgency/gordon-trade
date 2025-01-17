@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     showMap();
 
     await fetchContainers(memberData, translations);
-    await initializeOrders(memberData, translations);
-    await initializeFavorites(translations);
+    await initializeOrders(memberData, translations, language);
+    await initializeFavorites(translations, language);
     await initializeUppy(memberData, translations);
 });

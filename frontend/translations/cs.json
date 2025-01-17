@@ -52,5 +52,10 @@
 
   "photosOne": "1 fotka",
   "photosFew": "fotografie",
-  "photosMany": "fotografie"
+  "photosMany": "fotografie",
+
+  "specialPriceText": "(cena speciálně pro vás)",
+  "selectColor": "Vyberte barvu",
+  "selectSize": "Vyberte velikost",
+  "alertSelect": "Před přidáním produktu do košíku vyberte možnost."
 }

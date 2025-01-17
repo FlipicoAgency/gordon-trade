@@ -4,6 +4,13 @@ import type {Product, ProductInCart} from "../types/cart";
 import {addNewOrderToExcel} from "./excel";
 import type {Category} from "../types/cart";
 
+const currencyMap: Record<string, string> = {
+    pl: 'zł',
+    cz: 'CZK',
+    hu: 'HUF',
+    en: 'GBP',
+};
+
 const addedToCartModal = document.querySelector<HTMLElement>('#added-to-cart');
 
 export async function fetchCartData() {
@@ -24,7 +31,7 @@ export async function fetchCartData() {
     }
 }
 
-async function updateCartUI(translations: Record<string, string>) {
+async function updateCartUI(translations: Record<string, string>, language: string) {
     const stateDefault = document.querySelector<HTMLElement>('.state-default');
     const stateEmpty = document.querySelector<HTMLElement>('.state-empty');
     const stateSuccess = document.querySelector<HTMLElement>('.state-success');
@@ -39,11 +46,14 @@ async function updateCartUI(translations: Record<string, string>) {
             0
         );
 
+        // Dynamiczne pobranie waluty na podstawie języka
+        const currency = currencyMap[language] || 'zł'; // Domyślna waluta to 'zł'
+
         // Uaktualnij sumę w UI
         const totalAmountElement = document.getElementById('cart-total');
         if (totalAmountElement) {
             totalAmountElement.style.display = 'block';
-            totalAmountElement.textContent = `${totalAmount.toFixed(2)} zł`;
+            totalAmountElement.textContent = `${totalAmount.toFixed(2)} ${currency}`;
         }
 
         // Ukryj elementy rabatów itd., bo już nie używamy
@@ -75,7 +85,7 @@ async function updateCartUI(translations: Record<string, string>) {
             }
         }
 
-        await renderCartItems(cartItems, translations);
+        await renderCartItems(cartItems, translations, language, currency);
     } catch (error) {
         console.error('Failed to update cart UI:', error);
         if (stateDefault && stateEmpty && stateSuccess && stateError) {
@@ -159,7 +169,7 @@ export function calculateLineCostAdvanced(
  * @param button - element HTML przycisku
  * @param isCartonPurchase - czy kliknięto w 'Kup cały karton'
  */
-export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boolean = false, translations: Record<string, string>) {
+export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boolean = false, translations: Record<string, string>, language: string) {
     const productElement =
         button.closest('.additional-product-item') ||
         button.closest('.product_add-to-cart') ||
@@ -186,7 +196,7 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
     // Walidacja wariantów
     if (selectElement && selectElement.getAttribute('validate') === 'true') {
         if (selectElement.value === '') {
-            alert('Proszę wybrać opcję przed dodaniem produktu do koszyka.');
+            alert(translations.alertSelect);
             return;
         }
         selectedVariant = selectElement.value;
@@ -198,7 +208,7 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
         if (selectedPill) {
             selectedVariant = selectedPill.getAttribute('data-variant-value') || null;
         } else if (!selectElement) {
-            alert('Proszę wybrać opcję przed dodaniem produktu do koszyka.');
+            alert(translations.alertSelect);
             return;
         }
     }
@@ -212,7 +222,7 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
     }
 
     try {
-        const product: Product = await fetchProductDetails(productId);
+        const product: Product = await fetchProductDetails(productId, language);
         const qInBox = product.fieldData.quantityInBox;
 
         // Jeśli kliknięto 'Kup karton' i product ma quantityInBox > 0
@@ -245,13 +255,13 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
             price: finalSinglePrice,
         };
 
-        await addItemToCart(selectedItem, translations);
+        await addItemToCart(selectedItem, translations, language);
     } catch (err) {
         console.error('Error getting selected item:', err);
     }
 }
 
-async function addItemToCart(item: ProductInCart, translations: Record<string, string>) {
+async function addItemToCart(item: ProductInCart, translations: Record<string, string>, language: string) {
     try {
         const response = await fetch('https://gordon-trade.onrender.com/api/cart', {
             method: 'POST',
@@ -265,7 +275,7 @@ async function addItemToCart(item: ProductInCart, translations: Record<string, s
         }
 
         // Po udanym dodaniu odśwież UI
-        await updateCartUI(translations);
+        await updateCartUI(translations, language);
 
         // Małe powiadomienie "dodano do koszyka"
         if (addedToCartModal) {
@@ -289,7 +299,7 @@ async function addItemToCart(item: ProductInCart, translations: Record<string, s
     }
 }
 
-function initializeVariantSelect(addToCartForm: HTMLFormElement | null): void {
+function initializeVariantSelect(addToCartForm: HTMLFormElement | null, translations: Record<string, string>, language: string): void {
     if (!addToCartForm) return;
 
     addToCartForm.onsubmit = (event: Event) => {
@@ -318,7 +328,7 @@ function initializeVariantSelect(addToCartForm: HTMLFormElement | null): void {
         variantSelect.setAttribute('validate', 'true');
 
         const placeholderColor = document.createElement('option');
-        placeholderColor.textContent = 'Wybierz kolor';
+        placeholderColor.textContent = translations.selectColor;
         placeholderColor.value = '';
         placeholderColor.disabled = true;
         placeholderColor.selected = true;
@@ -340,7 +350,7 @@ function initializeVariantSelect(addToCartForm: HTMLFormElement | null): void {
         variantSelect.setAttribute('validate', 'true');
 
         const placeholderSize = document.createElement('option');
-        placeholderSize.textContent = 'Wybierz rozmiar';
+        placeholderSize.textContent = translations.selectSize;
         placeholderSize.value = '';
         placeholderSize.disabled = true;
         placeholderSize.selected = true;
@@ -356,7 +366,7 @@ function initializeVariantSelect(addToCartForm: HTMLFormElement | null): void {
     }
 }
 
-export const initializeAddToCartButtons = (translations: Record<string, string>): void => {
+export const initializeAddToCartButtons = (translations: Record<string, string>, language: string): void => {
     const addToCartButtons = document.querySelectorAll<HTMLElement>('.addtocartbutton');
     const addToCartBoxButtons = document.querySelectorAll<HTMLElement>('[data-quantity="box"]');
 
@@ -365,12 +375,12 @@ export const initializeAddToCartButtons = (translations: Record<string, string>)
         if (button.dataset.listenerAdded === "true") return;
         const addToCartForm = button.closest('.product_default-state') as HTMLFormElement | null;
 
-        initializeVariantSelect(addToCartForm);
+        initializeVariantSelect(addToCartForm, translations, language);
 
         button.addEventListener('click', async (event) => {
             event.preventDefault();
             try {
-                await handleAddToCart(button, false, translations);
+                await handleAddToCart(button, false, translations, language);
             } catch (error) {
                 console.error('Error adding to cart:', error);
             }
@@ -384,12 +394,12 @@ export const initializeAddToCartButtons = (translations: Record<string, string>)
         if (button.dataset.listenerAdded === "true") return;
         const addToCartForm = button.closest('.product_default-state') as HTMLFormElement | null;
 
-        initializeVariantSelect(addToCartForm);
+        initializeVariantSelect(addToCartForm, translations, language);
 
         button.addEventListener('click', async (event) => {
             event.preventDefault();
             try {
-                await handleAddToCart(button, true, translations);
+                await handleAddToCart(button, true, translations, language);
             } catch (error) {
                 console.error('Error adding to cart by carton:', error);
             }
@@ -399,7 +409,7 @@ export const initializeAddToCartButtons = (translations: Record<string, string>)
     });
 };
 
-async function removeItemFromCart(itemId: string, variant: string | null = null, translations: Record<string, string>) {
+async function removeItemFromCart(itemId: string, variant: string | null = null, translations: Record<string, string>, language: string) {
     try {
         const cleanVariant = variant === "null" ? null : variant; // Zamiana "null" na null
         const response = await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
@@ -415,18 +425,18 @@ async function removeItemFromCart(itemId: string, variant: string | null = null,
             throw new Error(`Failed to remove item: ${response.statusText}`);
         }
 
-        await updateCartUI(translations); // Aktualizacja koszyka po usunięciu
+        await updateCartUI(translations, language); // Aktualizacja koszyka po usunięciu
     } catch (error) {
         console.error('Failed to remove item from cart:', error);
     }
 }
 
-async function updateItemQuantity(itemId: string, quantity: number, variant: string | null = null, translations: Record<string, string>) {
+async function updateItemQuantity(itemId: string, quantity: number, variant: string | null = null, translations: Record<string, string>, language: string) {
     try {
         const cleanVariant = variant === "null" ? null : variant;
 
         // Pobierz szczegóły produktu (priceCarton, pricePromo, itp.)
-        const product = await fetchProductDetails(itemId);
+        const product = await fetchProductDetails(itemId, language);
         if (!product) {
             throw new Error(`Product not found for id: ${itemId}`);
         }
@@ -463,13 +473,13 @@ async function updateItemQuantity(itemId: string, quantity: number, variant: str
             throw new Error(`Failed to update item quantity: ${response.statusText}`);
         }
 
-        await updateCartUI(translations); // Zaktualizuj interfejs użytkownika
+        await updateCartUI(translations, language); // Zaktualizuj interfejs użytkownika
     } catch (error) {
         console.error('Failed to update item quantity:', error);
     }
 }
 
-function addQuantityChangeListener(translations: Record<string, string>) {
+function addQuantityChangeListener(translations: Record<string, string>, language: string) {
     document.addEventListener('change', async (event) => {
         const input = event.target as HTMLInputElement;
 
@@ -481,7 +491,7 @@ function addQuantityChangeListener(translations: Record<string, string>) {
         const variant = cartItemElement?.querySelector('.deletebutton')?.getAttribute('data-variant') || null;
 
         if (itemId && newQuantity > 0) {
-            await updateItemQuantity(itemId, newQuantity, variant, translations); // Przekaż również `variant`
+            await updateItemQuantity(itemId, newQuantity, variant, translations, language);
         }
     });
 }
@@ -489,7 +499,7 @@ function addQuantityChangeListener(translations: Record<string, string>) {
 /**
  * Renderuje listę produktów w koszyku (w .cart-list).
  */
-async function renderCartItems(cartItems: ProductInCart[], translations: Record<string, string>) {
+async function renderCartItems(cartItems: ProductInCart[], translations: Record<string, string>, language: string, currency: string) {
     const member: Member | null = await getMemberData();
     let specialPrices: Record<string, string> = {};
 
@@ -534,13 +544,13 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
                 <!-- Cena za sztukę (regular) -->
                 <div class="cart-product-parameter">
                     <div class="display-inline">${translations.pricePerUnit}</div>
-                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${formattedPrice} zł</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${formattedPrice} ${currency}</div>
                 </div>
                 
                 <!-- Cena za sztukę (karton) -->
                 <div class="cart-product-parameter" style="display: ${(priceCarton > 0 && !hasSpecialPrice) ? 'flex' : 'none'};">
                     <div class="display-inline">${translations.inCarton}</div>
-                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceCarton > 0 ? priceCarton.toFixed(2) : ''} zł</div>
+                    <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceCarton > 0 ? priceCarton.toFixed(2) : ''} ${currency}</div>
                 </div>
                 
                 <div class="cart-product-parameter">
@@ -565,7 +575,7 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
         cartListElement.appendChild(itemElement);
     });
 
-    addQuantityChangeListener(translations);
+    addQuantityChangeListener(translations, language);
 
     const removeButtons = document.querySelectorAll('.deletebutton');
     removeButtons.forEach((button) => {
@@ -575,7 +585,7 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
             const variant = buttonElement.getAttribute('data-variant') || null;
 
             if (itemId) {
-                await removeItemFromCart(itemId, variant, translations); // Przekaż `variant` do funkcji
+                await removeItemFromCart(itemId, variant, translations, language);
             } else {
                 console.error('Failed to remove item from cart: missing item ID');
             }
@@ -594,12 +604,12 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
                 alert(translations.cartEmpty);
                 return;
             }
-            await processOrder(cartItems, translations);
+            await processOrder(cartItems, translations, language);
         });
     }
 }
 
-export async function processOrder(cartItems: ProductInCart[], translations: Record<string, string>) {
+export async function processOrder(cartItems: ProductInCart[], translations: Record<string, string>, language: string) {
     console.log('Items to process:', cartItems);
 
     const makeUrl = 'https://hook.eu2.make.com/ey0oofllpglvwpgbjm0pw6t0yvx37cnd';
@@ -657,15 +667,15 @@ export async function processOrder(cartItems: ProductInCart[], translations: Rec
         }
 
         // Zapis do Excela (o ile używacie tej funkcji)
-        await addNewOrderToExcel(cartItems, memberData, translations, undefined);
+        await addNewOrderToExcel(cartItems, memberData, translations, language, undefined);
 
         // Obsługa UI (pokazywanie "sukces" i czyszczenie koszyka)
         if (stateSuccess && stateDefault) {
             stateDefault.style.display = 'none';
             stateSuccess.style.display = 'flex';
             setTimeout(async () => {
-                await clearCart(translations);
-                await updateCartUI(translations);
+                await clearCart(translations, language);
+                await updateCartUI(translations, language);
             }, 3000);
         }
     } catch (error) {
@@ -674,7 +684,7 @@ export async function processOrder(cartItems: ProductInCart[], translations: Rec
             stateDefault.style.display = 'none';
             stateError.style.display = 'flex';
             setTimeout(() => {
-                updateCartUI(translations);
+                updateCartUI(translations, language);
             }, 3000);
         }
     }
@@ -739,10 +749,37 @@ export function mapApiResponseToProduct(apiResponse: any): Product {
     };
 }
 
-// Function to fetch product details by productId
-export async function fetchProductDetails(productId: string): Promise<any> {
+// Function to fetch current exchange rates from NBP API
+export async function fetchExchangeRates() {
     try {
-        const response = await fetch(`https://gordon-trade.onrender.com/api/products/${productId}`, {
+        const response = await fetch('https://api.nbp.pl/api/exchangerates/tables/A/?format=json');
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch exchange rates');
+        }
+
+        const data = await response.json();
+        const rates = data[0].rates;
+
+        // Convert rates into a key-value pair object for quick access
+        const exchangeRates = {};
+        // @ts-ignore
+        rates.forEach(rate => {
+            // @ts-ignore
+            exchangeRates[rate.code] = rate.mid;
+        });
+
+        return exchangeRates;
+    } catch (error) {
+        console.error('Error fetching exchange rates:', error);
+        return null;
+    }
+}
+
+// Function to fetch product details by productId
+export async function fetchProductDetails(productId: string, lang: string): Promise<any> {
+    try {
+        const response = await fetch(`https://gordon-trade.onrender.com/api/products/${productId}?lang=${lang}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -759,6 +796,52 @@ export async function fetchProductDetails(productId: string): Promise<any> {
         const product: Product = mapApiResponseToProduct(data);
         //console.log(`Response for product ID ${productId}:`, product);
 
+        // Fetch exchange rates
+        const exchangeRates = await fetchExchangeRates();
+        if (!exchangeRates) {
+            throw new Error('Could not fetch exchange rates');
+        }
+
+        // Update product prices based on exchange rates and lang
+        switch (lang) {
+            case 'cz': {
+                // @ts-ignore
+                const plnToCzkRate = exchangeRates['CZK'];
+                if (plnToCzkRate) {
+                    product.fieldData.priceNormal /= plnToCzkRate;
+                    product.fieldData.pricePromo /= plnToCzkRate;
+                    product.fieldData.priceCarton /= plnToCzkRate;
+                }
+                break;
+            }
+            case 'hu': {
+                // @ts-ignore
+                const plnToHufRate = exchangeRates['HUF'];
+                if (plnToHufRate) {
+                    product.fieldData.priceNormal /= plnToHufRate;
+                    product.fieldData.pricePromo /= plnToHufRate;
+                    product.fieldData.priceCarton /= plnToHufRate;
+                }
+                break;
+            }
+            case 'en': {
+                // @ts-ignore
+                const plnToGbpRate = exchangeRates['GBP'];
+                if (plnToGbpRate) {
+                    product.fieldData.priceNormal /= plnToGbpRate;
+                    product.fieldData.pricePromo /= plnToGbpRate;
+                    product.fieldData.priceCarton /= plnToGbpRate;
+                }
+                break;
+            }
+            default: {
+                console.warn('Unsupported language, prices not updated:', lang);
+                break;
+            }
+        }
+
+        console.log('Updated product prices:', product);
+
         return product;
     } catch (error) {
         console.error(`Error fetching product details:`, error);
@@ -766,13 +849,13 @@ export async function fetchProductDetails(productId: string): Promise<any> {
     }
 }
 
-export async function clearCart(translations: Record<string, string>) {
+export async function clearCart(translations: Record<string, string>, language: string) {
     try {
         await fetch('https://gordon-trade.onrender.com/api/cart', {
             method: 'DELETE',
             credentials: 'include',
         });
-        await updateCartUI(translations);
+        await updateCartUI(translations, language);
     } catch (error) {
         console.error('Failed to clear cart:', error);
     }
@@ -823,6 +906,6 @@ export const fetchCategories = async (): Promise<void> => {
     }
 };
 
-export async function initializeCart(translations: Record<string, string>) {
-    await updateCartUI(translations);
+export async function initializeCart(translations: Record<string, string>, language: string) {
+    await updateCartUI(translations, language);
 }

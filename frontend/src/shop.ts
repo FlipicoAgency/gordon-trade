@@ -1,4 +1,4 @@
-import {initializeAddToCartButtons} from "./cartItems";
+import {fetchExchangeRates, initializeAddToCartButtons} from "./cartItems";
 import type {Member} from './memberstack';
 import {getMemberData, getMemberJSON, initializeFavoriteState, updateMemberJSON} from './memberstack';
 import {initializeGenerateOffer} from "./excel";
@@ -12,7 +12,7 @@ function detectLanguage(): string {
     return supportedLanguages.includes(language) ? language : 'pl'; // Domyślnie 'pl'
 }
 
-export async function calculatePromoPercentage(productItems: Array<HTMLElement>): Promise<void> {
+export async function calculatePromoPercentage(productItems: Array<HTMLElement>, translations: Record<string, string>, language: string): Promise<void> {
     const member: Member | null = await getMemberData();
     let specialPrices: Record<string, string> = {};
 
@@ -26,6 +26,39 @@ export async function calculatePromoPercentage(productItems: Array<HTMLElement>)
         console.warn("User not logged in or metadata not available. Special prices won't be applied.");
     }
 
+    // Pobierz kursy walut
+    const exchangeRates = await fetchExchangeRates();
+    if (!exchangeRates) {
+        console.error("Could not fetch exchange rates. Skipping currency conversion.");
+        return;
+    }
+
+    // Wybierz odpowiedni kurs na podstawie języka
+    let conversionRate = 1; // Domyślnie w złotówkach
+    let currencySymbol = "zł";
+
+    switch (language) {
+        case "cz":
+            // @ts-ignore
+            conversionRate = exchangeRates["CZK"] || 1;
+            currencySymbol = "CZK";
+            break;
+        case "hu":
+            // @ts-ignore
+            conversionRate = exchangeRates["HUF"] || 1;
+            currencySymbol = "HUF";
+            break;
+        case "en":
+            // @ts-ignore
+            conversionRate = exchangeRates["GBP"] || 1;
+            currencySymbol = "GBP";
+            break;
+        default:
+            conversionRate = 1; // Złotówki
+            currencySymbol = "zł";
+            break;
+    }
+
     // Select all product items
     //const productItems = document.querySelectorAll<HTMLDivElement>('.product_item-wrapper');
 
@@ -36,20 +69,30 @@ export async function calculatePromoPercentage(productItems: Array<HTMLElement>)
         const tagline = productItem.querySelector<HTMLElement>('.promo-tagline');
         const span = productItem.querySelector<HTMLSpanElement>('.promo-percentage');
         const carton = productItem.querySelector<HTMLElement>('[data-price="carton"]');
+        const cartonPrice = productItem.querySelector<HTMLElement>('[data-price="carton-price"]');
+        const currencyElements = productItem.querySelectorAll<HTMLElement>('[data-price="currency"]');
 
         if (!id || !promo || !normal || !tagline || !span) {
             console.warn(`Skipping product item due to missing elements or ID.`);
             return;
         }
 
-        // Extract and parse prices
-        const normalPrice = parseFloat(normal.textContent?.trim() || '');
-        let promoPrice = parseFloat(promo.textContent?.trim() || '');
+        // Parse prices and apply conversion
+        const normalPrice = parseFloat(normal.textContent?.trim() || '') / conversionRate;
+        const cartonRealPrice = parseFloat(cartonPrice?.textContent?.trim() || '') / conversionRate;
+        let promoPrice = parseFloat(promo.textContent?.trim() || '') / conversionRate;
+
+        normal.textContent = String(normalPrice.toFixed(2));
+        promo.textContent = String(promoPrice.toFixed(2));
+        if (carton && cartonPrice) cartonPrice.textContent = String(cartonRealPrice.toFixed(2));
+        currencyElements.forEach((currencyElement) => {
+            currencyElement.textContent = `\u00A0${currencySymbol}`;
+        });
 
         // Check if there's a special price for this product
         if (specialPrices[id]) {
-            promoPrice = parseFloat(specialPrices[id]);
-            promo.textContent = String(promoPrice);
+            promoPrice = parseFloat(specialPrices[id]) / conversionRate;
+            promo.textContent = `${promoPrice.toFixed(2)} ${currencySymbol}`;
             promo.classList.remove('w-dyn-bind-empty');
             normal.style.display = 'none';
             if (carton) carton.style.display = 'none';
@@ -61,7 +104,7 @@ export async function calculatePromoPercentage(productItems: Array<HTMLElement>)
             const percentage = Math.round(((promoPrice - normalPrice) / normalPrice) * 100);
 
             // Update UI elements
-            span.textContent = Math.abs(percentage) + '%' + (specialPrices[id] ? ' (cena specjalnie dla Ciebie)' : '');
+            span.textContent = Math.abs(percentage) + '%' + (specialPrices[id] ? ` ${translations.specialPriceText}` : '');
             tagline.style.display = 'block';
         } else {
             //console.warn(`Invalid prices for product ${id}: normal (${normalPrice}), promo (${promoPrice}).`);
@@ -203,7 +246,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     };
 
-    await initializeGenerateOffer(selectedItems)
+    await initializeGenerateOffer(selectedItems, language)
 
     // @ts-ignore
     window.fsAttributes = window.fsAttributes || [];
@@ -220,8 +263,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             // zamiana NodeList na tablicę
             const productItemsArray = Array.from(productItems);
 
-            await calculatePromoPercentage(productItemsArray);
-            await initializeAddToCartButtons(translations);
+            await calculatePromoPercentage(productItemsArray, translations, language);
+            await initializeAddToCartButtons(translations, language);
             await initializeFavoriteState();
             await initializeCheckboxes();
 
@@ -232,9 +275,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const itemElements = renderedItems.map((item) => item.element);
 
                 // 2. Przekaż tablicę elementów do calculatePromoPercentage
-                await calculatePromoPercentage(itemElements);
+                await calculatePromoPercentage(itemElements, translations, language);
 
-                await initializeAddToCartButtons(translations);
+                await initializeAddToCartButtons(translations, language);
                 await initializeFavoriteState();
                 await initializeCheckboxes();
             });

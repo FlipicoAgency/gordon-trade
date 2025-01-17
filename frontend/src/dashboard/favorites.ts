@@ -139,7 +139,7 @@ const removeFromFavorites = async (productId: string, listItem: HTMLElement): Pr
     }
 };
 
-const renderFavorites = async (favorites: string[], translations: Record<string, string>): Promise<void> => {
+const renderFavorites = async (favorites: string[], translations: Record<string, string>, language: string): Promise<void> => {
     favoriteList.innerHTML = '';
     if (favorites.length === 0) {
         noResultElement.style.display = 'flex';
@@ -151,7 +151,7 @@ const renderFavorites = async (favorites: string[], translations: Record<string,
         const specialPrices = memberData?.metaData || {};
 
         for (const productId of favorites) {
-            const productDetails = await fetchProductDetails(productId);
+            const productDetails = await fetchProductDetails(productId, language);
             if (productDetails) {
                 // 2. Cena specjalna?
                 let sp = 0;
@@ -194,7 +194,7 @@ const renderFavorites = async (favorites: string[], translations: Record<string,
     }
 };
 
-export const initializeFavorites = async (translations: Record<string, string>): Promise<void> => {
+export const initializeFavorites = async (translations: Record<string, string>, language: string): Promise<void> => {
     // Fetch and map categories
     await fetchCategories();
 
@@ -209,5 +209,5 @@ export const initializeFavorites = async (translations: Record<string, string>):
     }
 
     const favorites: string[] = memberJson.data.favorites || [];
-    await renderFavorites(favorites, translations);
+    await renderFavorites(favorites, translations, language);
 };
