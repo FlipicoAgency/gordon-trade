@@ -114,11 +114,11 @@ router.get('/sheets/orders', async (req, res) => {
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    name: row[3] !== undefined ? row[2] : '',       // Product name (kolumna 3)
-                    id: row[4] !== undefined ? String(row[3]) : '', // Product ID (kolumna 4)
-                    variant: row[5] !== undefined ? String(row[4]) : '',
-                    quantity: row[6] !== undefined ? String(row[5]) : '',
-                    price: row[7] !== undefined ? String(row[6]) : '',
+                    name: row[3] !== undefined ? row[3] : '',       // Product name (kolumna 3)
+                    id: row[4] !== undefined ? String(row[4]) : '', // Product ID (kolumna 4)
+                    variant: row[5] !== undefined ? String(row[5]) : '',
+                    quantity: row[6] !== undefined ? String(row[6]) : '',
+                    price: row[7] !== undefined ? String(row[7]) : '',
                 });
             }
         });
