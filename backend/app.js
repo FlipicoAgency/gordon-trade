@@ -91,8 +91,8 @@ app.use(session({
     maxAge: 3600000,
     secure: true,
     httpOnly: false,
-    //sameSite: 'strict'
-    sameSite: 'none'
+    sameSite: 'strict'
+    // sameSite: 'none'
   }
 }));
 
@@ -146,8 +146,8 @@ app.use(function(err, req, res, next) {
 });
 
 // Self-referencing reloader to prevent instance spin-down
-const url = `https://gordon-trade.onrender.com`; // Replace with your Render URL
-// const url = `https://gordontrade.pl`; // Replace with your Render URL
+// const url = `https://gordon-trade.onrender.com`; // Replace with your Render URL
+const url = `https://koszyk.gordontrade.pl`; // Replace with your Render URL
 const interval = 30000; // Interval in milliseconds (30 seconds)
 
 function reloadWebsite() {
