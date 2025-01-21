@@ -602,14 +602,8 @@ router.post('/cart', (req, res) => {
     );
 
     if (existingItem) {
-        // AKTUALIZUJEMY: sumujemy ilość
-        existingItem.quantity += quantity;
-        // lineCost i price w tym momencie możesz nadpisać
-        // bądź – jeśli chcesz – obliczyć jeszcze tutaj,
-        // ale załóżmy że front wysyła już gotowe.
-        existingItem.lineCost += lineCost;
-        // Możesz też przeliczyć new average price,
-        // ale skoro i tak używamy lineCost, to nie jest konieczne
+        existingItem.quantity = quantity;    // nadpisz w całości
+        existingItem.lineCost = lineCost;    // nadpisz w całości
         existingItem.price = existingItem.lineCost / existingItem.quantity;
     } else {
         // DODAJEMY
