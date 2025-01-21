@@ -589,7 +589,8 @@ router.post('/cart', (req, res) => {
         req.session.cart = []; // Inicjalizacja koszyka, jeśli nie istnieje
     }
 
-    const { id, variant, quantity, price, lineCost } = req.body;
+    const item = req.body;
+    const { id, variant, quantity, lineCost } = item;
 
     if (!id || typeof quantity !== 'number' || quantity <= 0) {
         return res.status(400).send({ message: 'Invalid item data' });
@@ -612,13 +613,7 @@ router.post('/cart', (req, res) => {
         existingItem.price = existingItem.lineCost / existingItem.quantity;
     } else {
         // DODAJEMY
-        req.session.cart.push({
-            id,
-            variant: variant ?? null,
-            quantity,
-            price,     // opcjonalne
-            lineCost,  // kluczowe pole
-        });
+        req.session.cart.push(item);
     }
 
     console.log('Koszyk został zaktualizowany:', req.session.cart);
