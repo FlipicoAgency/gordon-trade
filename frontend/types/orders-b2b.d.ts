@@ -2,6 +2,7 @@ import type {OrderProduct} from "./cart";
 
 export interface Order {
     "Customer NIP": string;
+    "Customer Name": string;
     "Order ID": string;
     products: OrderProduct[];
     "Order value": string

@@ -42,7 +42,7 @@ export const cleanAndFormatData = (data: Record<string, any>): Record<string, an
 export const fetchOrdersByNip = async (customerNip: string): Promise<any> => {
     try {
         const response = await fetch(
-            `https://gordon-trade.onrender.com/api/sheets/orders?nip=${encodeURIComponent(customerNip)}`,
+            `https://koszyk.gordontrade.pl/api/sheets/orders?nip=${encodeURIComponent(customerNip)}`,
             {
                 method: 'GET',
                 headers: {
@@ -128,6 +128,7 @@ export async function addNewOrderToExcel(
         const formattedData = Array.isArray(items)
             ? items.map((product, index) => [
                 index === 0 ? memberData?.customFields.nip : '',
+                index === 0 ? memberData?.customFields["company-name"] : '',
                 index === 0 ? String(Math.floor(100000000 + Math.random() * 900000000)) : '', // Generuj losowe Order ID
                 product.fieldData.name || '',
                 product.id || '',
@@ -156,6 +157,7 @@ export async function addNewOrderToExcel(
             ])
             : items.products.map((product, index) => [
                 index === 0 ? items["Customer NIP"] : '',
+                index === 0 ? items["Customer Name"] : '',
                 index === 0 ? String(Math.floor(100000000 + Math.random() * 900000000)) : '', // Generuj losowe Order ID
                 product.name || '',
                 product.id || '',
@@ -179,7 +181,7 @@ export async function addNewOrderToExcel(
         console.log('Formatted data:', formattedData);
 
         // Wyślij dane do backendu
-        const response = await fetch('https://gordon-trade.onrender.com/api/sheets/orders', {
+        const response = await fetch('https://koszyk.gordontrade.pl/api/sheets/orders', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

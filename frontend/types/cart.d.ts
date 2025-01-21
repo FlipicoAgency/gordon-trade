@@ -42,6 +42,7 @@ export interface Product {
 export interface ProductInCart extends Product {
     quantity: number;
     price: number;
+    lineCost: number;
     variant?: string | null;
 }
 

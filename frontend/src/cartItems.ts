@@ -4,18 +4,21 @@ import type {Product, ProductInCart} from "../types/cart";
 import {addNewOrderToExcel} from "./excel";
 import type {Category} from "../types/cart";
 
+// Zmienna globalna na nasłuchiwacz
+let onQuantityChange: ((event: Event) => Promise<void>) | null = null;
+
 const currencyMap: Record<string, string> = {
     pl: 'zł',
-    cz: 'CZK',
-    hu: 'HUF',
-    en: 'GBP',
+    cs: 'EUR',
+    hu: 'EUR',
+    en: 'EUR',
 };
 
 const addedToCartModal = document.querySelector<HTMLElement>('#added-to-cart');
 
 export async function fetchCartData() {
     try {
-        const response = await fetch('https://gordon-trade.onrender.com/api/cart', {
+        const response = await fetch('https://koszyk.gordontrade.pl/api/cart', {
             credentials: 'include', // Dodaj credentials
         });
         const cartItems = await response.json();
@@ -41,10 +44,7 @@ async function updateCartUI(translations: Record<string, string>, language: stri
         const cartItems: ProductInCart[] = await fetchCartData();
 
         // Wyliczamy sumę brutto (price * quantity) dla całego koszyka
-        const totalAmount = cartItems.reduce(
-            (sum, item) => sum + (item.price * item.quantity),
-            0
-        );
+        const totalAmount = cartItems.reduce((sum, item) => sum + (item.lineCost), 0);
 
         // Dynamiczne pobranie waluty na podstawie języka
         const currency = currencyMap[language] || 'zł'; // Domyślna waluta to 'zł'
@@ -127,7 +127,7 @@ export function calculateLineCostAdvanced(
     quantity: number,
     specialPrice?: number
 ): number {
-    const qInBox = product.fieldData.quantityInBox;
+    const qInBox = product.fieldData.quantityInBox || 1;
     const priceCarton = product.fieldData.priceCarton || 0;
     const pricePromo = product.fieldData.pricePromo || 0;
     const priceNormal = product.fieldData.priceNormal || 0;
@@ -137,30 +137,21 @@ export function calculateLineCostAdvanced(
         return specialPrice * quantity;
     }
 
-    // (2) Jeżeli nie mamy specialPrice => rozbijamy na pełne kartony i resztę:
-    // Ile pełnych kartonów?
-    const fullBoxes = qInBox > 1 ? Math.floor(quantity / qInBox) : 0;
-    // Ile sztuk "ponad" pełne kartony
-    const leftover = qInBox > 1 ? (quantity % qInBox) : quantity;
+    // Rozbijamy ilość na pełne kartony i resztę
+    const fullBoxes = Math.floor(quantity / qInBox); // Ile pełnych kartonów
+    const leftover = quantity % qInBox; // Ile sztuk ponad pełne kartony
 
-    // Koszt pełnych kartonów:
-    let costFullBoxes = 0;
-    if (fullBoxes > 0 && priceCarton > 0) {
-        costFullBoxes = fullBoxes * qInBox * priceCarton;
-    } else {
-        // brak pełnych kartonów – costFullBoxes=0
-    }
+    // Priorytetowe ceny
+    const effectiveCartonPrice = priceCarton > 0 ? priceCarton : (pricePromo > 0 ? pricePromo : priceNormal);
+    const effectivePiecePrice = pricePromo > 0 ? pricePromo : priceNormal;
 
-    // Koszt leftover:
-    // - jeśli pricePromo>0 => leftover * pricePromo
-    // - w przeciwnym wypadku leftover * priceNormal
-    let leftoverPrice = priceNormal;
-    if (pricePromo > 0) {
-        leftoverPrice = pricePromo;
-    }
-    const costLeftover = leftover * leftoverPrice;
+    // Oblicz koszt pełnych kartonów
+    const costFullBoxes = fullBoxes * qInBox * effectiveCartonPrice;
 
-    // Suma:
+    // Oblicz koszt leftover
+    const costLeftover = leftover * effectivePiecePrice;
+
+    // Suma
     return costFullBoxes + costLeftover;
 }
 
@@ -169,7 +160,13 @@ export function calculateLineCostAdvanced(
  * @param button - element HTML przycisku
  * @param isCartonPurchase - czy kliknięto w 'Kup cały karton'
  */
-export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boolean = false, translations: Record<string, string>, language: string) {
+export async function handleAddToCart(
+    button: HTMLElement,
+    isCartonPurchase: boolean = false,
+    translations: Record<string, string>,
+    language: string
+) {
+    // 1) Znajdź, jaki produkt jest dodawany, ile sztuk, itp.
     const productElement =
         button.closest('.additional-product-item') ||
         button.closest('.product_add-to-cart') ||
@@ -213,6 +210,7 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
         }
     }
 
+    // Ustalamy liczbę dodawanych sztuk
     let quantity = 1;
     const quantityInput = productElement.querySelector<HTMLInputElement>('input[data-input="quantity"]');
     if (!isCartonPurchase) {
@@ -222,15 +220,28 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
     }
 
     try {
+        // 2) Pobieramy dane produktu
         const product: Product = await fetchProductDetails(productId, language);
-        const qInBox = product.fieldData.quantityInBox;
+        if (!product) return;
 
-        // Jeśli kliknięto 'Kup karton' i product ma quantityInBox > 0
+        // Jeśli klikamy "Kup karton" i mamy sensowny qInBox
+        const qInBox = product.fieldData.quantityInBox || 1;
         if (isCartonPurchase && qInBox > 0) {
             quantity = qInBox;
         }
 
-        // 1. Pobierz ewentualną cenę specjalną z metaData (lub 0 jeśli brak)
+        // 3) Pobieramy bieżący koszyk
+        const cartItems: ProductInCart[] = await fetchCartData();
+
+        // 4) Znajdujemy, czy w koszyku już jest ta sama pozycja
+        const existingItem = cartItems.find(
+            (item) => item.id === productId && item.variant === (selectedVariant || null)
+        );
+
+        // 5) Wyznaczamy "łączną" ilość - sumujemy, jeśli item już istnieje
+        const newQuantity = existingItem ? existingItem.quantity + quantity : quantity;
+
+        // 6) Sprawdzamy, czy użytkownik ma specialPrice
         const memberData: Member | null = await getMemberData();
         let specialPrice = 0;
         if (memberData && memberData.metaData) {
@@ -243,16 +254,23 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
             }
         }
 
-        // 2. Oblicz finalną cenę poj. sztuki
-        const finalSinglePrice = getFinalSinglePrice(product, quantity, specialPrice);
+        // 7) Obliczamy koszt całej pozycji
+        const totalCostForNewQuantity = calculateLineCostAdvanced(product, newQuantity, specialPrice);
 
-        // 3. Przygotuj obiekt do wysłania do koszyka
+        console.log("Product:", product);
+        console.log("Quantity:", newQuantity);
+        console.log("Total cost podczas dodawania:", totalCostForNewQuantity);
+
+        // 7.5) Obliczamy koszt całej pozycji w oparciu o (kartony + leftover)
+        const finalSinglePrice = getFinalSinglePrice(product, newQuantity, specialPrice);
+
+        // 8) Przygotuj obiekt do wysłania do koszyka
         const selectedItem: ProductInCart = {
             ...product,
             variant: selectedVariant || null,
-            quantity,
-            // Zapisujemy ustaloną finalną cenę za sztukę
+            quantity: newQuantity,
             price: finalSinglePrice,
+            lineCost: totalCostForNewQuantity, // kluczowe pole
         };
 
         await addItemToCart(selectedItem, translations, language);
@@ -263,7 +281,7 @@ export async function handleAddToCart(button: HTMLElement, isCartonPurchase: boo
 
 async function addItemToCart(item: ProductInCart, translations: Record<string, string>, language: string) {
     try {
-        const response = await fetch('https://gordon-trade.onrender.com/api/cart', {
+        const response = await fetch('https://koszyk.gordontrade.pl/api/cart', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(item),
@@ -412,7 +430,7 @@ export const initializeAddToCartButtons = (translations: Record<string, string>,
 async function removeItemFromCart(itemId: string, variant: string | null = null, translations: Record<string, string>, language: string) {
     try {
         const cleanVariant = variant === "null" ? null : variant; // Zamiana "null" na null
-        const response = await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
+        const response = await fetch(`https://koszyk.gordontrade.pl/api/cart/${itemId}`, {
             method: 'DELETE',
             credentials: 'include',
             headers: {
@@ -454,18 +472,23 @@ async function updateItemQuantity(itemId: string, quantity: number, variant: str
             }
         }
 
-        // Wylicz finalną cenę za sztukę (special > carton > promo > normal)
+        const totalCostForNewQuantity = calculateLineCostAdvanced(product, quantity, specialPrice);
         const finalSinglePrice = getFinalSinglePrice(product, quantity, specialPrice);
 
+        console.log("Product:", product);
+        console.log("Quantity:", quantity);
+        console.log("Total cost podczas aktualizacji:", totalCostForNewQuantity);
+
         // Zaktualizuj dany item w koszyku (PUT)
-        const response = await fetch(`https://gordon-trade.onrender.com/api/cart/${itemId}`, {
+        const response = await fetch(`https://koszyk.gordontrade.pl/api/cart/${itemId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({
                 variant: cleanVariant,
                 quantity,
-                price: finalSinglePrice
+                price: finalSinglePrice,
+                lineCost: totalCostForNewQuantity,
             }),
         });
 
@@ -473,14 +496,29 @@ async function updateItemQuantity(itemId: string, quantity: number, variant: str
             throw new Error(`Failed to update item quantity: ${response.statusText}`);
         }
 
-        await updateCartUI(translations, language); // Zaktualizuj interfejs użytkownika
+        // Tymczasowe usunięcie nasłuchiwacza na czas aktualizacji UI
+        if (onQuantityChange) {
+            document.removeEventListener('change', onQuantityChange);
+        }
+
+        // Zaktualizuj UI
+        await updateCartUI(translations, language);
+
+        // Przywrócenie nasłuchiwacza po odświeżeniu UI
+        addQuantityChangeListener(translations, language);
     } catch (error) {
         console.error('Failed to update item quantity:', error);
     }
 }
 
 function addQuantityChangeListener(translations: Record<string, string>, language: string) {
-    document.addEventListener('change', async (event) => {
+    // Usuń poprzedni nasłuchiwacz, jeśli istnieje
+    if (onQuantityChange) {
+        document.removeEventListener('change', onQuantityChange);
+    }
+
+    // Zdefiniuj nowy nasłuchiwacz
+    onQuantityChange = async (event: Event) => {
         const input = event.target as HTMLInputElement;
 
         if (!input.classList.contains('is-quantity-input')) return;
@@ -493,7 +531,10 @@ function addQuantityChangeListener(translations: Record<string, string>, languag
         if (itemId && newQuantity > 0) {
             await updateItemQuantity(itemId, newQuantity, variant, translations, language);
         }
-    });
+    };
+
+    // Dodaj nowy nasłuchiwacz
+    document.addEventListener('change', onQuantityChange);
 }
 
 /**
@@ -641,6 +682,7 @@ export async function processOrder(cartItems: ProductInCart[], translations: Rec
                 pricePerUnit: item.price.toFixed(2),
                 totalPrice,
                 variant: item.variant,
+                currency: currencyMap[language] || 'zł'
             };
         });
 
@@ -779,7 +821,7 @@ export async function fetchExchangeRates() {
 // Function to fetch product details by productId
 export async function fetchProductDetails(productId: string, lang: string): Promise<any> {
     try {
-        const response = await fetch(`https://gordon-trade.onrender.com/api/products/${productId}?lang=${lang}`, {
+        const response = await fetch(`https://koszyk.gordontrade.pl/api/products/${productId}?lang=${lang}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -804,9 +846,9 @@ export async function fetchProductDetails(productId: string, lang: string): Prom
 
         // Update product prices based on exchange rates and lang
         switch (lang) {
-            case 'cz': {
+            case 'cs': {
                 // @ts-ignore
-                const plnToCzkRate = exchangeRates['CZK'];
+                const plnToCzkRate = exchangeRates['EUR'];
                 if (plnToCzkRate) {
                     product.fieldData.priceNormal /= plnToCzkRate;
                     product.fieldData.pricePromo /= plnToCzkRate;
@@ -816,7 +858,7 @@ export async function fetchProductDetails(productId: string, lang: string): Prom
             }
             case 'hu': {
                 // @ts-ignore
-                const plnToHufRate = exchangeRates['HUF'];
+                const plnToHufRate = exchangeRates['EUR'];
                 if (plnToHufRate) {
                     product.fieldData.priceNormal /= plnToHufRate;
                     product.fieldData.pricePromo /= plnToHufRate;
@@ -826,7 +868,7 @@ export async function fetchProductDetails(productId: string, lang: string): Prom
             }
             case 'en': {
                 // @ts-ignore
-                const plnToGbpRate = exchangeRates['GBP'];
+                const plnToGbpRate = exchangeRates['EUR'];
                 if (plnToGbpRate) {
                     product.fieldData.priceNormal /= plnToGbpRate;
                     product.fieldData.pricePromo /= plnToGbpRate;
@@ -851,7 +893,7 @@ export async function fetchProductDetails(productId: string, lang: string): Prom
 
 export async function clearCart(translations: Record<string, string>, language: string) {
     try {
-        await fetch('https://gordon-trade.onrender.com/api/cart', {
+        await fetch('https://koszyk.gordontrade.pl/api/cart', {
             method: 'DELETE',
             credentials: 'include',
         });
@@ -864,7 +906,7 @@ export async function clearCart(translations: Record<string, string>, language: 
 // Funkcja do pobrania ID sesji
 export async function getSessionID() {
     try {
-        const response = await fetch('https://gordon-trade.onrender.com/api/session-id', {
+        const response = await fetch('https://koszyk.gordontrade.pl/api/session-id', {
             method: 'GET',
             headers: {'Content-Type': 'application/json'},
             credentials: 'include',
@@ -883,7 +925,7 @@ export let categoryMap: Record<string, string> = {};
 // Function to fetch product details by productId
 export const fetchCategories = async (): Promise<void> => {
     try {
-        const response = await fetch(`https://gordon-trade.onrender.com/api/categories`, {
+        const response = await fetch(`https://koszyk.gordontrade.pl/api/categories`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

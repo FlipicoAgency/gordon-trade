@@ -35,6 +35,7 @@
   "orderValueLabel": "Kwota zamówienia:",
   "paymentStatusLabel": "Status płatności:",
   "deliveryStatusLabel": "Status przesyłki:",
+  "status": "Status:",
   "delivered": "Dostarczono",
   "inTransit": "W tranzycie",
   "waitingTransport": "Oczekiwanie na transport",

@@ -35,6 +35,7 @@
   "orderValueLabel": "Rendelés összege:",
   "paymentStatusLabel": "Fizetési állapot:",
   "deliveryStatusLabel": "Szállítás állapota:",
+  "status": "Állapot:",
   "delivered": "Kiszállítva",
   "inTransit": "Úton",
   "waitingTransport": "Szállításra vár",

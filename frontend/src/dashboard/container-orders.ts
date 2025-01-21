@@ -455,7 +455,7 @@ export async function fetchContainers(memberData: Member, translations: Record<s
     try {
         // Wysłanie webhooka na Make
         const response = await fetch(
-            `https://gordon-trade.onrender.com/api/sheets/containers?nip=${encodeURIComponent(memberData.customFields.nip)}`,
+            `https://koszyk.gordontrade.pl/api/sheets/containers?nip=${encodeURIComponent(memberData.customFields.nip)}`,
             {
             method: "GET",
             headers: {

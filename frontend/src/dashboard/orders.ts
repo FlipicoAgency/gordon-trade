@@ -178,7 +178,7 @@ export function getIconPath(iconType: string): string {
             return 'M168.49,104.49,145,128l23.52,23.51a12,12,0,0,1-17,17L128,145l-23.51,23.52a12,12,0,0,1-17-17L111,128,87.51,104.49a12,12,0,0,1,17-17L128,111l23.51-23.52a12,12,0,0,1,17,17ZM236,128A108,108,0,1,1,128,20,108.12,108.12,0,0,1,236,128Zm-24,0a84,84,0,1,0-84,84A84.09,84.09,0,0,0,212,128Z';
         case 'is-info':
             return 'M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20Zm0,192a84,84,0,1,1,84-84A84.09,84.09,0,0,1,128,212Zm48.49-92.49a12,12,0,0,1,0,17l-32,32a12,12,0,1,1-17-17L139,140H88a12,12,0,0,1,0-24h51l-11.52-11.51a12,12,0,1,1,17-17Z';
-        case 'is-transit':
+        case 'is-proforma-sent':
             return 'M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20Zm0,192a84,84,0,1,1,84-84A84.09,84.09,0,0,1,128,212Zm48.49-92.49a12,12,0,0,1,0,17l-32,32a12,12,0,1,1-17-17L139,140H88a12,12,0,0,1,0-24h51l-11.52-11.51a12,12,0,1,1,17-17Z';
         case 'is-warning':
             return 'M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20Zm0,192a84,84,0,1,1,84-84A84.09,84.09,0,0,1,128,212Zm-12-80V80a12,12,0,0,1,24,0v52a12,12,0,0,1-24,0Zm28,40a16,16,0,1,1-16-16A16,16,0,0,1,144,172Z';
@@ -224,66 +224,22 @@ export async function generateOrderItem(order: Order, translations: Record<strin
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">${numericOrderValue.toFixed(2)} zł</div>
                             </div>
-                            <!--
-                            <div class="spacer-xxsmall is-grid-2"></div>
                             <div class="order_details_grid_item">
-                                <div class="text-size-small">Status płatności:</div>
-                            </div>
-                            <div class="order_details_grid_item">
-                                    ${createOrderParameter(
-                                    'is-paid',
-                                    'is-yes',
-                                    'Zapłacone',
-                                    order['Payment status'] === 'Zapłacone'
-                                )}
-                                    ${createOrderParameter(
-                                    'is-not-paid',
-                                    'is-no',
-                                    'Procesowanie',
-                                    order['Payment status'] === 'Procesowanie'
-                                )}
-                                ${createOrderParameter(
-                                    'is-no-payment',
-                                    'is-warning',
-                                    'Oczekiwanie na płatność',
-                                    order['Payment status'] === 'Oczekiwanie na płatność'
-                                )}
-                                ${createOrderParameter(
-                                    'is-no-payment',
-                                    'is-info',
-                                    'Złożono zapytanie',
-                                    order['Payment status'] === 'Złożono zapytanie'
-                                )}
-                            </div>
-                            -->
-                            <div class="order_details_grid_item">
-                                <div class="text-size-small">${translations.paymentStatusLabel}</div>
+                                <div class="text-size-small">${translations.status}</div>
                             </div>
                             <div class="order_details_grid_item">
                                 <div class="order-details">
                                     ${createOrderParameter(
                                         'is-delivered', 
                                         'is-yes', 
-                                        'Dostarczono',
-                                        order['Delivery status'] === 'Dostarczono'
+                                        'Zrealizowano',
+                                        order['Delivery status'] === 'Zrealizowano'
                                     )}
                                     ${createOrderParameter(
                                         'is-in-transit', 
-                                        'is-transit', 
-                                        'W tranzycie',
-                                        order['Delivery status'] === 'W tranzycie'
-                                    )}
-                                    ${createOrderParameter(
-                                        'is-waiting-for-transit', 
-                                        'is-info', 
-                                        'Oczekiwanie na transport',
-                                        order['Delivery status'] === 'Oczekiwanie na transport'
-                                    )}
-                                    ${createOrderParameter(
-                                        'is-no-payment', 
-                                        'is-warning', 
-                                        'Oczekiwanie na płatność',
-                                        order['Delivery status'] === 'Oczekiwanie na płatność'
+                                        'is-proforma-sent', 
+                                        'Wysłano proformę',
+                                        order['Delivery status'] === 'Wysłano proformę'
                                     )}
                                     ${createOrderParameter(
                                         'is-no-payment',
@@ -292,27 +248,7 @@ export async function generateOrderItem(order: Order, translations: Record<strin
                                         order['Delivery status'] === 'Złożono zapytanie'
                                     )}
                                 </div>       
-                            </div>   
-                            <!--
-                            <div class="order_details_grid_item">
-                                <div class="text-size-small">Planowana data dostawy:</div>
-                            </div>
-                             <div class="order_details_grid_item">
-                                <div class="text-size-small">${order['Estimated time of arrival'] || 'Nieznana'}</div>
-                            </div>
-                            <div class="order_details_grid_item">
-                                <div class="text-size-small">Przedłużona data dostawy?</div>
-                            </div>
-                             <div class="order_details_grid_item">
-                                <div class="text-size-small">${order['Extended delivery date'] ? `${translations.yes}, ${order['Extended delivery date']}` : translations.no}</div>
-                            </div>     
-                            <div class="order_details_grid_item">
-                                <div class="text-size-small">Zamówienie cykliczne?</div>
-                            </div>
-                             <div class="order_details_grid_item">
-                                <div class="text-size-small">${order['Recurring order'] ? `Tak` : 'Nie'}</div>
-                            </div>
-                            -->             
+                            </div>      
                         </div>
                     </div>
                 </div>

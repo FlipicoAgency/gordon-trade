@@ -38,20 +38,20 @@ export async function calculatePromoPercentage(productItems: Array<HTMLElement>,
     let currencySymbol = "zł";
 
     switch (language) {
-        case "cz":
+        case "cs":
             // @ts-ignore
-            conversionRate = exchangeRates["CZK"] || 1;
-            currencySymbol = "CZK";
+            conversionRate = exchangeRates["EUR"] || 1;
+            currencySymbol = "EUR";
             break;
         case "hu":
             // @ts-ignore
-            conversionRate = exchangeRates["HUF"] || 1;
-            currencySymbol = "HUF";
+            conversionRate = exchangeRates["EUR"] || 1;
+            currencySymbol = "EUR";
             break;
         case "en":
             // @ts-ignore
-            conversionRate = exchangeRates["GBP"] || 1;
-            currencySymbol = "GBP";
+            conversionRate = exchangeRates["EUR"] || 1;
+            currencySymbol = "EUR";
             break;
         default:
             conversionRate = 1; // Złotówki

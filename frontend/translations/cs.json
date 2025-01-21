@@ -35,6 +35,7 @@
   "orderValueLabel": "Částka objednávky:",
   "paymentStatusLabel": "Stav platby:",
   "deliveryStatusLabel": "Stav doručení:",
+  "status": "Postavení:",
   "delivered": "Doručeno",
   "inTransit": "V tranzitu",
   "waitingTransport": "Čekání na přepravu",
