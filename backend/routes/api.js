@@ -591,7 +591,7 @@ router.post('/cart', (req, res) => {
 
     const { id, variant, quantity, price, lineCost } = req.body;
 
-    if (!id || typeof item.quantity !== 'number' || item.quantity <= 0) {
+    if (!id || typeof quantity !== 'number' || quantity <= 0) {
         return res.status(400).send({ message: 'Invalid item data' });
     }
 
