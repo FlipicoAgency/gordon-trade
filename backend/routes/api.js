@@ -589,8 +589,7 @@ router.post('/cart', (req, res) => {
         req.session.cart = []; // Inicjalizacja koszyka, jeśli nie istnieje
     }
 
-    const item = req.body;
-    const { id, variant } = item;
+    const { id, variant, quantity, price, lineCost } = req.body;
 
     if (!id || typeof item.quantity !== 'number' || item.quantity <= 0) {
         return res.status(400).send({ message: 'Invalid item data' });
@@ -602,9 +601,24 @@ router.post('/cart', (req, res) => {
     );
 
     if (existingItem) {
-        existingItem.quantity += item.quantity;
+        // AKTUALIZUJEMY: sumujemy ilość
+        existingItem.quantity += quantity;
+        // lineCost i price w tym momencie możesz nadpisać
+        // bądź – jeśli chcesz – obliczyć jeszcze tutaj,
+        // ale załóżmy że front wysyła już gotowe.
+        existingItem.lineCost += lineCost;
+        // Możesz też przeliczyć new average price,
+        // ale skoro i tak używamy lineCost, to nie jest konieczne
+        existingItem.price = existingItem.lineCost / existingItem.quantity;
     } else {
-        req.session.cart.push(item);
+        // DODAJEMY
+        req.session.cart.push({
+            id,
+            variant: variant ?? null,
+            quantity,
+            price,     // opcjonalne
+            lineCost,  // kluczowe pole
+        });
     }
 
     console.log('Koszyk został zaktualizowany:', req.session.cart);
@@ -619,7 +633,7 @@ router.get('/cart', (req, res) => {
 // Zaktualizuj ilość przedmiotu w koszyku
 router.put('/cart/:itemId', (req, res) => {
     const { itemId } = req.params;
-    const { variant, quantity, price } = req.body;
+    const { variant, quantity, price, lineCost } = req.body;
 
     if (!req.session.cart) {
         return res.status(404).send({ message: 'Cart is empty' });
@@ -638,6 +652,7 @@ router.put('/cart/:itemId', (req, res) => {
 
         // Zaktualizuj
         item.quantity = quantity;
+        item.lineCost = lineCost;
         item.price = price;
 
         //console.log('Koszyk po aktualizacji:', req.session.cart);
@@ -677,3 +692,4 @@ router.delete('/cart', (req, res) => {
 });
 
 module.exports = router;
+

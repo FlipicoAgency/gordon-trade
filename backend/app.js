@@ -101,9 +101,9 @@ app.use((req, res, next) => {
   console.log('Session ID:', req.sessionID);
   if (!req.session.cart) {
     req.session.cart = []; // Inicjalizacja pustego koszyka w sesji
-    console.log('Koszyk został zainicjalizowany:', req.session.cart);
+    // console.log('Koszyk został zainicjalizowany:', req.session.cart);
   } else {
-    console.log('Koszyk istnieje:', req.session.cart);
+    // console.log('Koszyk istnieje:', req.session.cart);
   }
   next();
 });
