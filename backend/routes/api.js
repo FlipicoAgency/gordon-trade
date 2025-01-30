@@ -277,7 +277,7 @@ router.get('/sheets/containers', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Containers!A1:Y',
+            range: 'Containers!A1:AB',
         });
 
         const rows = response.data.values;
@@ -308,9 +308,12 @@ router.get('/sheets/containers', async (req, res) => {
             extendedDelivery: headers.indexOf('Extended delivery date'),
             productName: headers.indexOf('Product Name'),
             productVariant: headers.indexOf('Product Variant'),
+            productName: headers.indexOf('Product SKU'),
+            productVariant: headers.indexOf('Product image'),
             quantity: headers.indexOf('Quantity'),
             estimatedFreight: headers.indexOf('Estimated Freight'),
             capacity: headers.indexOf('Capacity'),
+            available: headers.indexOf('Available to buy')
         };
 
         // Sprawdzenie brakujących kolumn
@@ -368,6 +371,7 @@ router.get('/sheets/containers', async (req, res) => {
                 fvNo: row[indices.fvNo] || 'Brak',
                 loadingPort: row[indices.loadingPort] || 'Brak',
                 personalization: row[indices.personalization] || 'Brak',
+                available: row[indices.available] || 'Nie',
                 qualityControlPhotos: row[indices.qualityControlPhotos] || 'Brak',
                 changeInTransportationCost: row[indices.changeInTransportationCost] || 'Brak',
                 periodicity: row[indices.periodicity] || 'Brak',
@@ -382,6 +386,8 @@ router.get('/sheets/containers', async (req, res) => {
                         quantity: parseInt(row[indices.quantity], 10) || 0,
                         estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
                         capacity: parseFloat(row[indices.capacity]) || 0,
+                        sku: row[indices.sku],
+                        image: row[indices.image]
                     },
                 ],
             };
