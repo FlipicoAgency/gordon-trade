@@ -308,8 +308,8 @@ router.get('/sheets/containers', async (req, res) => {
             extendedDelivery: headers.indexOf('Extended delivery date'),
             productName: headers.indexOf('Product Name'),
             productVariant: headers.indexOf('Product Variant'),
-            productName: headers.indexOf('Product SKU'),
-            productVariant: headers.indexOf('Product image'),
+            productSKU: headers.indexOf('Product SKU'),
+            productImage: headers.indexOf('Product image'),
             quantity: headers.indexOf('Quantity'),
             estimatedFreight: headers.indexOf('Estimated Freight'),
             capacity: headers.indexOf('Capacity'),
@@ -386,8 +386,8 @@ router.get('/sheets/containers', async (req, res) => {
                         quantity: parseInt(row[indices.quantity], 10) || 0,
                         estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
                         capacity: parseFloat(row[indices.capacity]) || 0,
-                        sku: row[indices.sku],
-                        image: row[indices.image]
+                        sku: row[indices.productSKU],
+                        image: row[indices.productImage]
                     },
                 ],
             };
