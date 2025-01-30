@@ -343,7 +343,7 @@ router.get('/sheets/containers', async (req, res) => {
         // Uzupełnij scalone komórki dla Container No1 i Container No2
         const filledData = fillMergedCells(data, [indices.containerNo1, indices.containerNo2]);
 
-        const containers = [];
+        const containersMap = new Map();
 
         // Przetwarzanie danych
         filledData.forEach((row) => {
@@ -353,47 +353,61 @@ router.get('/sheets/containers', async (req, res) => {
                 return;
             }
 
-            const orderId = row[indices.orderId];
-            if (!orderId) {
+            const containerNo1 = row[indices.containerNo1];
+            if (!containerNo1) {
                 return;
             }
 
-            // Każdy wiersz to oddzielny rekord
-            const container = {
-                customerNip: currentCustomerNip,
-                customerName: row[indices.customerName],
-                orderId,
-                containerNo1: row[indices.containerNo1],
-                containerNo2: row[indices.containerNo2],
-                containerType: row[indices.containerType] || 'Brak',
-                fvPdf: row[indices.fvPdf] || 'Brak',
-                fvAmountNetto: row[indices.fvAmountNetto] || 0,
-                fvNo: row[indices.fvNo] || 'Brak',
-                loadingPort: row[indices.loadingPort] || 'Brak',
-                personalization: row[indices.personalization] || 'Brak',
-                available: row[indices.available] || 'Nie',
-                qualityControlPhotos: row[indices.qualityControlPhotos] || 'Brak',
-                changeInTransportationCost: row[indices.changeInTransportationCost] || 'Brak',
-                periodicity: row[indices.periodicity] || 'Brak',
-                estimatedDeparture: row[indices.estimatedDeparture],
-                fastestShipping: row[indices.fastestShipping],
-                estimatedArrival: row[indices.estimatedArrival],
-                extendedDelivery: row[indices.extendedDelivery],
-                products: [
-                    {
-                        name: row[indices.productName] || 'Nieznany produkt',
-                        variant: row[indices.productVariant] || 'Brak',
-                        quantity: parseInt(row[indices.quantity], 10) || 0,
-                        estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
-                        capacity: parseFloat(row[indices.capacity]) || 0,
-                        sku: row[indices.productSKU],
-                        image: row[indices.productImage]
-                    },
-                ],
-            };
-
-            containers.push(container);
+            // Jeśli kontener już istnieje w mapie, dodaj produkt do listy produktów
+            if (containersMap.has(containerNo1)) {
+                const existingContainer = containersMap.get(containerNo1);
+                existingContainer.products.push({
+                    name: row[indices.productName] || 'Nieznany produkt',
+                    variant: row[indices.productVariant] || 'Brak',
+                    quantity: parseInt(row[indices.quantity], 10) || 0,
+                    estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
+                    capacity: parseFloat(row[indices.capacity]) || 0,
+                    sku: row[indices.productSKU],
+                    image: row[indices.productImage]
+                });
+            } else {
+                // Jeśli kontener nie istnieje, dodaj go do mapy
+                containersMap.set(containerNo1, {
+                    customerNip: currentCustomerNip,
+                    orderId: row[indices.orderId],
+                    containerNo1,
+                    containerNo2: row[indices.containerNo2],
+                    containerType: row[indices.containerType] || 'Brak',
+                    fvPdf: row[indices.fvPdf] || 'Brak',
+                    fvAmountNetto: row[indices.fvAmountNetto] || 0,
+                    fvNo: row[indices.fvNo] || 'Brak',
+                    loadingPort: row[indices.loadingPort] || 'Brak',
+                    personalization: row[indices.personalization] || 'Brak',
+                    available: row[indices.available] || 'Nie',
+                    qualityControlPhotos: row[indices.qualityControlPhotos] || 'Brak',
+                    changeInTransportationCost: row[indices.changeInTransportationCost] || 'Brak',
+                    periodicity: row[indices.periodicity] || 'Brak',
+                    estimatedDeparture: row[indices.estimatedDeparture],
+                    fastestShipping: row[indices.fastestShipping],
+                    estimatedArrival: row[indices.estimatedArrival],
+                    extendedDelivery: row[indices.extendedDelivery],
+                    products: [
+                        {
+                            name: row[indices.productName] || 'Nieznany produkt',
+                            variant: row[indices.productVariant] || 'Brak',
+                            quantity: parseInt(row[indices.quantity], 10) || 0,
+                            estimatedFreight: parseFloat(row[indices.estimatedFreight]) || 0,
+                            capacity: parseFloat(row[indices.capacity]) || 0,
+                            sku: row[indices.productSKU],
+                            image: row[indices.productImage]
+                        },
+                    ],
+                });
+            }
         });
+
+        // Konwersja mapy na tablicę kontenerów
+        const containers = Array.from(containersMap.values());
 
         res.status(200).json(containers);
     } catch (error) {
