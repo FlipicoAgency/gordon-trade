@@ -39,26 +39,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const mapWrapper = document.getElementById('container-map-wrapper') as HTMLElement;
     const listWrapper = document.getElementById('container-list-wrapper') as HTMLElement;
+    const listWrapperPending = document.getElementById('container-list-wrapper-pending') as HTMLElement;
     const mapButton = document.getElementById('container-map') as HTMLElement;
     const listButton = document.getElementById('container-list') as HTMLElement;
+    const listButtonPending = document.getElementById('container-list-pending') as HTMLElement;
 
     function showMap(): void {
         if (mapWrapper) mapWrapper.style.display = 'block';
         if (listWrapper) listWrapper.style.display = 'none';
+        if (listWrapperPending) listWrapperPending.style.display = 'none';
     }
 
     function showList(): void {
-        if (mapWrapper) mapWrapper.style.display = 'none';
         if (listWrapper) listWrapper.style.display = 'block';
+        if (mapWrapper) mapWrapper.style.display = 'none';
+        if (listWrapperPending) listWrapperPending.style.display = 'none';
+    }
+
+    function showListPending(): void {
+        if (listWrapperPending) listWrapperPending.style.display = 'block';
+        if (listWrapper) listWrapper.style.display = 'none';
+        if (mapWrapper) mapWrapper.style.display = 'none';
     }
 
     mapButton?.addEventListener('click', showMap);
     listButton?.addEventListener('click', showList);
+    listButtonPending?.addEventListener('click', showListPending);
 
     // Inicjalizacja - pokazujemy tylko mapę na starcie
     showMap();
 
-    await fetchContainers(memberData, translations);
+    await fetchContainers(translations, false, memberData, undefined, false);
+    await fetchContainers(translations, false, memberData, undefined, true);
+    await fetchContainers(translations, true, undefined, 9542768363, false);
+
     await initializeOrders(memberData, translations, language);
     await initializeFavorites(translations, language);
     await initializeUppy(memberData, translations);

@@ -27,7 +27,7 @@ function formatDate(dateString: string): string {
     return date.toLocaleDateString('pl-PL');
 }
 
-function formatToContainers(data: any, locations: Status[], translations: Record<string, string>): Container[] {
+function formatToContainers(data: any, locations: Status[], translations: Record<string, string>, pending: boolean): Container[] {
     //console.log(data);
 
     return Object.values(data).map((order: any) => {
@@ -39,15 +39,17 @@ function formatToContainers(data: any, locations: Status[], translations: Record
             orderValue: product.orderValue,
             estimatedFreight: product.estimatedFreight,
             capacity: product.capacity,
+            sku: product.sku,
+            image: product.image,
         }));
 
         // Walidacja kontenera
-        if (!order.containerNo1) {
+        if (!order.containerNo1 && !pending) {
             console.error(`Błąd! Kontener nie posiada ID: ${order}`);
         }
 
         // Budowanie struktury kontenera
-        const deliveryStatus = chooseStatus(order.estimatedDeparture, order.loadingPort, locations, translations);
+        const deliveryStatus = chooseStatus(order.estimatedDeparture, order.estimatedArrival, order.loadingPort, locations, translations, pending);
 
         return {
             "Customer NIP": order.customerNip,
@@ -69,13 +71,24 @@ function formatToContainers(data: any, locations: Status[], translations: Record
             "Change in transportation cost": order.changeInTransportationCost || "Brak",
             "Personalization": mapYesNo(order.personalization || translations.none, translations),
             "Periodicity": mapYesNo(order.periodicity || translations.none, translations),
+            "Available to buy": mapYesNo(order.available || translations.none, translations),
+            "PI XLS": order.xls
         };
     });
 }
 
-function chooseStatus(departureDate: string, loadingPort: string, locations: Status[], translations: Record<string, string>): Status {
+function chooseStatus(departureDate: string, arrivalDate: string, loadingPort: string, locations: Status[], translations: Record<string, string>, pending: boolean): Status {
+    if (pending) {
+        return {
+            name: translations.statusAwaiting,
+            position: "top: 0%; left: 0%;",
+            procent: "is-0",
+        };
+    }
+
     const today = new Date();
     const departure = new Date(departureDate);
+    const arrival = new Date(arrivalDate);
 
     // Oblicz różnicę w dniach między datą wypłynięcia a dzisiejszą datą
     const diffTime = today.getTime() - departure.getTime();
@@ -104,7 +117,11 @@ function chooseStatus(departureDate: string, loadingPort: string, locations: Sta
     } else if (diffDays >= 56 && diffDays < 63) {
         return locations.find(location => location.name.includes(translations.portGdansk))!;
     } else if (diffDays >= 63) {
-        // Status "Zrealizowano" dla ponad 56 dni
+        // Jeśli diffDays >= 63, ale dzisiejsza data jest wcześniejsza niż arrivalDate
+        if (today < arrival) {
+            return locations.find(location => location.name.includes(translations.portGdansk))!;
+        }
+        // Jeśli diffDays >= 63 i dzisiejsza data jest równa lub późniejsza niż arrivalDate
         return {
             name: translations.statusCompleted,
             position: "top: 0%; left: 0%;",
@@ -297,7 +314,7 @@ function generateShipItem(container: Container, containers: Container[], transla
     });
 }
 
-function generateShipListItem(container: Container, translations: Record<string, string>): void {
+function generateShipListItem(container: Container, translations: Record<string, string>, listWrapper: HTMLElement, pending: boolean): void {
     const statusName: string = container["Delivery status"].name || "";
 
     // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
@@ -305,9 +322,6 @@ function generateShipListItem(container: Container, translations: Record<string,
         console.log(`Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
         return;
     }
-
-    // Kontenery do dodawania elementów
-    const listWrapper = document.getElementById('container-list-stacked') as HTMLElement;
 
     // Wybierz klasę procentową na podstawie wartości "procent"
     const progressClass = container["Delivery status"].procent || "is-0";
@@ -329,7 +343,9 @@ function generateShipListItem(container: Container, translations: Record<string,
 
     htmlElement.innerHTML = `
         <div class="stacked-list4_content-top">
-            <div class="text-size-small">${translations.containerNumber} <span class="text-weight-semibold text-color-brand">${container["Container No1"]}</span></div>
+            ${pending ? 
+                `<div class="text-size-small">${translations.plannedDeparture} <span class="text-weight-semibold text-color-brand">${container["Estimated time of departure"]}</span></div>` 
+                    : `<div class="text-size-small">${translations.containerNumber} <span class="text-weight-semibold text-color-brand">${container["Container No1"]}</span></div>`}
             <div class="stacked-list4_info">
                 <div class="text-size-small">${translations.plannedDelivery} <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
                 ${delayInfoHTML}
@@ -358,8 +374,10 @@ function generateShipListItem(container: Container, translations: Record<string,
                                 ${item.name}${Number(item.quantity) > 1 ? ` (${item.quantity} pcs)` : ""}
                             </div>
                             ${item.variant !== 'Brak' ? `<div class="text-weight-normal text-style-muted">${translations.variant} <span>${item.variant}</span></div>` : ''}
+                            ${item.sku ? `<div class="text-weight-normal text-style-muted">SKU: <span>${item.sku}</span></div>` : ''}
+                            ${item.image ? `<img class="order_product_image" alt=${item.name} src=${item.image}>` : ''}
                         </div>
-                    `;
+                    `; 
                 }).join('')}
             </div>
         </div>
@@ -376,6 +394,12 @@ function generateShipListItem(container: Container, translations: Record<string,
                     <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
                 </a>
             ` : ''}
+            ${container["PI XLS"] && pending ? `
+                <a href="${container["PI XLS"]}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
+                    <div class="order_download_faktura">${translations.downloadXls}</div>
+                    <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
+                </a>
+            ` : ''}
         </div>
     `;
 
@@ -383,7 +407,7 @@ function generateShipListItem(container: Container, translations: Record<string,
     listWrapper.appendChild(htmlElement);
 }
 
-export async function fetchContainers(memberData: Member, translations: Record<string, string>) {
+export async function fetchContainers(translations: Record<string, string>, isGordon: boolean, memberData?: Member, nip?: number, pending?: boolean) {
     const locations: Status[] = [
         {
             name: "Ningbo",
@@ -452,10 +476,26 @@ export async function fetchContainers(memberData: Member, translations: Record<s
         },
     ];
 
+    let listWrapper: HTMLElement;
+
+    if (isGordon && pending === false) {
+        listWrapper = document.getElementById('container-list-stacked-sea') as HTMLElement;
+    } else if (!isGordon && pending === false) {
+        listWrapper = document.getElementById('container-list-stacked') as HTMLElement;
+    } else if (!isGordon && pending === true) {
+        listWrapper = document.getElementById('container-list-stacked-pending') as HTMLElement;
+    } else {
+        console.error("Nieznany stan dla parametrów isGordon:", isGordon, "oraz pending:", pending);
+        return; // Wyjdź z funkcji, jeśli parametry są nieprawidłowe
+    }
+
     try {
+        // Tworzenie URL z warunkiem dla pending
+        const baseUrl = `https://koszyk.gordontrade.pl/api/sheets/containers?nip=${memberData ? encodeURIComponent(memberData.customFields.nip) : nip}`;
+        const url = pending ? `${baseUrl}&pending=true` : baseUrl;
+
         // Wysłanie webhooka na Make
-        const response = await fetch(
-            `https://koszyk.gordontrade.pl/api/sheets/containers?nip=${encodeURIComponent(memberData.customFields.nip)}`,
+        const response = await fetch(url,
             {
             method: "GET",
             headers: {
@@ -468,22 +508,29 @@ export async function fetchContainers(memberData: Member, translations: Record<s
 
         const rawData = await response.json();
 
+        const filteredContainers = isGordon
+            // @ts-ignore
+            ? rawData.filter(container => container.available === "Tak")
+            : rawData;
+
         // Oczyszczanie i formatowanie danych
-        const cleanData = cleanAndFormatData(rawData);
+        const cleanData = cleanAndFormatData(filteredContainers);
         //console.log('Zamówienia:', cleanData);
 
-        const containers: Container[] = formatToContainers(cleanData, locations, translations);
+        const containers: Container[] = formatToContainers(cleanData, locations, translations, pending);
         console.log('Kontenery:', containers);
 
         // Iteracja przez kontenery
         containers.forEach((container: Container) => {
             //console.log('Status name:', container["Delivery status"].name);
 
-            // Utwórz znacznik na mapie
-            generateShipItem(container, containers, translations);
+            if (!isGordon) {
+                // Utwórz znacznik na mapie
+                generateShipItem(container, containers, translations);
+            }
 
             // Utwórz element w liście
-            generateShipListItem(container, translations);
+            generateShipListItem(container, translations, listWrapper, pending);
         });
 
         //console.log("Webhook sent and response processed successfully");

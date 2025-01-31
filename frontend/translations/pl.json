@@ -5,6 +5,7 @@
 
   "statusCompleted": "Zrealizowano",
   "statusUnknown": "Nieznany status",
+  "statusAwaiting": "Oczekujące",
 
   "southChinaSea": "Morze Południowochińskie",
   "lakshadweepSea": "Morze Lakkadiwskie",
@@ -19,10 +20,12 @@
   "days": "dni",
   "changeTransportationCost": "Zmiana kosztu transportu:",
   "variant": "Wariant:",
-  "plannedDelivery": "Planowana dostawa:",
+  "plannedDelivery": "Planowana dostawa w porcie:",
+  "plannedDeparture": "Planowana data wypłynięcia:",
   "orderDelayed": "Zamówienie opóźnione:",
   "qualityControlPhotos": "Zdjęcia kontroli jakości",
   "downloadInvoice": "Pobierz fakturę",
+  "downloadXls": "Pobierz XLS oferty",
   "containerNumber": "Numer kontenera:",
   "china": "Chiny",
   "poland": "Polska",

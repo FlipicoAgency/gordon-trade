@@ -5,6 +5,7 @@
 
   "statusCompleted": "Dokončeno",
   "statusUnknown": "Stav neznámý",
+  "statusAwaiting": "Čekání",
 
   "southChinaSea": "Jihočínské moře",
   "lakshadweepSea": "Lakadivské moře",
@@ -19,10 +20,12 @@
   "days": "dny",
   "changeTransportationCost": "Změnit náklady na dopravu:",
   "variant": "Varianta:",
-  "plannedDelivery": "Plánované doručení:",
+  "plannedDelivery": "Plánované doručení v přístavu:",
+  "plannedDeparture": "Plánované datum odjezdu:",
   "orderDelayed": "Opožděná objednávka:",
   "qualityControlPhotos": "Fotografie kontroly kvality",
   "downloadInvoice": "Stáhnout fakturu",
+  "downloadXls": "Stáhněte si nabídku XLS",
   "containerNumber": "Číslo kontejneru:",
   "china": "Čína",
   "poland": "Polsko",

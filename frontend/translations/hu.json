@@ -5,6 +5,7 @@
 
   "statusCompleted": "Befejezve",
   "statusUnknown": "Ismeretlen állapot",
+  "statusAwaiting": "Várakozás",
 
   "southChinaSea": "Dél-kínai-tenger",
   "lakshadweepSea": "Lakkadiva-tenger",
@@ -19,10 +20,12 @@
   "days": "nap",
   "changeTransportationCost": "Szállítási költség változása:",
   "variant": "Változat:",
-  "plannedDelivery": "Tervezett szállítás:",
+  "plannedDelivery": "Tervezett szállítás a kikötőben:",
+  "plannedDeparture": "Tervezett indulási dátum:",
   "orderDelayed": "Rendelés késik:",
   "qualityControlPhotos": "Minőségellenőrzési fotók",
   "downloadInvoice": "Számla letöltése",
+  "downloadXls": "Töltse le az XLS ajánlatot",
   "containerNumber": "Konténerszám:",
   "china": "Kína",
   "poland": "Lengyelország",

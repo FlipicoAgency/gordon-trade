@@ -26,4 +26,6 @@ export interface Container {
     "Quality control photos": string;
     "Change in transportation cost": string;
     "Periodicity": string;
+    "Available to buy": string;
+    "PI XLS": string;
 }

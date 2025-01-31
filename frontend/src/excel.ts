@@ -241,7 +241,8 @@ const generateExcelFile = async (products: ProductInCart[]): Promise<void> => {
         "SKU": product.fieldData.sku,
         "Dostępność": product.fieldData.productUnavailable ? "Brak na stanie" : "W magazynie",
         "Zdjęcie": '', // Pusta komórka, obraz wstawimy za chwilę
-        "Ilość w kartonie": product.fieldData.quantityInBox
+        "Ilość w kartonie": product.fieldData.quantityInBox,
+        "Cena za sztukę przy zakupie pełnego kartonu": product.fieldData.priceCarton
     }));
 
     const workbook = new ExcelJS.Workbook();

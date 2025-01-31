@@ -633,21 +633,28 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
         });
     });
 
-    const submitButton = document.getElementById('place-order');
+    const submitButton = document.getElementById('place-order') as HTMLButtonElement;
     if (submitButton) {
         // Usunięcie istniejących nasłuchiwaczy (jeśli istnieją)
         submitButton.replaceWith(submitButton.cloneNode(true)); // Resetuje zdarzenia
-        const newSubmitButton = document.getElementById('place-order');
+        const newSubmitButton = document.getElementById('place-order') as HTMLButtonElement;
 
         newSubmitButton?.addEventListener('click', async () => {
-            const cartItems = await fetchCartData();
-            if (cartItems.length === 0) {
-                alert(translations.cartEmpty);
-                return;
+            newSubmitButton.disabled = true; // Tymczasowe wyłączenie przycisku
+
+            try {
+                const cartItems = await fetchCartData();
+                if (cartItems.length === 0) {
+                    alert(translations.cartEmpty);
+                    return;
+                }
+                await processOrder(cartItems, translations, language);
+            } finally {
+                newSubmitButton.disabled = false; // Ponowne włączenie przycisku po zakończeniu procesu
             }
-            await processOrder(cartItems, translations, language);
         });
     }
+
 }
 
 export async function processOrder(cartItems: ProductInCart[], translations: Record<string, string>, language: string) {

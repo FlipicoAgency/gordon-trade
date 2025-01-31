@@ -52,6 +52,8 @@ export interface OrderProduct {
     variant?: string | null;
     quantity: string;
     price: string;
+    sku?: string;
+    image: string;
 }
 
 export interface Category {
