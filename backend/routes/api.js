@@ -317,7 +317,8 @@ router.get('/sheets/containers', async (req, res) => {
             quantity: headers.indexOf('Quantity'),
             estimatedFreight: headers.indexOf('Estimated Freight'),
             capacity: headers.indexOf('Capacity'),
-            available: headers.indexOf('Available to buy')
+            available: headers.indexOf('Available to buy'),
+            xls: headers.indexOf('PI XLS'),
         };
 
         // Sprawdzenie brakujących kolumn
@@ -358,7 +359,8 @@ router.get('/sheets/containers', async (req, res) => {
             }
 
             const containerNo1 = row[indices.containerNo1];
-            if (!containerNo1) {
+            if (!containerNo1 && !pending) {
+                console.warn('Not found: containerNo1!')
                 return;
             }
 
@@ -395,6 +397,7 @@ router.get('/sheets/containers', async (req, res) => {
                     fastestShipping: row[indices.fastestShipping],
                     estimatedArrival: row[indices.estimatedArrival],
                     extendedDelivery: row[indices.extendedDelivery],
+                    xls: row[indices.xls],
                     products: [
                         {
                             name: row[indices.productName] || 'Nieznany produkt',
