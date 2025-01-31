@@ -124,23 +124,142 @@ document.addEventListener("DOMContentLoaded", async () => {
         assert: { type: "json" },
     });
 
+    const selectAllButton = document.getElementById("select-all") as HTMLAnchorElement;
+    const selectedCountOutput = document.querySelector('[data-output-select="quantity"]') as HTMLDivElement;
+    let isMassSelecting = false;
+
+    /**
+     * Pomocnicza funkcja, która sprawdza, czy dany productItem wymaga wariantu
+     * i czy wariant jest prawidłowo wybrany. Jeśli tak, zwraca true, w przeciwnym
+     * razie false.
+     */
+    function canCheckCheckbox(productItem: HTMLElement): boolean {
+        // Sprawdź select z wariantem (o ile istnieje i ma validate="true")
+        const variantSelect = productItem.querySelector<HTMLSelectElement>(
+            'select[data-input="variant"][validate="true"]'
+        );
+        if (variantSelect && variantSelect.value === "") {
+            // Wariant jest wymagany, ale nie wybrano go
+            return false;
+        }
+
+        // Sprawdź ewentualną grupę pill (aria-checked="true")
+        const optionPillGroup = productItem.querySelector<HTMLDivElement>(
+            'div[data-input="pill-group"]'
+        );
+        if (optionPillGroup) {
+            const selectedPill = optionPillGroup.querySelector<HTMLDivElement>(
+                'div[aria-checked="true"]'
+            );
+            if (!selectedPill) {
+                // Tu również mamy wymagany wariant (pill), ale nie został wybrany
+                return false;
+            }
+        }
+
+        // Jeśli dotarliśmy tutaj, to znaczy, że nie ma wymogu wariantu
+        // lub wariant został wybrany prawidłowo.
+        return true;
+    }
+
+    function updateSelectedCount(count: number) {
+        console.log(`Aktualna liczba zaznaczonych produktów: ${count}`);
+
+        if (count > 0) {
+            selectedCountOutput.textContent = `Wybrano ${count} elementów`;
+            selectedCountOutput.classList.remove("hide");
+            selectAllButton.textContent = "Odznacz wszystkie";
+            console.log("Zaktualizowano licznik: liczba wybranych elementów > 0");
+        } else {
+            selectedCountOutput.classList.add("hide");
+            selectAllButton.textContent = "Zaznacz wszystkie";
+            console.log("Licznik schowany: brak zaznaczonych elementów");
+        }
+    }
+
+    // Obsługa przycisku „Zaznacz wszystkie / Odznacz wszystkie”
+    if (!selectAllButton || !selectedCountOutput) {
+        console.warn("Nie znaleziono przycisku 'Zaznacz wszystkie' lub pola z licznikiem zaznaczonych produktów.");
+    } else {
+        selectAllButton.addEventListener("click", (event) => {
+            event.preventDefault();
+
+            // Pobierz wszystkie aktualnie widoczne checkboxy w przefiltrowanych produktach
+            const checkboxes = document.querySelectorAll<HTMLInputElement>(
+                '.product_form input[type="checkbox"]'
+            );
+
+            if (checkboxes.length === 0) {
+                console.warn("Nie znaleziono żadnych checkboxów do zaznaczenia.");
+                return;
+            }
+
+            // Sprawdź, czy JAKIKOLWIEK checkbox jest zaznaczony
+            const anyChecked = Array.from(checkboxes).some((checkbox) => checkbox.checked);
+            console.log(`Czy jakikolwiek checkbox jest zaznaczony? ${anyChecked}`);
+
+            if (anyChecked) {
+                // ODZNACZ wszystkie
+                checkboxes.forEach((checkbox) => {
+                    checkbox.checked = false;
+
+                    // Usuwamy klasę w--redirected-checked, aby checkbox zniknął wizualnie
+                    checkbox.previousElementSibling?.classList.remove('w--redirected-checked');
+                    checkbox.dispatchEvent(new Event("change"));
+                });
+                console.log("Odznaczono wszystkie checkboxy");
+            } else {
+                // ZAZNACZ tylko te, gdzie nie jest wymagany (lub już wybrany) wariant
+                // Zaznacz wszystko
+                isMassSelecting = true;
+                checkboxes.forEach((checkbox) => {
+                    const productItem = checkbox.closest(".product_item") as HTMLElement;
+                    if (!productItem) return; // Brak pewności co do struktury, bezpieczeństwo
+
+                    // Jeżeli produkt można zaznaczyć (wariant wybrany lub niewymagany)
+                    if (canCheckCheckbox(productItem)) {
+                        checkbox.checked = true;
+                        checkbox.previousElementSibling?.classList.add('w--redirected-checked');
+
+                        // Wywołujemy event, aby onChange dodało CMS ID do selectedItems
+                        checkbox.dispatchEvent(new Event("change"));
+                    } else {
+                        // Jeżeli wariant jest wymagany, a nie został wybrany – pomijamy
+                        checkbox.checked = false;
+                        checkbox.previousElementSibling?.classList.remove('w--redirected-checked');
+                        // Również dispatchEvent, aby zachować spójność stanu
+                        // checkbox.dispatchEvent(new Event("change"));
+                        console.log("Pominięto produkt wymagający wariantu (nie zaznaczony).");
+                    }
+                });
+                isMassSelecting = false;
+                console.log("Zaznaczono wszystkie checkboxy (oprócz tych wymagających wariant).");
+            }
+
+            // Na koniec faktycznie policz, ile jest CHECKED
+            const currentlyChecked = document.querySelectorAll('.product_form input[type="checkbox"]:checked');
+            updateSelectedCount(currentlyChecked.length);
+        });
+    }
+
     // Array to hold selected CMS IDs
     let selectedItems: string[] = [];
+    updateSelectedCount(selectedItems.length);
 
     // Function to calculate JSON size in bytes
     const calculateJSONSize = (json: any): number =>
         new Blob([JSON.stringify(json)]).size;
 
     // Initialize the checkboxes after items are fully loaded
-    const initializeCheckboxes = (): void => {
-        // Ensure selectedItems is properly initialized
+    function initializeCheckboxes(): void {
+        // Upewnij się, że selectedItems jest tablicą
         if (!Array.isArray(selectedItems)) {
             console.error('selectedItems is not an array. Initializing as an empty array.');
             selectedItems = [];
         }
 
         try {
-            // Select all checkboxes
+            // Pobierz wszystkie checkboxy
             const checkboxes = document.querySelectorAll<HTMLInputElement>(
                 '.product_form input[type="checkbox"]'
             );
@@ -151,45 +270,52 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             checkboxes.forEach((checkbox) => {
-                try {
-                    // Get the associated CMS ID
-                    const productItem = checkbox.closest('.product_item');
-                    if (!productItem) {
-                        console.warn('Checkbox is not inside a product_item container.');
-                        return;
-                    }
+                // Szukamy nadrzędnego .product_item
+                const productItem = checkbox.closest('.product_item') as HTMLElement;
+                if (!productItem) {
+                    console.warn('Checkbox is not inside a product_item container.');
+                    return;
+                }
 
-                    const cmsId = productItem.querySelector<HTMLElement>(
-                        '[data-commerce-product-id]'
-                    )?.getAttribute('data-commerce-product-id');
+                // Zczytujemy CMS ID (lub product ID)
+                const cmsId = productItem.querySelector<HTMLElement>(
+                    '[data-commerce-product-id]'
+                )?.getAttribute('data-commerce-product-id');
 
-                    if (!cmsId) {
-                        console.warn('CMS ID not found for a checkbox.');
-                        return;
-                    }
+                // Nasłuchujemy zmiany stanu (check/uncheck)
+                checkbox.addEventListener('change', () => {
+                    try {
+                        if (checkbox.checked) {
+                            // Jeśli użytkownik RĘCZNIE zaznacza checkbox,
+                            // sprawdź, czy można to zrobić (wariant wybrany?).
+                            if (!canCheckCheckbox(productItem)) {
+                                // Wariant nie jest wybrany, a jest wymagany
+                                if (!isMassSelecting) {
+                                    alert('Proszę wybrać wariant przed dodaniem produktu do listy.');
+                                }
 
-                    // Add event listener for checkbox change
-                    checkbox.addEventListener('change', () => {
-                        try {
-                            // Get variant if available
+                                // Krótki timeout, aby usunąć styl "w--redirected-checked"
+                                // i faktycznie odznaczyć checkbox
+                                setTimeout(() => {
+                                    checkbox.checked = false;
+                                    checkbox.previousElementSibling?.classList.remove('w--redirected-checked');
+                                }, 0);
+                                return;
+                            }
+
+                            // Jeżeli można zaznaczyć i mamy cmsId, dodajemy do selectedItems
+                            // UWAGA: Poniżej masz logikę łączenia ID i wariantu w itemWithVariant,
+                            // jeśli coś takiego stosujesz:
                             let selectedVariant: string | null = null;
 
                             const variantSelect = productItem.querySelector<HTMLSelectElement>(
                                 'select[data-input="variant"]'
                             );
-                            if (variantSelect && variantSelect.getAttribute('validate') === 'true') {
-                                if (variantSelect.value === '') {
-                                    // Remove the redirected class and reset checkbox state after alert
-                                    setTimeout(() => {
-                                        checkbox.checked = false;
-                                        checkbox.previousElementSibling?.classList.remove('w--redirected-checked');
-                                    }, 0);
-                                    alert('Proszę wybrać wariant przed dodaniem produktu do listy.');
-                                    return;
-                                }
+                            if (variantSelect && variantSelect.value) {
                                 selectedVariant = variantSelect.value;
                             }
 
+                            // Sprawdź pille
                             const optionPillGroup = productItem.querySelector<HTMLDivElement>(
                                 'div[data-input="pill-group"]'
                             );
@@ -199,52 +325,45 @@ document.addEventListener("DOMContentLoaded", async () => {
                                 );
                                 if (selectedPill) {
                                     selectedVariant = selectedPill.getAttribute('data-variant-value') || null;
-                                } else if (!variantSelect) {
-                                    // Remove the redirected class and reset checkbox state after alert
-                                    setTimeout(() => {
-                                        checkbox.checked = false;
-                                        checkbox.previousElementSibling?.classList.remove('w--redirected-checked');
-                                    }, 0);
-                                    alert('Proszę wybrać wariant przed dodaniem produktu do listy.');
-                                    return;
                                 }
                             }
 
                             const itemWithVariant = `${cmsId}${selectedVariant ? `|${selectedVariant}` : ''}`;
 
-                            if (checkbox.checked) {
-                                // Add to selectedItems if not already present
-                                if (!selectedItems.includes(itemWithVariant)) {
-                                    selectedItems.push(itemWithVariant);
-                                    console.log(`Item added: ${itemWithVariant}`);
-                                } else {
-                                    console.warn(`Item already in the list: ${itemWithVariant}`);
-                                }
+                            if (!selectedItems.includes(itemWithVariant)) {
+                                selectedItems.push(itemWithVariant);
+                                console.log(`Item added: ${itemWithVariant}`);
                             } else {
-                                // Remove from selectedItems if unchecked
-                                const index = selectedItems.indexOf(itemWithVariant);
-                                if (index > -1) {
-                                    selectedItems.splice(index, 1);
-                                    console.log(`Item removed: ${itemWithVariant}`);
-                                } else {
-                                    console.warn(`Item not found in the list for removal: ${itemWithVariant}`);
-                                }
+                                console.warn(`Item already in the list: ${itemWithVariant}`);
                             }
+                        } else {
+                            // Jeśli użytkownik odznacza
+                            let selectedVariant: string | null = null;
+                            // (Możesz powtórzyć logikę variantSelect/optionPillGroup,
+                            //  jeśli chcesz zawsze identyfikować produkt w 100% tak samo)
+                            const itemWithVariant = `${cmsId}${selectedVariant ? `|${selectedVariant}` : ''}`;
 
-                            // Log the updated array (for debugging)
-                            console.log('Updated Selected Items:', selectedItems);
-                        } catch (error) {
-                            console.error('Error handling checkbox change:', error);
+                            const index = selectedItems.indexOf(itemWithVariant);
+                            if (index > -1) {
+                                selectedItems.splice(index, 1);
+                                console.log(`Item removed: ${itemWithVariant}`);
+                            }
                         }
-                    });
-                } catch (error) {
-                    console.error('Error initializing a checkbox:', error);
-                }
+
+                        // Na koniec zawsze aktualizuj licznik
+                        updateSelectedCount(selectedItems.length);
+
+                        // (debug) Podgląd wybranych elementów
+                        console.log('Updated Selected Items:', selectedItems);
+                    } catch (error) {
+                        console.error('Error handling checkbox change:', error);
+                    }
+                });
             });
         } catch (error) {
             console.error('Error during checkbox initialization:', error);
         }
-    };
+    }
 
     await initializeGenerateOffer(selectedItems, language)
 
