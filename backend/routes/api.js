@@ -262,7 +262,7 @@ router.post('/sheets/orders', async (req, res) => {
 });
 
 router.get('/sheets/containers', async (req, res) => {
-    const { nip } = req.query;
+    const { nip, pending } = req.query;
 
     if (!nip || typeof nip !== 'string') {
         return res.status(400).json({ error: 'Parametr "nip" jest wymagany i musi być ciągiem znaków.' });
@@ -275,9 +275,13 @@ router.get('/sheets/containers', async (req, res) => {
 
     try {
         const sheets = await getSheetsInstance();
+
+        // Sprawdzenie, czy w zapytaniu jest pending=true
+        const sheetRange = pending === 'true' ? 'Containers Pending!A1:AB' : 'Containers!A1:AB';
+
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Containers!A1:AB',
+            range: sheetRange,
         });
 
         const rows = response.data.values;
@@ -417,134 +421,134 @@ router.get('/sheets/containers', async (req, res) => {
 });
 
 // Dodaj zamówienia kontenerowe
-router.post('/sheets/containers', async (req, res) => {
-    const { values } = req.body;
-    if (!values || !Array.isArray(values)) {
-        return res.status(400).json({ error: 'Nieprawidłowe dane.' });
-    }
-
-    try {
-        const sheets = await getSheetsInstance();
-
-        // Dodaj nowe wiersze
-        const appendResponse = await sheets.spreadsheets.values.append({
-            spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders!A1:X',
-            valueInputOption: 'USER_ENTERED',
-            resource: { values },
-        });
-        console.log('Append Response:', appendResponse.data);
-
-        // Scal odpowiednie komórki
-        const mergeRequests = [];
-        let currentRow = await getLastRow(sheets);
-
-        values.forEach((row, index) => {
-            if (row[0] !== '') {
-                const startRow = currentRow + index;
-                const endRow = startRow + values.filter((r) => r[0] === '').length || startRow + 1;
-
-                const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
-                columnsToMerge.forEach((colIndex) => {
-                    mergeRequests.push({
-                        mergeCells: {
-                            range: {
-                                sheetId: 24398558,
-                                startRowIndex: startRow - 1,
-                                endRowIndex: endRow,
-                                startColumnIndex: colIndex,
-                                endColumnIndex: colIndex + 1,
-                            },
-                            mergeType: 'MERGE_ALL',
-                        },
-                    });
-                });
-            }
-        });
-
-        // Dodanie obramowań dla całego zakresu A:U
-        mergeRequests.push({
-            updateBorders: {
-                range: {
-                    sheetId: 24398558, // ID arkusza (Orders)
-                    startRowIndex: currentRow - 1, // Pierwszy wiersz do obramowania
-                    endRowIndex: currentRow + values.length - 1, // Ostatni wiersz (liczba dodanych wierszy)
-                    startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
-                },
-                top: {
-                    style: 'SOLID',
-                    width: 1,
-                    color: { red: 0, green: 0, blue: 0 },
-                },
-                bottom: {
-                    style: 'SOLID',
-                    width: 1,
-                    color: { red: 0, green: 0, blue: 0 },
-                },
-                left: {
-                    style: 'SOLID',
-                    width: 1,
-                    color: { red: 0, green: 0, blue: 0 },
-                },
-                right: {
-                    style: 'SOLID',
-                    width: 1,
-                    color: { red: 0, green: 0, blue: 0 },
-                },
-                innerHorizontal: {
-                    style: 'SOLID',
-                    width: 1,
-                    color: { red: 0, green: 0, blue: 0 },
-                },
-                innerVertical: {
-                    style: 'SOLID',
-                    width: 1,
-                    color: { red: 0, green: 0, blue: 0 },
-                },
-            },
-        });
-
-        // Dodanie wycentrowania tekstu dla całego zakresu A:U
-        mergeRequests.push({
-            repeatCell: {
-                range: {
-                    sheetId: 24398558, // ID arkusza (Orders)
-                    startRowIndex: currentRow - 1, // Pierwszy wiersz do wycentrowania
-                    endRowIndex: currentRow + values.length - 1, // Ostatni wiersz
-                    startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
-                },
-                cell: {
-                    userEnteredFormat: {
-                        horizontalAlignment: 'CENTER', // Wycentrowanie poziome
-                        verticalAlignment: 'MIDDLE', // Wycentrowanie pionowe
-                    },
-                },
-                fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment)', // Wskaż zmieniane pola
-            },
-        });
-
-        if (mergeRequests.length === 0) {
-            throw new Error('Brak żądań scalania komórek.');
-        }
-
-        console.log('Merge Requests:', JSON.stringify(mergeRequests, null, 2));
-
-        const batchResponse = await sheets.spreadsheets.batchUpdate({
-            spreadsheetId: SPREADSHEET_ID,
-            resource: {
-                requests: mergeRequests,
-            },
-        });
-        console.log('BatchUpdate Response:', JSON.stringify(batchResponse.data, null, 2));
-
-        res.status(201).json({ message: 'Dane zostały dodane do arkusza.' });
-    } catch (error) {
-        console.error('Błąd dodawania danych do arkusza:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+// router.post('/sheets/containers', async (req, res) => {
+//     const { values } = req.body;
+//     if (!values || !Array.isArray(values)) {
+//         return res.status(400).json({ error: 'Nieprawidłowe dane.' });
+//     }
+//
+//     try {
+//         const sheets = await getSheetsInstance();
+//
+//         // Dodaj nowe wiersze
+//         const appendResponse = await sheets.spreadsheets.values.append({
+//             spreadsheetId: SPREADSHEET_ID,
+//             range: 'Orders!A1:X',
+//             valueInputOption: 'USER_ENTERED',
+//             resource: { values },
+//         });
+//         console.log('Append Response:', appendResponse.data);
+//
+//         // Scal odpowiednie komórki
+//         const mergeRequests = [];
+//         let currentRow = await getLastRow(sheets);
+//
+//         values.forEach((row, index) => {
+//             if (row[0] !== '') {
+//                 const startRow = currentRow + index;
+//                 const endRow = startRow + values.filter((r) => r[0] === '').length || startRow + 1;
+//
+//                 const columnsToMerge = [0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+//                 columnsToMerge.forEach((colIndex) => {
+//                     mergeRequests.push({
+//                         mergeCells: {
+//                             range: {
+//                                 sheetId: 24398558,
+//                                 startRowIndex: startRow - 1,
+//                                 endRowIndex: endRow,
+//                                 startColumnIndex: colIndex,
+//                                 endColumnIndex: colIndex + 1,
+//                             },
+//                             mergeType: 'MERGE_ALL',
+//                         },
+//                     });
+//                 });
+//             }
+//         });
+//
+//         // Dodanie obramowań dla całego zakresu A:U
+//         mergeRequests.push({
+//             updateBorders: {
+//                 range: {
+//                     sheetId: 24398558, // ID arkusza (Orders)
+//                     startRowIndex: currentRow - 1, // Pierwszy wiersz do obramowania
+//                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz (liczba dodanych wierszy)
+//                     startColumnIndex: 0, // Kolumna A
+//                     endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
+//                 },
+//                 top: {
+//                     style: 'SOLID',
+//                     width: 1,
+//                     color: { red: 0, green: 0, blue: 0 },
+//                 },
+//                 bottom: {
+//                     style: 'SOLID',
+//                     width: 1,
+//                     color: { red: 0, green: 0, blue: 0 },
+//                 },
+//                 left: {
+//                     style: 'SOLID',
+//                     width: 1,
+//                     color: { red: 0, green: 0, blue: 0 },
+//                 },
+//                 right: {
+//                     style: 'SOLID',
+//                     width: 1,
+//                     color: { red: 0, green: 0, blue: 0 },
+//                 },
+//                 innerHorizontal: {
+//                     style: 'SOLID',
+//                     width: 1,
+//                     color: { red: 0, green: 0, blue: 0 },
+//                 },
+//                 innerVertical: {
+//                     style: 'SOLID',
+//                     width: 1,
+//                     color: { red: 0, green: 0, blue: 0 },
+//                 },
+//             },
+//         });
+//
+//         // Dodanie wycentrowania tekstu dla całego zakresu A:U
+//         mergeRequests.push({
+//             repeatCell: {
+//                 range: {
+//                     sheetId: 24398558, // ID arkusza (Orders)
+//                     startRowIndex: currentRow - 1, // Pierwszy wiersz do wycentrowania
+//                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz
+//                     startColumnIndex: 0, // Kolumna A
+//                     endColumnIndex: 23, // Kolumna W (23, bo endColumnIndex jest wyłączny)
+//                 },
+//                 cell: {
+//                     userEnteredFormat: {
+//                         horizontalAlignment: 'CENTER', // Wycentrowanie poziome
+//                         verticalAlignment: 'MIDDLE', // Wycentrowanie pionowe
+//                     },
+//                 },
+//                 fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment)', // Wskaż zmieniane pola
+//             },
+//         });
+//
+//         if (mergeRequests.length === 0) {
+//             throw new Error('Brak żądań scalania komórek.');
+//         }
+//
+//         console.log('Merge Requests:', JSON.stringify(mergeRequests, null, 2));
+//
+//         const batchResponse = await sheets.spreadsheets.batchUpdate({
+//             spreadsheetId: SPREADSHEET_ID,
+//             resource: {
+//                 requests: mergeRequests,
+//             },
+//         });
+//         console.log('BatchUpdate Response:', JSON.stringify(batchResponse.data, null, 2));
+//
+//         res.status(201).json({ message: 'Dane zostały dodane do arkusza.' });
+//     } catch (error) {
+//         console.error('Błąd dodawania danych do arkusza:', error);
+//         res.status(500).json({ error: 'Internal Server Error' });
+//     }
+// });
 
 // Pobierz określony produkt na podstawie ID
 router.get('/products/:productId', async (req, res) => {
