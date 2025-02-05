@@ -63,7 +63,7 @@ router.get('/sheets/orders', async (req, res) => {
         const sheets = await getSheetsInstance();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders B2B!A1:O',  // Zakres danych
+            range: 'Orders B2B!A1:P',  // Zakres danych
             valueRenderOption: 'UNFORMATTED_VALUE', // Ważne: zwraca surowe, niesformatowane wartości
             majorDimension: 'ROWS',    // (opcjonalne) Upewnia się, że dane są wierszami
         });
@@ -114,11 +114,12 @@ router.get('/sheets/orders', async (req, res) => {
 
                 // Dodaj produkt do zamówienia
                 existingOrder.products.push({
-                    name: row[3] !== undefined ? row[3] : '',       // Product name (kolumna 3)
-                    id: row[4] !== undefined ? String(row[4]) : '', // Product ID (kolumna 4)
-                    variant: row[5] !== undefined ? String(row[5]) : '',
-                    quantity: row[6] !== undefined ? String(row[6]) : '',
-                    price: row[7] !== undefined ? String(row[7]) : '',
+                    sku: row[3] !== undefined ? row[3] : '',       // Product name (kolumna 3)
+                    name: row[4] !== undefined ? row[4] : '',       // Product name (kolumna 3)
+                    id: row[5] !== undefined ? String(row[5]) : '', // Product ID (kolumna 4)
+                    variant: row[6] !== undefined ? String(row[6]) : '',
+                    quantity: row[7] !== undefined ? String(row[7]) : '',
+                    price: row[8] !== undefined ? String(row[8]) : '',
                 });
             }
         });
@@ -144,7 +145,7 @@ router.post('/sheets/orders', async (req, res) => {
         // Dodaj nowe wiersze
         const appendResponse = await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Orders B2B!A1:O',
+            range: 'Orders B2B!A1:P',
             valueInputOption: 'USER_ENTERED',
             resource: { values },
         });
@@ -159,7 +160,7 @@ router.post('/sheets/orders', async (req, res) => {
                 const startRow = currentRow + index;
                 const endRow = startRow + values.filter((r) => r[0] === '').length || startRow + 1;
 
-                const columnsToMerge = [0, 1, 2, 8, 9, 10, 11, 12, 13, 14];
+                const columnsToMerge = [0, 1, 2, 9, 10, 11, 12, 13, 14, 15];
                 columnsToMerge.forEach((colIndex) => {
                     mergeRequests.push({
                         mergeCells: {
@@ -185,7 +186,7 @@ router.post('/sheets/orders', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do obramowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz (liczba dodanych wierszy)
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 15, // Kolumna O (15, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 16, // Kolumna P (16, bo endColumnIndex jest wyłączny)
                 },
                 top: {
                     style: 'SOLID',
@@ -228,7 +229,7 @@ router.post('/sheets/orders', async (req, res) => {
                     startRowIndex: currentRow - 1, // Pierwszy wiersz do wycentrowania
                     endRowIndex: currentRow + values.length - 1, // Ostatni wiersz
                     startColumnIndex: 0, // Kolumna A
-                    endColumnIndex: 15, // Kolumna O (14, bo endColumnIndex jest wyłączny)
+                    endColumnIndex: 16, // Kolumna P (16, bo endColumnIndex jest wyłączny)
                 },
                 cell: {
                     userEnteredFormat: {
@@ -277,7 +278,7 @@ router.get('/sheets/containers', async (req, res) => {
         const sheets = await getSheetsInstance();
 
         // Sprawdzenie, czy w zapytaniu jest pending=true
-        const sheetRange = pending === 'true' ? 'Containers Pending!A1:AB' : 'Containers!A1:AB';
+        const sheetRange = pending === 'true' ? 'Containers Pending!A1:AC' : 'Containers!A1:AC';
 
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
@@ -318,7 +319,7 @@ router.get('/sheets/containers', async (req, res) => {
             estimatedFreight: headers.indexOf('Estimated Freight'),
             capacity: headers.indexOf('Capacity'),
             available: headers.indexOf('Available to buy'),
-            xls: headers.indexOf('PI XLS'),
+            xls: headers.indexOf('OFFER XLS'),
         };
 
         // Sprawdzenie brakujących kolumn
