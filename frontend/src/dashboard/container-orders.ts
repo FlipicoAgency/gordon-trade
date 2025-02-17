@@ -72,7 +72,7 @@ function formatToContainers(data: any, locations: Status[], translations: Record
             "Personalization": mapYesNo(order.personalization || translations.none, translations),
             "Periodicity": mapYesNo(order.periodicity || translations.none, translations),
             "Available to buy": mapYesNo(order.available || translations.none, translations),
-            "PI XLS": order.xls
+            "OFFER XLS": order.xls
         };
     });
 }
@@ -394,8 +394,8 @@ function generateShipListItem(container: Container, translations: Record<string,
                     <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
                 </a>
             ` : ''}
-            ${container["PI XLS"] && pending ? `
-                <a href="${container["PI XLS"]}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
+            ${container["OFFER XLS"] && pending ? `
+                <a href="${container["OFFER XLS"]}" class="button is-link is-icon w-inline-block" target="_blank" rel="noopener noreferrer">
                     <div class="order_download_faktura">${translations.downloadXls}</div>
                     <div class="link-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="${getIconPath('is-arrow-right')}" fill="currentColor"></path></svg></div>
                 </a>

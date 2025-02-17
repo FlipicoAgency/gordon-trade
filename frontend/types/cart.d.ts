@@ -15,7 +15,8 @@ export interface Product {
         inStock: boolean;
         weightCarton: number;
         dimensionsCarton: string;
-        priceCarton;
+        priceCarton: number;
+        saleOnlyInFullCartons: boolean;
         name: string;
         description: string;
         tags: string;
@@ -33,9 +34,7 @@ export interface Product {
         }>;
         slug: string;
         category: string;
-        productUnavailable: boolean;
         productFeatured: boolean;
-        productVisibleOnPage: boolean;
     };
 }
 

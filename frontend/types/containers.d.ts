@@ -27,5 +27,5 @@ export interface Container {
     "Change in transportation cost": string;
     "Periodicity": string;
     "Available to buy": string;
-    "PI XLS": string;
+    "OFFER XLS": string;
 }

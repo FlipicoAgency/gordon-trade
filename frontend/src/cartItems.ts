@@ -600,7 +600,7 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
                 </div>
             </div>
             <div class="card-product-form w-form">
-                <input class="form_input is-quantity-input w-input" data-input="quantity" maxlength="256" value="${item.quantity}" type="number">
+                ${!item.fieldData.saleOnlyInFullCartons ? `<input class="form_input is-quantity-input w-input" data-input="quantity" maxlength="256" value="${item.quantity}" type="number">` : ''}
             </div>
             <button class="button deletebutton" data-item-id="${item.id}" data-variant="${item.variant}">
                 <div class="icon-1x1-xsmall">
@@ -640,7 +640,7 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
         const newSubmitButton = document.getElementById('place-order') as HTMLButtonElement;
 
         newSubmitButton?.addEventListener('click', async () => {
-            newSubmitButton.disabled = true; // Tymczasowe wyłączenie przycisku
+            newSubmitButton.style.display = 'none';
 
             try {
                 const cartItems = await fetchCartData();
@@ -650,11 +650,10 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
                 }
                 await processOrder(cartItems, translations, language);
             } finally {
-                newSubmitButton.disabled = false; // Ponowne włączenie przycisku po zakończeniu procesu
+                newSubmitButton.style.display = '';
             }
         });
     }
-
 }
 
 export async function processOrder(cartItems: ProductInCart[], translations: Record<string, string>, language: string) {
@@ -791,9 +790,8 @@ export function mapApiResponseToProduct(apiResponse: any): Product {
                 : [],
             slug: isEmptyString(apiResponse.fieldData["slug"]) ? '' : apiResponse.fieldData["slug"],
             category: isEmptyString(apiResponse.fieldData["kategoria"]) ? '' : apiResponse.fieldData["kategoria"],
-            productUnavailable: apiResponse.fieldData["produkt-niedostepny"] ?? false,
             productFeatured: apiResponse.fieldData["produkt-wyrozniony"] ?? false,
-            productVisibleOnPage: apiResponse.fieldData["produkt-widoczny-na-stronie"] ?? false,
+            saleOnlyInFullCartons: apiResponse.fieldData["sprzedaz-tylko-na-pelne-kartony"] ?? false,
         },
     };
 }

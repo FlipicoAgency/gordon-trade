@@ -130,6 +130,7 @@ export async function addNewOrderToExcel(
                 index === 0 ? memberData?.customFields.nip : '',
                 index === 0 ? memberData?.customFields["company-name"] : '',
                 index === 0 ? String(Math.floor(100000000 + Math.random() * 900000000)) : '', // Generuj losowe Order ID
+                product.fieldData.sku || '',
                 product.fieldData.name || '',
                 product.id || '',
                 product.variant || '',
@@ -148,7 +149,7 @@ export async function addNewOrderToExcel(
                 '', // FV number
                 '', // FV PDF
                 index === 0 ? 'Złożono zapytanie' : '', // Status płatności
-                index === 0 ? 'Złożono zapytanie' : '', // Status dostawy
+                // index === 0 ? 'Złożono zapytanie' : '', // Status dostawy
                 // '', // Estimated time of departure
                 // '', // Fastest possible shipping date
                 // '', // Estimated time of arrival
@@ -159,6 +160,7 @@ export async function addNewOrderToExcel(
                 index === 0 ? items["Customer NIP"] : '',
                 index === 0 ? items["Customer Name"] : '',
                 index === 0 ? String(Math.floor(100000000 + Math.random() * 900000000)) : '', // Generuj losowe Order ID
+                product.sku || '',
                 product.name || '',
                 product.id || '',
                 product.variant || '',
@@ -170,7 +172,7 @@ export async function addNewOrderToExcel(
                 '', // FV number
                 '', // FV PDF
                 index === 0 ? 'Złożono zapytanie' : '',
-                index === 0 ? 'Złożono zapytanie' : '',
+                // index === 0 ? 'Złożono zapytanie' : '',
                 // '', // Estimated time of departure
                 // '', // Fastest possible shipping date
                 // '', // Estimated time of arrival
@@ -239,7 +241,7 @@ const generateExcelFile = async (products: ProductInCart[]): Promise<void> => {
         "Wariant": product.variant || '',
         "Cena": `${product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo.toFixed(2) : product.fieldData.priceNormal.toFixed(2)} zł`,
         "SKU": product.fieldData.sku,
-        "Dostępność": product.fieldData.productUnavailable ? "Brak na stanie" : "W magazynie",
+        "Dostępność": product.fieldData.inStock ? "Brak na stanie" : "W magazynie",
         "Zdjęcie": '', // Pusta komórka, obraz wstawimy za chwilę
         "Ilość w kartonie": product.fieldData.quantityInBox,
         "Cena za sztukę przy zakupie pełnego kartonu": product.fieldData.priceCarton
