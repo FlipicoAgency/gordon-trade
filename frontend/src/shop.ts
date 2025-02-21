@@ -124,8 +124,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         assert: { type: "json" },
     });
 
-    const selectAllButton = document.getElementById("select-all") as HTMLAnchorElement;
-    const selectedCountOutput = document.querySelector('[data-output-select="quantity"]') as HTMLDivElement;
+    const selectAllButton = document.getElementById("select-all") as HTMLAnchorElement | null;
+    const selectedCountOutput = document.querySelector('[data-output-select="quantity"]') as HTMLDivElement | null;
     let isMassSelecting = false;
 
     /**
@@ -163,6 +163,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function updateSelectedCount(count: number) {
+        // najpierw sprawdzamy, czy element w ogóle istnieje
+        if (!selectedCountOutput || !selectAllButton) {
+            return; // jeśli nie, to opuszczamy funkcję
+        }
+
         console.log(`Aktualna liczba zaznaczonych produktów: ${count}`);
 
         if (count > 0) {
@@ -464,6 +469,17 @@ document.addEventListener("DOMContentLoaded", async () => {
                         if (categoryElement?.textContent?.trim()) {
                             categorySet.add(categoryElement.textContent.trim());
                         }
+
+                        const stockStatus = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="Dostępne"]')?.textContent;
+
+                        // Debugowanie: sprawdzenie, jaka wartość jest pobierana z Webflow CMS
+                        // console.log("Stock Status from Webflow CMS:", stockStatus);
+
+                        // Konwersja wartości na Boolean i odwrócenie jej
+                        const isOutOfStock = stockStatus === "false" ? "true" : "false";
+
+                        const outOfStockElement = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="Niedostępne"]');
+                        if (outOfStockElement) outOfStockElement.textContent = isOutOfStock;
                     });
 
                     // Function to create filter items
@@ -541,13 +557,112 @@ document.addEventListener("DOMContentLoaded", async () => {
                     // @ts-ignore
                     window.fsAttributes.push([
                         'cmsfilter',
-                        // @ts-ignore
                         (filterInstances) => {
-                            //console.log('cmsfilter Successfully loaded!');
-
                             const [filterInstance] = filterInstances;
-                            const filtersData = filterInstance.filtersData;
+                            const { listInstance, filtersData } = filterInstance;
 
+                            console.log('filtersData (początkowe):', filtersData);
+
+                            // ----------------------------------------------------------
+                            // 1. Jeśli nie ma obiektu filtra "customSearch", to go tworzymy
+                            // ----------------------------------------------------------
+                            let searchFilterData = filtersData.find((fd) =>
+                                fd.filterKeys.includes('Szukaj')
+                            );
+
+                            if (!searchFilterData) {
+                                searchFilterData = {
+                                    elements: [],
+                                    originalFilterKeys: ['Szukaj'],
+                                    filterKeys: ['Szukaj'],
+                                    values: new Set(),
+                                    match: 'all',
+                                    highlight: false,
+                                    highlightCSSClass: '',
+                                    valuesOperator: 'any',
+                                };
+                                filtersData.push(searchFilterData);
+                            }
+
+                            // ----------------------------------------------------------
+                            // 2. Pobieramy referencję do inputa
+                            // ----------------------------------------------------------
+                            const mySearchInput = document.getElementById('my-search');
+                            if (!mySearchInput) {
+                                console.warn('Nie znaleziono pola #my-search!');
+                                return;
+                            }
+
+                            // ----------------------------------------------------------
+                            // 3. Funkcja filtrująca (jeden punkt do wywołania)
+                            // ----------------------------------------------------------
+                            async function handleSearch() {
+                                // [a] Pobierz wartość inputa
+                                const inputVal = mySearchInput.value.trim().toLowerCase();
+                                console.log('[INPUT] Wpisano w pole wyszukiwania:', inputVal);
+
+                                // [b] Wyczyść poprzednie wartości w `searchFilterData`
+                                searchFilterData.values.clear();
+                                if (inputVal) {
+                                    searchFilterData.values.add(inputVal);
+                                }
+
+                                // [c] Wykonaj standardowe filtry Finsweet
+                                console.log('[INPUT] applyFilters()...');
+                                await filterInstance.applyFilters();
+                                console.log('[INPUT] Zakończono applyFilters().');
+
+                                // [d] Custom logika wyszukiwania
+                                if (inputVal) {
+                                    const searchWords = inputVal.split(/\s+/).filter(Boolean);
+
+                                    listInstance.items.forEach((item) => {
+                                        const text = [...item.props.nazwa.values][0]?.toLowerCase() || '';
+                                        const missingWords = searchWords.filter((word) => !text.includes(word));
+
+                                        // BYŁO I DZIAŁAŁO // Ustawiamy item.valid = false, jeśli brakuje któregokolwiek słowa.
+                                        if (missingWords.length > 0) {
+                                            item.valid = false;
+                                        } else {
+                                            item.valid = true;
+                                        }
+                                    });
+                                }
+
+                                // [e] Renderujemy ponownie
+                                console.log('[INPUT] Renderujemy finalne itemy po custom search...');
+                                await listInstance.renderItems();
+                            }
+
+                            // ----------------------------------------------------------
+                            // 4. Debounce eventu "input"
+                            // ----------------------------------------------------------
+                            let debounceTimer;
+                            const DEBOUNCE_DELAY = 300; // ms
+
+                            mySearchInput.addEventListener('input', () => {
+                                clearTimeout(debounceTimer);
+                                debounceTimer = setTimeout(async () => {
+                                    // Po odczekaniu 300 ms dopiero wywołujemy handleSearch
+                                    await handleSearch();
+                                }, DEBOUNCE_DELAY);
+                            });
+
+                            // ----------------------------------------------------------
+                            // 5. Jeśli w URL jest "?szukaj=...", zaczytaj to po starcie
+                            // ----------------------------------------------------------
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const initialSearchVal = urlParams.get('Szukaj') || '';
+                            if (initialSearchVal) {
+                                // Ustaw tę wartość w polu
+                                mySearchInput.value = initialSearchVal;
+                                // I od razu wywołaj handleSearch (bez czekania na input)
+                                handleSearch();
+                            }
+
+                            // ----------------------------------------------------------
+                            // 6. Obsługa licznika w filtrach kategoria/tag (Twoja funkcja)
+                            // ----------------------------------------------------------
                             function updateItemCount() {
                                 //console.log('filtersData:', filtersData);  // Debugowanie
 
@@ -587,6 +702,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                             // @ts-ignore
                             filterInstance.listInstance.on('renderitems', (renderedItems) => {
                                 updateItemCount();
+                                console.log('%c[EVENT renderitems]', 'color:blue;', renderedItems);
                             });
                         },
                     ]);
