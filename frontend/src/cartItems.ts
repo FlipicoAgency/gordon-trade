@@ -131,12 +131,7 @@ export function calculateLineCostAdvanced(
     const priceCarton = product.fieldData.priceCarton || 0;
     const pricePromo = product.fieldData.pricePromo || 0;
     const priceNormal = product.fieldData.priceNormal || 0;
-    let priceQuantity = [];
-    try {
-        priceQuantity = JSON.parse(product.fieldData.priceQuantity || "[]");
-    } catch (error) {
-        console.error("Błąd parsowania priceQuantity:", error);
-    }
+    let priceQuantity = product.fieldData.priceQuantity;
 
     // (1) Cena specjalna (highest priority):
     if (specialPrice && specialPrice > 0) {
@@ -582,9 +577,9 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
         const priceCarton = item.fieldData.priceCarton || 0;
         const hasSpecialPrice = !!specialPrices[item.id];
 
-        let priceQuantity = [];
+        let priceQuantity;
         try {
-            priceQuantity = JSON.parse(item.fieldData.priceQuantity || "[]");
+            priceQuantity = item.fieldData.priceQuantity;
         } catch (error) {
             console.error("Błąd parsowania priceQuantity:", error);
         }
@@ -802,7 +797,18 @@ export function mapApiResponseToProduct(apiResponse: any): Product {
         isArchived: apiResponse.isArchived ?? false,
         isDraft: apiResponse.isDraft ?? false,
         fieldData: {
-            priceQuantity: isEmptyString(apiResponse.fieldData["cena-ilosciowa"]) ? '' : apiResponse.fieldData["cena-ilosciowa"],
+            priceQuantity: (() => {
+                const raw = apiResponse.fieldData["cena-ilosciowa"];
+                if (isEmptyString(raw)) return [];
+
+                try {
+                    const parsed = JSON.parse(raw);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (err) {
+                    console.error('Błąd parsowania priceQuantity w mapApiResponseToProduct:', err);
+                    return [];
+                }
+            })(),
             priceNormal: isEmptyString(apiResponse.fieldData["cena"]) ? 0 : apiResponse.fieldData["cena"],
             pricePromo: isEmptyString(apiResponse.fieldData["procent-znizki"]) ? 0 : apiResponse.fieldData["procent-znizki"],
             promo: apiResponse.fieldData["promocja"] ?? false,
@@ -927,6 +933,12 @@ export async function fetchProductDetails(productId: string, lang: string): Prom
                 break;
             }
         }
+
+        product.fieldData.priceQuantity = product.fieldData.priceQuantity.map(tier => ({
+            ...tier,
+            // @ts-ignore
+            discount: tier.discount / (lang !== 'pl' ? exchangeRates['EUR'] : 1),
+        }));
 
         console.log('Updated product prices:', product);
 

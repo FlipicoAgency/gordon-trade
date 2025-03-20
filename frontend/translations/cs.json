@@ -61,5 +61,7 @@
   "specialPriceText": "(cena speciálně pro vás)",
   "selectColor": "Vyberte barvu",
   "selectSize": "Vyberte velikost",
-  "alertSelect": "Před přidáním produktu do košíku vyberte možnost."
+  "alertSelect": "Před přidáním produktu do košíku vyberte možnost.",
+
+  "discountLine": "Kupte {{quantity}}+ kusů: -{{discount}} EUR/kus."
 }

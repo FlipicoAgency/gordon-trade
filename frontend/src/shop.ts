@@ -12,55 +12,53 @@ function detectLanguage(): string {
     return supportedLanguages.includes(language) ? language : 'pl'; // Domyślnie 'pl'
 }
 
+function sanitizePrice(priceElement: HTMLElement | null): { price: number | null, wasConverted: boolean } {
+    if (!priceElement) return { price: null, wasConverted: false };
+    if (priceElement.classList.contains('w-dyn-bind-empty')) return { price: null, wasConverted: false };
+
+    const alreadyConverted = priceElement.getAttribute('data-converted') === 'true';
+
+    const raw = priceElement.textContent?.trim();
+    if (!raw) return { price: null, wasConverted: alreadyConverted };
+
+    const normalized = raw.replace(/[^\d.,-]/g, '').replace(',', '.');
+    const parsed = parseFloat(normalized);
+    return { price: isNaN(parsed) ? null : parsed, wasConverted: alreadyConverted };
+}
+
 export async function calculatePromoPercentage(productItems: Array<HTMLElement>, translations: Record<string, string>, language: string): Promise<void> {
     const member: Member | null = await getMemberData();
     let specialPrices: Record<string, string> = {};
 
     if (member) {
         const memberMetadata = member?.metaData;
-        //console.log('Metadata:', memberMetadata);
-
-        // Extract special prices from metadata if available
         specialPrices = memberMetadata || {};
     } else {
         console.warn("User not logged in or metadata not available. Special prices won't be applied.");
     }
 
-    // Pobierz kursy walut
     const exchangeRates = await fetchExchangeRates();
     if (!exchangeRates) {
         console.error("Could not fetch exchange rates. Skipping currency conversion.");
         return;
     }
 
-    // Wybierz odpowiedni kurs na podstawie języka
-    let conversionRate = 1; // Domyślnie w złotówkach
+    let conversionRate = 1;
     let currencySymbol = "zł";
 
     switch (language) {
         case "cs":
-            // @ts-ignore
-            conversionRate = exchangeRates["EUR"] || 1;
-            currencySymbol = "EUR";
-            break;
         case "hu":
-            // @ts-ignore
-            conversionRate = exchangeRates["EUR"] || 1;
-            currencySymbol = "EUR";
-            break;
         case "en":
             // @ts-ignore
             conversionRate = exchangeRates["EUR"] || 1;
             currencySymbol = "EUR";
             break;
         default:
-            conversionRate = 1; // Złotówki
+            conversionRate = 1;
             currencySymbol = "zł";
             break;
     }
-
-    // Select all product items
-    //const productItems = document.querySelectorAll<HTMLDivElement>('.product_item-wrapper');
 
     productItems.forEach((productItem) => {
         const id = productItem.querySelector<HTMLElement>('[data-commerce-product-id]')?.getAttribute('data-commerce-product-id');
@@ -77,38 +75,63 @@ export async function calculatePromoPercentage(productItems: Array<HTMLElement>,
             return;
         }
 
-        // Parse prices and apply conversion
-        const normalPrice = parseFloat(normal.textContent?.trim() || '') / conversionRate;
-        const cartonRealPrice = parseFloat(cartonPrice?.textContent?.trim() || '') / conversionRate;
-        let promoPrice = parseFloat(promo.textContent?.trim() || '') / conversionRate;
+        // Parsowanie cen i sprawdzanie, czy były przeliczone
+        const normalResult = sanitizePrice(normal);
+        const promoResult = sanitizePrice(promo);
+        const cartonResult = sanitizePrice(cartonPrice);
 
-        normal.textContent = String(normalPrice.toFixed(2));
-        promo.textContent = String(promoPrice.toFixed(2));
-        if (carton && cartonPrice) cartonPrice.textContent = String(cartonRealPrice.toFixed(2));
-        currencyElements.forEach((currencyElement) => {
-            currencyElement.textContent = `\u00A0${currencySymbol}`;
-        });
+        let normalPrice = normalResult.price;
+        let promoPrice = promoResult.price;
+        let cartonRealPrice = cartonResult.price;
 
-        // Check if there's a special price for this product
+        // Jeżeli promo z Memberstacka
         if (specialPrices[id]) {
-            promoPrice = parseFloat(specialPrices[id]) / conversionRate;
-            promo.textContent = `${promoPrice.toFixed(2)} ${currencySymbol}`;
-            promo.classList.remove('w-dyn-bind-empty');
+            promoPrice = parseFloat(specialPrices[id]);
+            promo?.classList.remove('w-dyn-bind-empty');
             normal.style.display = 'none';
             if (carton) carton.style.display = 'none';
-            //console.log(`Special price applied for product ${id}: ${promoPrice}`);
         }
 
-        if (!isNaN(promoPrice) && !isNaN(normalPrice) && normalPrice > 0 && !promo.classList.contains('w-dyn-bind-empty')) {
-            // Calculate percentage
-            const percentage = Math.round(((promoPrice - normalPrice) / normalPrice) * 100);
+        if (normalPrice !== null) {
+            if (!normalResult.wasConverted) normalPrice = normalPrice / conversionRate;
+            normal.textContent = `${normalPrice.toFixed(2)}`;
+            normal.setAttribute('data-converted', 'true');
+        } else {
+            normal.textContent = '—';
+        }
 
-            // Update UI elements
+        if (promoPrice !== null) {
+            if (!promoResult.wasConverted) promoPrice = promoPrice / conversionRate;
+            promo.textContent = `${promoPrice.toFixed(2)}`;
+            promo.setAttribute('data-converted', 'true');
+        } else {
+            promo.textContent = '—';
+        }
+
+        if (cartonRealPrice !== null && carton && cartonPrice) {
+            if (!cartonResult.wasConverted) cartonRealPrice = cartonRealPrice / conversionRate;
+            cartonPrice.textContent = `${cartonRealPrice.toFixed(2)}`;
+            cartonPrice.setAttribute('data-converted', 'true');
+        }
+
+        // Obliczanie promo %
+        if (
+            promoPrice !== null &&
+            normalPrice !== null &&
+            normalPrice > 0 &&
+            !promo.classList.contains('w-dyn-bind-empty')
+        ) {
+            const percentage = Math.round(((promoPrice - normalPrice) / normalPrice) * 100);
             span.textContent = Math.abs(percentage) + '%' + (specialPrices[id] ? ` ${translations.specialPriceText}` : '');
             tagline.style.display = 'block';
         } else {
-            //console.warn(`Invalid prices for product ${id}: normal (${normalPrice}), promo (${promoPrice}).`);
+            tagline.style.display = 'none';
         }
+
+        // Waluta dla pozostałych elementów (np. obok kartonu)
+        currencyElements.forEach((currencyElement) => {
+            currencyElement.textContent = `\u00A0${currencySymbol}`;
+        });
     });
 }
 
@@ -378,13 +401,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    function formatQuantityDiscounts(rawDiscounts: string): string {
+    async function formatQuantityDiscounts(rawDiscounts: string, translations: Record<string, string>, language: string): Promise<string> {
         try {
             const discounts = JSON.parse(rawDiscounts);
             if (!Array.isArray(discounts) || discounts.length === 0) return '';
 
+            let conversionRate = 1;
+            if (language !== 'pl') {
+                const rates = await fetchExchangeRates();
+                if (rates) {
+                    // @ts-ignore
+                    conversionRate = rates['EUR'] || 1;
+                }
+            }
+
             return discounts
-                .map(d => `Kup ${d.quantity}+ sztuk: -${d.discount} zł/szt.`)
+                .map((d: { quantity: number; discount: number }) => {
+                    const discount = (d.discount / conversionRate).toFixed(2);
+                    return translations.discountLine
+                        .replace('{{quantity}}', d.quantity.toString())
+                        .replace('{{discount}}', discount);
+                })
                 .join('<br>');
         } catch (error) {
             console.error('Błąd parsowania priceQuantity:', error);
@@ -440,16 +477,15 @@ document.addEventListener("DOMContentLoaded", async () => {
                     const categorySet = new Set<string>();
                     const tagSet = new Set<string>();
 
-                    productItems.forEach((item: { element: HTMLElement }) => {
-                        const priceQuantityElement = item.element.querySelector<HTMLDivElement>('[data-quantity-discount]');
+                    for (const item of productItems) {
+                        const priceQuantityElement = item.element.querySelector('[data-quantity-discount]') as HTMLDivElement | null;
                         if (priceQuantityElement) {
-                            priceQuantityElement.innerHTML = formatQuantityDiscounts(priceQuantityElement.textContent || ''); // Wstawiamy sformatowane wartości
+                            priceQuantityElement.innerHTML = await formatQuantityDiscounts(priceQuantityElement.textContent || '', translations, language);
                         }
 
-                        const categoryElement = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="Kategoria"]');
-
-                        const priceNormal = item.element.querySelector<HTMLElement>('[data-price="normal"]')?.textContent;
-                        const pricePromo = item.element.querySelector<HTMLElement>('[data-price="promo"]')?.textContent;
+                        const categoryElement = item.element.querySelector('[fs-cmsfilter-field="Kategoria"]') as HTMLElement | null;
+                        const priceNormal = item.element.querySelector('[data-price="normal"]') as HTMLElement | null;
+                        const pricePromo = item.element.querySelector('[data-price="promo"]') as HTMLElement | null;
 
                         if (priceNormal || pricePromo) {
                             // Tworzymy nowy element span priceElement
@@ -465,17 +501,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                             // Dodajemy odpowiednią wartość do elementu
                             if (pricePromo) {
-                                priceElement.textContent = pricePromo; // Ustawiamy cenę promocyjną, jeśli jest dostępna
-                                item.element.appendChild(promoElement); // Dodaj element span promoElement
+                                priceElement.textContent = pricePromo.textContent || ''; // ✔️ string lub pusty string
+                                item.element.appendChild(promoElement);
                             } else if (priceNormal) {
-                                priceElement.textContent = priceNormal; // Ustawiamy cenę normalną, jeśli nie ma promocyjnej
+                                priceElement.textContent = priceNormal.textContent || '';
                             }
 
                             // Dodajemy nowy element do `item.element`
                             item.element.appendChild(priceElement);
                         }
 
-                        const tags = item.element.querySelector<HTMLElement>('[data-product="tags"]')?.textContent?.trim().split(',');
+                        const tagsElement = item.element.querySelector('[data-product="tags"]') as HTMLElement | null;
+                        const tags = tagsElement?.textContent?.trim().split(',');
                         if (tags) {
                             //console.log('Tagi:', tags);
 
@@ -497,7 +534,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                             categorySet.add(categoryElement.textContent.trim());
                         }
 
-                        const stockStatus = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="Dostępne"]')?.textContent;
+                        const stockStatusElement = item.element.querySelector('[fs-cmsfilter-field="Dostępne"]') as HTMLElement | null;
+                        const stockStatus = stockStatusElement?.textContent;
 
                         // Debugowanie: sprawdzenie, jaka wartość jest pobierana z Webflow CMS
                         // console.log("Stock Status from Webflow CMS:", stockStatus);
@@ -505,9 +543,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                         // Konwersja wartości na Boolean i odwrócenie jej
                         const isOutOfStock = stockStatus === "false" ? "true" : "false";
 
-                        const outOfStockElement = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="Niedostępne"]');
+                        const outOfStockElement = item.element.querySelector('[fs-cmsfilter-field="Niedostępne"]') as HTMLElement | null;
                         if (outOfStockElement) outOfStockElement.textContent = isOutOfStock;
-                    });
+                    }
 
                     // Function to create filter items
                     function createFilterItem(value: string, filterField: string): HTMLElement {
@@ -584,6 +622,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     // @ts-ignore
                     window.fsAttributes.push([
                         'cmsfilter',
+                        // @ts-ignore
                         (filterInstances) => {
                             const [filterInstance] = filterInstances;
                             const { listInstance, filtersData } = filterInstance;
@@ -593,6 +632,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                             // ----------------------------------------------------------
                             // 1. Jeśli nie ma obiektu filtra "customSearch", to go tworzymy
                             // ----------------------------------------------------------
+                            // @ts-ignore
                             let searchFilterData = filtersData.find((fd) =>
                                 fd.filterKeys.includes('Szukaj')
                             );
@@ -625,7 +665,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                             // ----------------------------------------------------------
                             async function handleSearch() {
                                 // [a] Pobierz wartość inputa
-                                const inputVal = mySearchInput.value.trim().toLowerCase();
+                                // @ts-ignore
+                                const inputVal = mySearchInput?.value.trim().toLowerCase();
                                 console.log('[INPUT] Wpisano w pole wyszukiwania:', inputVal);
 
                                 // [b] Wyczyść poprzednie wartości w `searchFilterData`
@@ -643,8 +684,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                                 if (inputVal) {
                                     const searchWords = inputVal.split(/\s+/).filter(Boolean);
 
+                                    // @ts-ignore
                                     listInstance.items.forEach((item) => {
                                         const text = [...item.props.nazwa.values][0]?.toLowerCase() || '';
+                                        // @ts-ignore
                                         const missingWords = searchWords.filter((word) => !text.includes(word));
 
                                         // BYŁO I DZIAŁAŁO // Ustawiamy item.valid = false, jeśli brakuje któregokolwiek słowa.
@@ -664,10 +707,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                             // ----------------------------------------------------------
                             // 4. Debounce eventu "input"
                             // ----------------------------------------------------------
+                            // @ts-ignore
                             let debounceTimer;
                             const DEBOUNCE_DELAY = 300; // ms
 
                             mySearchInput.addEventListener('input', () => {
+                                // @ts-ignore
                                 clearTimeout(debounceTimer);
                                 debounceTimer = setTimeout(async () => {
                                     // Po odczekaniu 300 ms dopiero wywołujemy handleSearch
@@ -682,6 +727,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                             const initialSearchVal = urlParams.get('Szukaj') || '';
                             if (initialSearchVal) {
                                 // Ustaw tę wartość w polu
+                                // @ts-ignore
                                 mySearchInput.value = initialSearchVal;
                                 // I od razu wywołaj handleSearch (bez czekania na input)
                                 handleSearch();

@@ -5,6 +5,13 @@ import type {ProductInCart} from "../types/cart";
 import type {Member} from "./memberstack";
 import {categoryMap, fetchCategories, fetchProductDetails} from "./cartItems";
 
+const currencyMap: Record<string, string> = {
+    pl: 'zł',
+    cs: 'EUR',
+    hu: 'EUR',
+    en: 'EUR',
+};
+
 const orderedAgainModal = document.querySelector('#re-ordered') as HTMLElement;
 const orderList = document.querySelector('.order_list') as HTMLElement;
 
@@ -124,6 +131,8 @@ export async function addNewOrderToExcel(
     order?: Order,
 ) {
     try {
+        const currency = currencyMap[language] || 'zł'; // Dodajemy walutę tutaj
+
         // Przygotuj dane do wysłania do arkusza
         const formattedData = Array.isArray(items)
             ? items.map((product, index) => [
@@ -135,14 +144,11 @@ export async function addNewOrderToExcel(
                 product.id || '',
                 product.variant || '',
                 product.quantity || '',
-                product.price || '',
+                `${product.price.toFixed(2)} ${currency}`, // <-- TU dodajemy walutę!
                 index === 0
                     ? items
-                        .reduce(
-                                (sum, item) => sum + (item.price * item.quantity),
-                            0
-                        )
-                        .toFixed(2)
+                    .reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                    .toFixed(2) + ` ${currency}` // <-- Tutaj też!
                     : '',
                 index === 0 ? getTodayDate() : '', // Data zamówienia
                 '', // FV amount netto
@@ -165,8 +171,8 @@ export async function addNewOrderToExcel(
                 product.id || '',
                 product.variant || '',
                 product.quantity || '',
-                product.price || '',
-                index === 0 ? items["Order value"] : '',
+                `${product.price} ${currency}`,
+                index === 0 ? items["Order value"] + ` ${currency}` : '',
                 index === 0 ? getTodayDate() : '',
                 '', // FV amount netto
                 '', // FV number

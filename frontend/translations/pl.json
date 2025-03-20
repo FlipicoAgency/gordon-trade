@@ -61,5 +61,7 @@
   "specialPriceText": "(cena specjalnie dla Ciebie)",
   "selectColor": "Wybierz kolor",
   "selectSize": "Wybierz rozmiar",
-  "alertSelect": "Proszę wybrać opcję przed dodaniem produktu do koszyka."
+  "alertSelect": "Proszę wybrać opcję przed dodaniem produktu do koszyka.",
+
+  "discountLine": "Kup {{quantity}}+ sztuk: -{{discount}} zł/szt."
 }

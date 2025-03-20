@@ -7,6 +7,19 @@ import {addNewOrderToExcel, fetchOrdersByNip} from "../excel";
 const noResultElement = document.querySelector('[orders="none"]') as HTMLElement;
 const orderList = document.querySelector('.order_list') as HTMLElement;
 
+function parsePriceWithCurrency(priceString: string): { value: number, currency: string } {
+    const currencyMatch = priceString.match(/[A-Za-z]+$/);
+    const currency = currencyMatch ? currencyMatch[0] : 'zł';
+
+    const valueString = priceString
+        .replace(/[^\d,\.\s]/g, '')
+        .replace(',', '.')
+        .trim();
+
+    const value = parseFloat(valueString) || 0;
+    return { value, currency };
+}
+
 /**
  * Funkcja obsługująca ponowne złożenie zamówienia.
  * @param button Element przycisku, który został kliknięty.
@@ -20,7 +33,6 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member, transla
     }
 
     try {
-        // 1. Pobierz dane zamówień z localStorage
         const ordersData = localStorage.getItem('orders');
         if (!ordersData) {
             console.error('Brak danych zamówień w localStorage.');
@@ -28,42 +40,48 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member, transla
         }
 
         const orders: Record<string, Order> = JSON.parse(ordersData);
-        const foundOrder = Object.values(orders).find(order => order["Order ID"] === orderId);
+        const foundOrder = Object.values(orders).find(order => order["Order ID"].toString() === orderId);
 
         if (!foundOrder) {
             console.error(`Nie znaleziono zamówienia o ID: ${orderId}`);
             return;
         }
 
-        // Przetwórz zamówienie
         const order: Order = foundOrder;
 
-        // Sprawdź, czy zamówienie zawiera produkty
         if (!order.products || !Array.isArray(order.products) || order.products.length === 0) {
             console.error(`Zamówienie o ID: ${orderId} nie zawiera produktów.`);
             return;
         }
 
-        // Przygotuj produkty do przetworzenia
+        const currencies: string[] = [];
+
         const items: Awaited<null | ProductInCart>[] = await Promise.all(order.products.map(async (product: OrderProduct) => {
             const productDetails: Product | null = await fetchProductDetails(product.id, language);
             if (!productDetails) {
                 console.error(`Nie udało się pobrać szczegółów produktu o ID: ${product.id}`);
+                currencies.push('zł'); // fallback
                 return null;
             }
 
-            // parseInt(...) dla ilości
             const parsedQuantity = parseInt(product.quantity, 10) || 1;
 
-            // parseFloat(...) dla ceny (usuwając " zł" i ewentualnie przecinek)
             let parsedPrice = 0;
+            let currency = 'zł';
+
             if (product.price && product.price.trim() !== '') {
-                const cleaned = product.price.replace(' zł', '').replace(',', '.');
-                const tmp = parseFloat(cleaned);
-                if (!isNaN(tmp)) {
-                    parsedPrice = tmp;
+                const match = product.price.match(/([\d.,]+)\s*(zł|EUR|€)?/i);
+                if (match) {
+                    const cleaned = match[1].replace(',', '.');
+                    const tmp = parseFloat(cleaned);
+                    if (!isNaN(tmp)) parsedPrice = tmp;
+                    if (match[2]) {
+                        currency = match[2] === '€' ? 'EUR' : match[2];
+                    }
                 }
             }
+
+            currencies.push(currency);
 
             return {
                 ...productDetails,
@@ -73,7 +91,6 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member, transla
             } as ProductInCart;
         }));
 
-        // Filtruj produkty, które zostały poprawnie załadowane
         const validItems: ProductInCart[] = items.filter(item => item !== null) as ProductInCart[];
 
         if (validItems.length === 0) {
@@ -87,7 +104,7 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member, transla
         await addNewOrderToExcel(validItems, memberData, translations, language, order);
 
         // Wyślij nowe zamówienie za pomocą Make
-        await sendNewOrderViaMake(validItems, memberData);
+        await sendNewOrderViaMake(validItems, currencies, memberData);
 
         console.log('Zamówienie zostało pomyślnie ponownie złożone.');
     } catch (error) {
@@ -100,12 +117,12 @@ async function handleOrderAgain(button: HTMLElement, memberData: Member, transla
  * @param items Produkty w zamówieniu.
  * @param memberData Dane członka (rabaty, itp.).
  */
-async function sendNewOrderViaMake(items: ProductInCart[], memberData: Member) {
+async function sendNewOrderViaMake(items: ProductInCart[], currencies: string[], memberData: Member) {
     const makeUrl = 'https://hook.eu2.make.com/ey0oofllpglvwpgbjm0pw6t0yvx37cnd';
 
     try {
         const payload = {
-            items: items.map(item => ({
+            items: items.map((item, idx) => ({
                 id: item.id,
                 name: item.fieldData.name,
                 sku: item.fieldData.sku,
@@ -114,6 +131,7 @@ async function sendNewOrderViaMake(items: ProductInCart[], memberData: Member) {
                 totalPrice: (item.price * item.quantity).toFixed(2),
                 variant: item.variant,
                 url: item.fieldData.thumbnail,
+                currency: currencies[idx] || 'zł' // przypisujemy walutę wg indeksu
             })),
             member: memberData,
         };
@@ -190,15 +208,7 @@ export function getIconPath(iconType: string): string {
 }
 
 export async function generateOrderItem(order: Order, translations: Record<string, string>, language: string) {
-    const orderValue = order["Order value"];
-    const numericOrderValue = parseFloat(orderValue);
-
-    //console.log('order value:', orderValue);
-    // Sprawdź, czy orderValue jest prawidłowe
-    // if (orderValue <= 0) {
-    //     console.error('Nieprawidłowa wartość zamówienia:', order["Order value"]);
-    //     return; // Zakończ, jeśli wartość zamówienia jest nieprawidłowa
-    // }
+    const { value: numericOrderValue, currency } = parsePriceWithCurrency(order["Order value"]);
 
     // Stwórz element <li> dla zamówienia
     const li = document.createElement('li');
@@ -222,7 +232,7 @@ export async function generateOrderItem(order: Order, translations: Record<strin
                                 <div class="text-size-small">${translations.orderValueLabel}</div>
                             </div>
                             <div class="order_details_grid_item">
-                                <div class="text-size-small">${numericOrderValue.toFixed(2)} zł</div>
+                                <div class="text-size-small">${numericOrderValue.toFixed(2)} ${currency}</div>
                             </div>
                             <div class="order_details_grid_item">
                                 <div class="text-size-small">${translations.status}</div>
@@ -267,7 +277,7 @@ export async function generateOrderItem(order: Order, translations: Record<strin
         const productDetails: Product = await fetchProductDetails(product.id, language);
 
         const productQuantity = Number(product.quantity);
-        const productPrice = Number(product.price.replace(' zł', '').replace(',', ''));
+        const { value: productPrice, currency: productCurrency } = parsePriceWithCurrency(product.price);
         const productTotal = productQuantity * productPrice;
 
         const productDiv = document.createElement('div');
@@ -288,7 +298,7 @@ export async function generateOrderItem(order: Order, translations: Record<strin
                             <div class="text-size-small">${translations.pricePerUnit}</div>
                         </div>
                         <div class="order_details_grid_item">
-                            <div class="text-size-small">${productPrice.toFixed(2)} zł</div>
+                            <div class="text-size-small">${productPrice.toFixed(2)} ${currency}</div>
                         </div>
                         <div class="order_details_grid_item">
                             <div class="text-size-small">SKU:</div>
@@ -306,7 +316,7 @@ export async function generateOrderItem(order: Order, translations: Record<strin
                     </div>
                 </div>
                 <div class="order_product_price">
-                    <div class="heading-style-h6 text-color-brand">${productTotal.toFixed(2)} zł</div>
+                    <div class="heading-style-h6 text-color-brand">${productTotal.toFixed(2)} ${currency}</div>
                 </div>
             </div>
         `;
@@ -342,7 +352,7 @@ export async function generateOrderItem(order: Order, translations: Record<strin
         <div class="order_row is-reverse">
             <div class="order_total">
                 <div class="text-size-small">${translations.togetherLabel}</div>
-                <div class="heading-style-h5">${numericOrderValue.toFixed(2)} zł</div>
+                <div class="heading-style-h5">${numericOrderValue.toFixed(2)} ${currency}</div>
             </div>
             ${order['FV PDF'] ? `
                 <div class="button-group">

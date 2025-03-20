@@ -61,5 +61,7 @@
   "specialPriceText": "(special price for you)",
   "selectColor": "Select color",
   "selectSize": "Select size",
-  "alertSelect": "Please select an option before adding the product to your cart."
+  "alertSelect": "Please select an option before adding the product to your cart.",
+
+  "discountLine": "Buy {{quantity}}+ pieces: -{{discount}} EUR/pc."
 }
