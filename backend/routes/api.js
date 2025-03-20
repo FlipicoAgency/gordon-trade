@@ -178,7 +178,7 @@ router.post('/sheets/orders', async (req, res) => {
             }
         });
 
-        // Dodanie obramowań dla całego zakresu A:O
+        // Dodanie obramowań dla całego zakresu A:P
         mergeRequests.push({
             updateBorders: {
                 range: {
@@ -221,7 +221,7 @@ router.post('/sheets/orders', async (req, res) => {
             },
         });
 
-        // Dodanie wycentrowania tekstu dla całego zakresu A:U
+        // Dodanie wycentrowania tekstu dla całego zakresu A:P
         mergeRequests.push({
             repeatCell: {
                 range: {
@@ -235,9 +235,14 @@ router.post('/sheets/orders', async (req, res) => {
                     userEnteredFormat: {
                         horizontalAlignment: 'CENTER', // Wycentrowanie poziome
                         verticalAlignment: 'MIDDLE', // Wycentrowanie pionowe
+                        backgroundColor: {
+                            red: 1,
+                            green: 1,
+                            blue: 1
+                        },
                     },
                 },
-                fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment)', // Wskaż zmieniane pola
+                fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment,backgroundColor)', // Wskaż zmieniane pola
             },
         });
 
