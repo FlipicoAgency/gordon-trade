@@ -131,6 +131,12 @@ export function calculateLineCostAdvanced(
     const priceCarton = product.fieldData.priceCarton || 0;
     const pricePromo = product.fieldData.pricePromo || 0;
     const priceNormal = product.fieldData.priceNormal || 0;
+    let priceQuantity = [];
+    try {
+        priceQuantity = JSON.parse(product.fieldData.priceQuantity || "[]");
+    } catch (error) {
+        console.error("Błąd parsowania priceQuantity:", error);
+    }
 
     // (1) Cena specjalna (highest priority):
     if (specialPrice && specialPrice > 0) {
@@ -142,8 +148,21 @@ export function calculateLineCostAdvanced(
     const leftover = quantity % qInBox; // Ile sztuk ponad pełne kartony
 
     // Priorytetowe ceny
-    const effectiveCartonPrice = priceCarton > 0 ? priceCarton : (pricePromo > 0 ? pricePromo : priceNormal);
+    let effectiveCartonPrice = priceCarton > 0 ? priceCarton : (pricePromo > 0 ? pricePromo : priceNormal);
     const effectivePiecePrice = pricePromo > 0 ? pricePromo : priceNormal;
+
+    // **Nowa logika rabatowa**
+    if (Array.isArray(priceQuantity) && priceQuantity.length > 0) {
+        // Sortujemy progi od największej ilości do najmniejszej
+        const sortedThresholds = priceQuantity.sort((a, b) => b.quantity - a.quantity);
+
+        for (const threshold of sortedThresholds) {
+            if (fullBoxes >= threshold.quantity) {
+                effectiveCartonPrice -= threshold.discount;
+                break; // Znaleźliśmy odpowiedni próg rabatowy
+            }
+        }
+    }
 
     // Oblicz koszt pełnych kartonów
     const costFullBoxes = fullBoxes * qInBox * effectiveCartonPrice;
@@ -562,6 +581,27 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
     cartItems.forEach((item, index) => {
         const priceCarton = item.fieldData.priceCarton || 0;
         const hasSpecialPrice = !!specialPrices[item.id];
+
+        let priceQuantity = [];
+        try {
+            priceQuantity = JSON.parse(item.fieldData.priceQuantity || "[]");
+        } catch (error) {
+            console.error("Błąd parsowania priceQuantity:", error);
+        }
+
+        // Obliczanie ceny po rabacie
+        if (Array.isArray(priceQuantity) && priceQuantity.length > 0) {
+            // Sortujemy progi od największej ilości do najmniejszej
+            const sortedThresholds = priceQuantity.sort((a, b) => b.quantity - a.quantity);
+
+            for (const threshold of sortedThresholds) {
+                if (item.quantity >= threshold.quantity) {
+                    item.fieldData.priceNormal -= threshold.discount;
+                    break; // Znaleźliśmy odpowiedni próg rabatowy
+                }
+            }
+        }
+
         const priceSpecialOrPromoOrNormal = hasSpecialPrice ? specialPrices[item.id] : item.fieldData.pricePromo > 0 ? item.fieldData.pricePromo : item.fieldData.priceNormal;
 
         // Upewnij się, że cena ma dwa miejsca po przecinku
@@ -589,7 +629,7 @@ async function renderCartItems(cartItems: ProductInCart[], translations: Record<
                 </div>
                 
                 <!-- Cena za sztukę (karton) -->
-                <div class="cart-product-parameter" style="display: ${(priceCarton > 0 && !hasSpecialPrice) ? 'flex' : 'none'};">
+                <div class="cart-product-parameter" style="display: ${(priceCarton > 1 && !hasSpecialPrice) ? 'flex' : 'none'};">
                     <div class="display-inline">${translations.inCarton}</div>
                     <div class="display-inline text-weight-semibold text-color-brand">&nbsp;${priceCarton > 0 ? priceCarton.toFixed(2) : ''} ${currency}</div>
                 </div>
@@ -762,6 +802,7 @@ export function mapApiResponseToProduct(apiResponse: any): Product {
         isArchived: apiResponse.isArchived ?? false,
         isDraft: apiResponse.isDraft ?? false,
         fieldData: {
+            priceQuantity: isEmptyString(apiResponse.fieldData["cena-ilosciowa"]) ? '' : apiResponse.fieldData["cena-ilosciowa"],
             priceNormal: isEmptyString(apiResponse.fieldData["cena"]) ? 0 : apiResponse.fieldData["cena"],
             pricePromo: isEmptyString(apiResponse.fieldData["procent-znizki"]) ? 0 : apiResponse.fieldData["procent-znizki"],
             promo: apiResponse.fieldData["promocja"] ?? false,

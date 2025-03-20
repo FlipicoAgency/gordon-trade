@@ -7,6 +7,11 @@ export interface Product {
     isArchived: boolean;
     isDraft: boolean;
     fieldData: {
+        // priceQuantity: Array<{
+        //     discount: number;
+        //     quantity: number;
+        // }>
+        priceQuantity: string;
         priceNormal: number;
         pricePromo: number;
         promo: boolean;

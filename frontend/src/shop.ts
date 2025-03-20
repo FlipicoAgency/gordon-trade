@@ -1,6 +1,6 @@
 import {fetchExchangeRates, initializeAddToCartButtons} from "./cartItems";
 import type {Member} from './memberstack';
-import {getMemberData, getMemberJSON, initializeFavoriteState, updateMemberJSON} from './memberstack';
+import {getMemberData, initializeFavoriteState} from './memberstack';
 import {initializeGenerateOffer} from "./excel";
 
 // Funkcja do wykrywania języka
@@ -134,28 +134,28 @@ document.addEventListener("DOMContentLoaded", async () => {
      * razie false.
      */
     function canCheckCheckbox(productItem: HTMLElement): boolean {
-        // Sprawdź select z wariantem (o ile istnieje i ma validate="true")
-        const variantSelect = productItem.querySelector<HTMLSelectElement>(
-            'select[data-input="variant"][validate="true"]'
-        );
-        if (variantSelect && variantSelect.value === "") {
-            // Wariant jest wymagany, ale nie wybrano go
-            return false;
-        }
-
-        // Sprawdź ewentualną grupę pill (aria-checked="true")
-        const optionPillGroup = productItem.querySelector<HTMLDivElement>(
-            'div[data-input="pill-group"]'
-        );
-        if (optionPillGroup) {
-            const selectedPill = optionPillGroup.querySelector<HTMLDivElement>(
-                'div[aria-checked="true"]'
-            );
-            if (!selectedPill) {
-                // Tu również mamy wymagany wariant (pill), ale nie został wybrany
-                return false;
-            }
-        }
+        // // Sprawdź select z wariantem (o ile istnieje i ma validate="true")
+        // const variantSelect = productItem.querySelector<HTMLSelectElement>(
+        //     'select[data-input="variant"][validate="true"]'
+        // );
+        // if (variantSelect && variantSelect.value === "") {
+        //     // Wariant jest wymagany, ale nie wybrano go
+        //     return false;
+        // }
+        //
+        // // Sprawdź ewentualną grupę pill (aria-checked="true")
+        // const optionPillGroup = productItem.querySelector<HTMLDivElement>(
+        //     'div[data-input="pill-group"]'
+        // );
+        // if (optionPillGroup) {
+        //     const selectedPill = optionPillGroup.querySelector<HTMLDivElement>(
+        //         'div[aria-checked="true"]'
+        //     );
+        //     if (!selectedPill) {
+        //         // Tu również mamy wymagany wariant (pill), ale nie został wybrany
+        //         return false;
+        //     }
+        // }
 
         // Jeśli dotarliśmy tutaj, to znaczy, że nie ma wymogu wariantu
         // lub wariant został wybrany prawidłowo.
@@ -287,6 +287,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                     '[data-commerce-product-id]'
                 )?.getAttribute('data-commerce-product-id');
 
+                if (!cmsId) {
+                    console.error('Brak CMS ID dla produktu, pomijamy ten produkt.');
+                    return; // lub możesz pominąć dalsze przetwarzanie dla tego elementu
+                }
+
+                // Używamy już pewnego, że cmsId jest typu string
+                const itemWithVariant = cmsId;
+
                 // Nasłuchujemy zmiany stanu (check/uncheck)
                 checkbox.addEventListener('change', () => {
                     try {
@@ -311,29 +319,29 @@ document.addEventListener("DOMContentLoaded", async () => {
                             // Jeżeli można zaznaczyć i mamy cmsId, dodajemy do selectedItems
                             // UWAGA: Poniżej masz logikę łączenia ID i wariantu w itemWithVariant,
                             // jeśli coś takiego stosujesz:
-                            let selectedVariant: string | null = null;
+                            // let selectedVariant: string | null = null;
+                            //
+                            // const variantSelect = productItem.querySelector<HTMLSelectElement>(
+                            //     'select[data-input="variant"]'
+                            // );
+                            // if (variantSelect && variantSelect.value) {
+                            //     selectedVariant = variantSelect.value;
+                            // }
+                            //
+                            // // Sprawdź pille
+                            // const optionPillGroup = productItem.querySelector<HTMLDivElement>(
+                            //     'div[data-input="pill-group"]'
+                            // );
+                            // if (optionPillGroup) {
+                            //     const selectedPill = optionPillGroup.querySelector<HTMLDivElement>(
+                            //         'div[aria-checked="true"]'
+                            //     );
+                            //     if (selectedPill) {
+                            //         selectedVariant = selectedPill.getAttribute('data-variant-value') || null;
+                            //     }
+                            // }
 
-                            const variantSelect = productItem.querySelector<HTMLSelectElement>(
-                                'select[data-input="variant"]'
-                            );
-                            if (variantSelect && variantSelect.value) {
-                                selectedVariant = variantSelect.value;
-                            }
-
-                            // Sprawdź pille
-                            const optionPillGroup = productItem.querySelector<HTMLDivElement>(
-                                'div[data-input="pill-group"]'
-                            );
-                            if (optionPillGroup) {
-                                const selectedPill = optionPillGroup.querySelector<HTMLDivElement>(
-                                    'div[aria-checked="true"]'
-                                );
-                                if (selectedPill) {
-                                    selectedVariant = selectedPill.getAttribute('data-variant-value') || null;
-                                }
-                            }
-
-                            const itemWithVariant = `${cmsId}${selectedVariant ? `|${selectedVariant}` : ''}`;
+                            // const itemWithVariant = `${cmsId}${selectedVariant ? `|${selectedVariant}` : ''}`;
 
                             if (!selectedItems.includes(itemWithVariant)) {
                                 selectedItems.push(itemWithVariant);
@@ -367,6 +375,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
         } catch (error) {
             console.error('Error during checkbox initialization:', error);
+        }
+    }
+
+    function formatQuantityDiscounts(rawDiscounts: string): string {
+        try {
+            const discounts = JSON.parse(rawDiscounts);
+            if (!Array.isArray(discounts) || discounts.length === 0) return '';
+
+            return discounts
+                .map(d => `Kup ${d.quantity}+ sztuk: -${d.discount} zł/szt.`)
+                .join('<br>');
+        } catch (error) {
+            console.error('Błąd parsowania priceQuantity:', error);
+            return '';
         }
     }
 
@@ -419,6 +441,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                     const tagSet = new Set<string>();
 
                     productItems.forEach((item: { element: HTMLElement }) => {
+                        const priceQuantityElement = item.element.querySelector<HTMLDivElement>('[data-quantity-discount]');
+                        if (priceQuantityElement) {
+                            priceQuantityElement.innerHTML = formatQuantityDiscounts(priceQuantityElement.textContent || ''); // Wstawiamy sformatowane wartości
+                        }
+
                         const categoryElement = item.element.querySelector<HTMLElement>('[fs-cmsfilter-field="Kategoria"]');
 
                         const priceNormal = item.element.querySelector<HTMLElement>('[data-price="normal"]')?.textContent;

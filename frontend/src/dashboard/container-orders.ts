@@ -318,10 +318,10 @@ function generateShipListItem(container: Container, translations: Record<string,
     const statusName: string = container["Delivery status"].name || "";
 
     // Sprawdzenie czy status to "Zrealizowano", w takim przypadku pomijamy generowanie ship item
-    if (statusName === translations.statusCompleted || statusName === translations.statusUnknown) {
-        console.log(`Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
-        return;
-    }
+    // if (statusName === translations.statusCompleted || statusName === translations.statusUnknown) {
+    //     console.log(`Pomijanie generowania ship item dla kontenera ${container["Container No1"]} o statusie: ${statusName}`);
+    //     return;
+    // }
 
     // Wybierz klasę procentową na podstawie wartości "procent"
     const progressClass = container["Delivery status"].procent || "is-0";

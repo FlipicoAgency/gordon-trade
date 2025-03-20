@@ -238,9 +238,10 @@ const generateExcelFile = async (products: ProductInCart[]): Promise<void> => {
     const data = products.map(product => ({
         "Nazwa": product.fieldData.name,
         "Kategoria": categoryMap[product.fieldData.category],
-        "Wariant": product.variant || '',
+        // "Wariant": product.variant || '',
         "Cena": `${product.fieldData.pricePromo > 0 ? product.fieldData.pricePromo.toFixed(2) : product.fieldData.priceNormal.toFixed(2)} zł`,
         "SKU": product.fieldData.sku,
+        "EAN": product.fieldData.ean,
         "Dostępność": product.fieldData.inStock ? "Brak na stanie" : "W magazynie",
         "Zdjęcie": '', // Pusta komórka, obraz wstawimy za chwilę
         "Ilość w kartonie": product.fieldData.quantityInBox,
@@ -338,18 +339,23 @@ export const initializeGenerateOffer = async (productsToOffer: string[], languag
     const generateOfferButton = document.getElementById('generate-offer') as HTMLButtonElement;
     if (generateOfferButton) {
         generateOfferButton.addEventListener('click', async () => {
-            // Rozdziel ID i warianty
+            // // Rozdziel ID i warianty
+            // const products = await Promise.all(
+            //     productsToOffer.map(async (productIdWithVariant) => {
+            //         const [productId, variant] = productIdWithVariant.split('|');
+            //         const product = await fetchProductDetails(productId, language);
+            //
+            //         // Dodaj wariant, jeśli istnieje
+            //         if (product && variant) {
+            //             product.variant = variant;
+            //         }
+            //
+            //         return product;
+            //     })
+            // );
             const products = await Promise.all(
-                productsToOffer.map(async (productIdWithVariant) => {
-                    const [productId, variant] = productIdWithVariant.split('|');
-                    const product = await fetchProductDetails(productId, language);
-
-                    // Dodaj wariant, jeśli istnieje
-                    if (product && variant) {
-                        product.variant = variant;
-                    }
-
-                    return product;
+                productsToOffer.map(async (productId) => {
+                    return await fetchProductDetails(productId, language);
                 })
             );
 
