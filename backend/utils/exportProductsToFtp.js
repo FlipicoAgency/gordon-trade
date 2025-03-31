@@ -10,19 +10,34 @@ const SITE_ID = '671f56de2f5de134f0f39123';
 const WEBFLOW_API_URL = 'https://api.webflow.com/v2';
 
 async function fetchProductsFromWebflow() {
-    const url = `${WEBFLOW_API_URL}/collections/${PRODUCTS_COLLECTION_ID}/items`;
-    try {
+    const allItems = [];
+    let offset = 0;
+    const limit = 100;
+
+    while (true) {
+        // Dodajemy parametry offset i limit
+        const url = `${WEBFLOW_API_URL}/collections/${PRODUCTS_COLLECTION_ID}/items?offset=${offset}&limit=${limit}`;
         const response = await axios.get(url, {
             headers: {
                 Authorization: `Bearer ${WEBFLOW_TOKEN}`,
                 'accept-version': '1.0.0'
             }
         });
-        return response.data.items;
-    } catch (error) {
-        console.error('❌ Błąd pobierania z Webflow:', error.response?.data || error);
-        throw new Error('Webflow fetch failed');
+
+        const batch = response.data.items || [];
+        allItems.push(...batch);
+
+        // Jeżeli w tej partii było mniej niż 100,
+        // to znaczy, że to już koniec
+        if (batch.length < limit) {
+            break;
+        }
+
+        // Zwiększamy offset i lecimy po kolejną setkę
+        offset += limit;
     }
+
+    return allItems;
 }
 
 function sanitizeKey(key) {
@@ -90,6 +105,7 @@ async function runExport() {
         console.log('📁 Ścieżka do XML:', exportPath);
 
         generateXmlFile(products, exportPath);
+
         // console.log('📤 Próba uploadu na FTP...');
         // await uploadToFTP(exportPath, 'products.xml');
 
