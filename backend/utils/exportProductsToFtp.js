@@ -20,8 +20,8 @@ async function fetchProductsFromWebflow() {
         });
         return response.data.items;
     } catch (error) {
-        console.error('Error fetching Webflow products:', error.response?.data || error);
-        return [];
+        console.error('❌ Błąd pobierania z Webflow:', error.response?.data || error);
+        throw new Error('Webflow fetch failed');
     }
 }
 
@@ -47,16 +47,29 @@ async function uploadToFTP(localFilePath, remoteFileName) {
         console.log(`✅ Plik wrzucony na FTP jako ${remoteFileName}`);
     } catch (error) {
         console.error('❌ Błąd uploadu FTP:', error);
+        throw error;
     }
     await client.close();
 }
 
 async function runExport() {
-    const products = await fetchProductsFromWebflow();
-    const exportPath = path.join(__dirname, '../exports/products.xml');
+    try {
+        console.log('🔄 Start exportu...');
+        const products = await fetchProductsFromWebflow();
+        console.log(`📦 Liczba produktów: ${products.length}`);
 
-    generateXmlFile(products, exportPath);
-    await uploadToFTP(exportPath, 'products.xml');
+        const exportPath = path.join(__dirname, '../exports/products.xml');
+        console.log('📁 Ścieżka do XML:', exportPath);
+
+        generateXmlFile(products, exportPath);
+        console.log('📤 Próba uploadu na FTP...');
+        await uploadToFTP(exportPath, 'products.xml');
+
+        console.log('✅ Export zakończony sukcesem.');
+    } catch (err) {
+        console.error('❌ Błąd w runExport:', err);
+        throw err; // przekaż do routera
+    }
 }
 
 module.exports = { runExport };

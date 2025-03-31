@@ -719,7 +719,8 @@ router.get('/export-products-xml', async (req, res) => {
         await runExport();
         res.status(200).send('Plik XML wygenerowany i wrzucony na FTP.');
     } catch (e) {
-        res.status(500).send('Błąd eksportu.');
+        console.error('❌ Błąd eksportu:', e);
+        res.status(500).send(`Błąd eksportu: ${e.message}`);
     }
 });
 
