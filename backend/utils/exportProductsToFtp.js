@@ -61,7 +61,7 @@ async function uploadToFTP(localFilePath, remoteFileName) {
     client.ftp.verbose = true;
     try {
         await client.access({
-            host: 'ftp.gordontrade.pl',
+            host: 's22.cyber-folks.pl',
             user: 'flipico@gordontrade.pl',
             password: process.env.FTP_PASSWORD,
             secure: false,
