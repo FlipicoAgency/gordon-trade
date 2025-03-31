@@ -90,8 +90,8 @@ async function runExport() {
         console.log('📁 Ścieżka do XML:', exportPath);
 
         generateXmlFile(products, exportPath);
-        console.log('📤 Próba uploadu na FTP...');
-        await uploadToFTP(exportPath, 'products.xml');
+        // console.log('📤 Próba uploadu na FTP...');
+        // await uploadToFTP(exportPath, 'products.xml');
 
         console.log('✅ Export zakończony sukcesem.');
     } catch (err) {

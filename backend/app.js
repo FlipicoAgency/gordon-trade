@@ -32,6 +32,7 @@ var session = require('express-session');
 // const MongoStore = require('connect-mongo');
 // const mongoose = require('mongoose');
 const axios = require('axios'); // Make sure you have axios installed
+const fs = require('fs');
 
 var logger = require('morgan');
 var cors = require('cors');  // Importujemy pakiet cors
@@ -44,6 +45,7 @@ var apiRouter = require('./routes/api');
 //var { setupWebSocket } = require('./websocket'); // Importujemy konfigurację WebSocket
 
 var app = express();
+const { runExport } = require('../utils/exportProductsToFtp');
 
 // Dodajemy konfigurację CORS
 // app.use(cors({
@@ -129,19 +131,26 @@ app.get('/', (req, res) => {
 // API routes
 app.use('/api', apiRouter);
 
-// Endpoint zwracający plik products.xml
+// 1. Na przykład wywołaj generowanie od razu przy starcie (lub w innym miejscu)
+runExport()
+    .then(() => console.log('Plik products.xml wygenerowany!'))
+    .catch(err => console.error('Błąd podczas generowania pliku XML:', err));
+
+// 2. Udostępnij endpoint, który zwróci ten plik
 app.get('/products.xml', (req, res) => {
-  // Ważne: ścieżka musi być taka sama, jak ta, gdzie faktycznie zapisywany jest plik.
-  // Z logów widać, że jest to /opt/render/project/src/backend/exports/products.xml
-  // ale najlepiej użyj path.join w taki sam sposób, jak w generowaniu pliku:
+  // Upewnij się, że to ta sama ścieżka, której używasz w generateXmlFile:
+  const filePath = path.join(__dirname, 'exports', 'products.xml');
 
-  const filePath = path.join(__dirname, '../exports/products.xml');
-  // lub na sztywno: const filePath = '/opt/render/project/src/backend/exports/products.xml';
+  // Wstaw debugi, jeśli chcesz sprawdzić, czy plik istnieje:
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('Brak pliku products.xml');
+  }
 
+  // Jeśli plik istnieje – wysyłamy
   res.sendFile(filePath, (err) => {
     if (err) {
       console.error('Błąd wysyłania pliku products.xml:', err);
-      res.status(err.status).end();
+      res.status(err.status || 500).end();
     }
   });
 });
