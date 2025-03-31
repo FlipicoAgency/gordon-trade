@@ -45,7 +45,7 @@ var apiRouter = require('./routes/api');
 //var { setupWebSocket } = require('./websocket'); // Importujemy konfigurację WebSocket
 
 var app = express();
-const { runExport } = require('../utils/exportProductsToFtp');
+const { runExport } = require('./utils/exportProductsToFtp');
 
 // Dodajemy konfigurację CORS
 // app.use(cors({
