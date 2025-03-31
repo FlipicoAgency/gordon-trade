@@ -129,6 +129,23 @@ app.get('/', (req, res) => {
 // API routes
 app.use('/api', apiRouter);
 
+// Endpoint zwracający plik products.xml
+app.get('/products.xml', (req, res) => {
+  // Ważne: ścieżka musi być taka sama, jak ta, gdzie faktycznie zapisywany jest plik.
+  // Z logów widać, że jest to /opt/render/project/src/backend/exports/products.xml
+  // ale najlepiej użyj path.join w taki sam sposób, jak w generowaniu pliku:
+
+  const filePath = path.join(__dirname, '../exports/products.xml');
+  // lub na sztywno: const filePath = '/opt/render/project/src/backend/exports/products.xml';
+
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('Błąd wysyłania pliku products.xml:', err);
+      res.status(err.status).end();
+    }
+  });
+});
+
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));
