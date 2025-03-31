@@ -4,6 +4,7 @@ const router = express.Router();
 const axios = require('axios');
 const { getSheetsInstance } = require('../googleSheetsClient');
 const { Translate } = require('@google-cloud/translate').v2;
+const { runExport } = require('../utils/exportProductsToFtp');
 
 // Inicjalizacja klienta z kluczem API
 const translate = new Translate({ key: process.env.GOOGLE_TRANSLATE_API_KEY });
@@ -711,6 +712,15 @@ router.delete('/cart/:itemId', (req, res) => {
 router.delete('/cart', (req, res) => {
     req.session.cart = [];
     res.send(req.session.cart);
+});
+
+router.get('/export-products-xml', async (req, res) => {
+    try {
+        await runExport();
+        res.status(200).send('Plik XML wygenerowany i wrzucony na FTP.');
+    } catch (e) {
+        res.status(500).send('Błąd eksportu.');
+    }
 });
 
 module.exports = router;
