@@ -49,7 +49,10 @@ function generateXmlFile(products, outputPath) {
     const builder = new Builder();
     const safeProducts = sanitizeObjectKeys(products);
     const xml = builder.buildObject({ products: safeProducts });
+
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true }); // 🔧 UTWÓRZ folder jeśli nie istnieje
     fs.writeFileSync(outputPath, xml);
+
     console.log('XML file created at', outputPath);
 }
 
