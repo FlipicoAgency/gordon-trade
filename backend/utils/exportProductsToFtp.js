@@ -25,9 +25,30 @@ async function fetchProductsFromWebflow() {
     }
 }
 
+function sanitizeKey(key) {
+    return key
+        .replace(/[^a-zA-Z0-9_]/g, '_')  // zamień wszystko co nie jest literą/cyfą/_ na _
+        .replace(/^([0-9])/, '_$1');     // jeśli zaczyna się od cyfry – dodaj _
+}
+
+function sanitizeObjectKeys(obj) {
+    if (Array.isArray(obj)) {
+        return obj.map(sanitizeObjectKeys);
+    } else if (typeof obj === 'object' && obj !== null) {
+        const sanitized = {};
+        for (const key in obj) {
+            const safeKey = sanitizeKey(key);
+            sanitized[safeKey] = sanitizeObjectKeys(obj[key]);
+        }
+        return sanitized;
+    }
+    return obj;
+}
+
 function generateXmlFile(products, outputPath) {
     const builder = new Builder();
-    const xml = builder.buildObject({ products });
+    const safeProducts = sanitizeObjectKeys(products);
+    const xml = builder.buildObject({ products: safeProducts });
     fs.writeFileSync(outputPath, xml);
     console.log('XML file created at', outputPath);
 }
