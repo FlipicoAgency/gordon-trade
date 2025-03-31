@@ -63,7 +63,8 @@ async function uploadToFTP(localFilePath, remoteFileName) {
         await client.access({
             host: 's22.cyber-folks.pl',
             user: 'flipico@gordontrade.pl',
-            password: process.env.FTP_PASSWORD,
+            // password: process.env.FTP_PASSWORD,
+            password: '9Vvn-[[Nv-K1NQL*',
             secure: true,
             secureOptions: {
                 rejectUnauthorized: false, // 🔐 NIE weryfikuj certyfikatu
