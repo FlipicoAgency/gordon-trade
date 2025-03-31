@@ -65,10 +65,10 @@ async function uploadToFTP(localFilePath, remoteFileName) {
             user: 'flipico@gordontrade.pl',
             // password: process.env.FTP_PASSWORD,
             password: '9Vvn-[[Nv-K1NQL*',
-            secure: true,
-            secureOptions: {
-                rejectUnauthorized: false, // 🔐 NIE weryfikuj certyfikatu
-            }
+            secure: false,
+            // secureOptions: {
+            //     rejectUnauthorized: false, // 🔐 NIE weryfikuj certyfikatu
+            // }
         });
 
         await client.uploadFrom(localFilePath, remoteFileName);
