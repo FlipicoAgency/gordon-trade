@@ -4,7 +4,7 @@ const ftp = require('basic-ftp');
 const axios = require('axios');
 const { Builder } = require('xml2js');
 
-const WEBFLOW_TOKEN = process.env.WEBFLOW_TOKEN;
+const WEBFLOW_TOKEN = '101b6d48d3bddfc2b5ab504b3c8f41f2a2a9e5893983a6dbf0467ab8e3580934';
 const PRODUCTS_COLLECTION_ID = '671f74158ad8b36b6c82188c';
 const SITE_ID = '671f56de2f5de134f0f39123';
 const WEBFLOW_API_URL = 'https://api.webflow.com/v2';
