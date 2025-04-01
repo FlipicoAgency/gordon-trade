@@ -63,9 +63,17 @@ function sanitizeObjectKeys(obj) {
 function generateXmlFile(products, outputPath) {
     const builder = new Builder();
     const safeProducts = sanitizeObjectKeys(products);
-    const xml = builder.buildObject({ products: safeProducts });
 
-    fs.mkdirSync(path.dirname(outputPath), { recursive: true }); // 🔧 UTWÓRZ folder jeśli nie istnieje
+    // Klucz "product" zawiera tablicę obiektów
+    const xmlData = {
+        products: {
+            product: safeProducts
+        }
+    };
+
+    const xml = builder.buildObject(xmlData);
+
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, xml);
 
     console.log('XML file created at', outputPath);
