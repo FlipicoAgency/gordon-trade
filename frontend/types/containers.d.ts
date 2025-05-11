@@ -18,10 +18,10 @@ export interface Container {
     "FV No": string;
     "Loading port": string;
     "Delivery status": Status;
-    "Estimated time of departure": string;
-    "Fastest possible shipping date": string;
-    "Estimated time of arrival": string;
-    "Extended delivery date": string;
+    "Planned ETD": string;
+    "Updated ETD": string;
+    "Planned ETA": string;
+    "Updated ETA": string;
     "Personalization": string;
     "Quality control photos": string;
     "Change in transportation cost": string;

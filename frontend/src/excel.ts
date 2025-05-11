@@ -156,10 +156,10 @@ export async function addNewOrderToExcel(
                 '', // FV PDF
                 index === 0 ? 'Złożono zapytanie' : '', // Status płatności
                 // index === 0 ? 'Złożono zapytanie' : '', // Status dostawy
-                // '', // Estimated time of departure
-                // '', // Fastest possible shipping date
-                // '', // Estimated time of arrival
-                // '', // Extended delivery date
+                // '', // Planned ETD
+                // '', // Updated ETD
+                // '', // Planned ETA
+                // '', // Planned ETD
                 '', // Comments
             ])
             : items.products.map((product, index) => [
@@ -179,10 +179,10 @@ export async function addNewOrderToExcel(
                 '', // FV PDF
                 index === 0 ? 'Złożono zapytanie' : '',
                 // index === 0 ? 'Złożono zapytanie' : '',
-                // '', // Estimated time of departure
-                // '', // Fastest possible shipping date
-                // '', // Estimated time of arrival
-                // '', // Extended delivery date
+                // '', // Planned ETD
+                // '', // Updated ETD
+                // '', // Planned ETA
+                // '', // Updated ETA
                 '', // Comments
             ]);
 

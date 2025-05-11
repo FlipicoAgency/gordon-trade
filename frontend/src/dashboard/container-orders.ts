@@ -63,10 +63,10 @@ function formatToContainers(data: any, locations: Status[], translations: Record
             "FV No": order.fvNo || "Brak",
             "Loading port": order.loadingPort || "Brak",
             "Delivery status": deliveryStatus,
-            "Estimated time of departure": order.estimatedDeparture || "Brak",
-            "Fastest possible shipping date": order.fastestShipping || "Brak",
-            "Estimated time of arrival": order.estimatedArrival || "Brak",
-            "Extended delivery date": order.extendedDelivery || "Brak",
+            "Planned ETD": order.estimatedDeparture || "Brak",
+            "Updated ETD": order.fastestShipping || "Brak",
+            "Planned ETA": order.estimatedArrival || "Brak",
+            "Updated ETA": order.extendedDelivery || "Brak",
             "Quality control photos": order.qualityControlPhotos || "Brak",
             "Change in transportation cost": order.changeInTransportationCost || "Brak",
             "Personalization": mapYesNo(order.personalization || translations.none, translations),
@@ -153,12 +153,12 @@ function showOrderInfo(container: Container, containers: Container[], translatio
     const containerListHTML = containersInSameStatus.map(sameStatusContainer => {
         // Pobierz daty i sprawdź, czy są poprawne
         const extendedDeliveryDate =
-            sameStatusContainer["Extended delivery date"] !== "Brak"
-                ? sameStatusContainer["Extended delivery date"]
+            sameStatusContainer["Updated ETA"] !== "Brak"
+                ? sameStatusContainer["Updated ETA"]
                 : null;
         const estimatedArrivalDate =
-            sameStatusContainer["Estimated time of arrival"] !== "Brak"
-                ? sameStatusContainer["Estimated time of arrival"]
+            sameStatusContainer["Planned ETA"] !== "Brak"
+                ? sameStatusContainer["Planned ETA"]
                 : null;
 
 
@@ -208,7 +208,7 @@ function showOrderInfo(container: Container, containers: Container[], translatio
                 <div>${sameStatusContainer.Periodicity}</div>
                 ${transportationCostChange}
                 <div class="text-style-muted">${translations.plannedDelivery}</div>
-                <div>${formatDate(sameStatusContainer["Estimated time of arrival"])}</div>
+                <div>${formatDate(sameStatusContainer["Planned ETA"])}</div>
                 ${delayInfoHTML}
             </div>
         `;
@@ -326,7 +326,7 @@ function generateShipListItem(container: Container, translations: Record<string,
     // Wybierz klasę procentową na podstawie wartości "procent"
     const progressClass = container["Delivery status"].procent || "is-0";
     const isComplete = progressClass === "is-100";
-    const isError = container["Extended delivery date"] !== '';
+    const isError = container["Updated ETA"] !== '';
 
     // Wybierz odpowiednią ikonę na podstawie warunku
     const iconSVG = isComplete ? icons.success : (isError ? icons.error : icons.default);
@@ -335,8 +335,8 @@ function generateShipListItem(container: Container, translations: Record<string,
     const htmlElement = document.createElement("div");
     htmlElement.classList.add("stacked-list4_item", "w-inline-block");
 
-    // Sprawdzenie, czy pole "Extended delivery date" nie jest puste
-    const extendedDeliveryDate = container["Extended delivery date"];
+    // Sprawdzenie, czy pole "Updated ETA" nie jest puste
+    const extendedDeliveryDate = container["Updated ETA"];
     const delayInfoHTML = extendedDeliveryDate !== "Brak"
     ? `<div class="text-size-small">${translations.orderDelayed} <span class="text-weight-semibold">${formatDate(extendedDeliveryDate)}</span></div>`
     : "";
@@ -344,10 +344,10 @@ function generateShipListItem(container: Container, translations: Record<string,
     htmlElement.innerHTML = `
         <div class="stacked-list4_content-top">
             ${pending ? 
-                `<div class="text-size-small">${translations.plannedDeparture} <span class="text-weight-semibold text-color-brand">${container["Estimated time of departure"]}</span></div>` 
+                `<div class="text-size-small">${translations.plannedDeparture} <span class="text-weight-semibold text-color-brand">${container["Planned ETD"]}</span></div>` 
                     : `<div class="text-size-small">${translations.containerNumber} <span class="text-weight-semibold text-color-brand">${container["Container No1"]}</span></div>`}
             <div class="stacked-list4_info">
-                <div class="text-size-small">${translations.plannedDelivery} <span class="text-weight-semibold">${formatDate(container["Estimated time of arrival"])}</span></div>
+                <div class="text-size-small">${translations.plannedDelivery} <span class="text-weight-semibold">${formatDate(container["Planned ETA"])}</span></div>
                 ${delayInfoHTML}
             </div>
          </div>
