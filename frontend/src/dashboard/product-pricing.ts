@@ -75,9 +75,9 @@ export async function initializeUppy(memberData: Member, translations: Record<st
                     alwaysRunAssembly: true,
                     assemblyOptions: {
                         params: {
-                            template_id: 'dd91cac884b14a3fbe19abf0d66b161f',
+                            template_id: 'd88626a621bc4fe2a136a53fa515c378',
                             auth: {
-                                key: '49c6b5fc4d0f44288025dd2b1e84c60b',
+                                key: 'OIsmHgSeU6rCebQH27EytZunhvrf2CZb',
                             },
                         },
                     },
