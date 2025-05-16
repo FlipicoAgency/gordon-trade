@@ -107,12 +107,15 @@ async function runExport() {
     try {
         console.log('🔄 Start exportu...');
         const products = await fetchProductsFromWebflow();
-        console.log(`📦 Liczba produktów: ${products.length}`);
+
+        // filtrujemy tylko te produkty, które nie są draftem
+        const liveProducts = products.filter(p => p.isDraft === false);
+        console.log(`📦 Liczba produktów po filtrze (bez draft): ${liveProducts.length}`);
 
         const exportPath = path.join(__dirname, '../exports/products.xml');
         console.log('📁 Ścieżka do XML:', exportPath);
 
-        generateXmlFile(products, exportPath);
+        generateXmlFile(liveProducts, exportPath);
 
         // console.log('📤 Próba uploadu na FTP...');
         // await uploadToFTP(exportPath, 'products.xml');
